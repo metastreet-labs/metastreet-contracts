@@ -8,7 +8,7 @@ async function main() {
 
   const TestERC20 = await ethers.getContractFactory("TestERC20", accounts[9]);
   const TestERC721 = await ethers.getContractFactory("TestERC721", accounts[9]);
-  const PriceOracle = await ethers.getContractFactory("PriceOracle", accounts[9]);
+  const LoanPriceOracle = await ethers.getContractFactory("LoanPriceOracle", accounts[9]);
   const Vault = await ethers.getContractFactory("Vault", accounts[9]);
 
   /* Deploy DAI */
@@ -29,19 +29,19 @@ async function main() {
   console.log("");
 
   /* Deploy Loan Price Oracle for DAI */
-  const daiPriceOracle = await PriceOracle.deploy(daiTokenContract.address);
-  await daiPriceOracle.deployed();
-  console.log("DAI Loan Price Oracle:  ", daiPriceOracle.address);
+  const daiLoanPriceOracle = await LoanPriceOracle.deploy(daiTokenContract.address);
+  await daiLoanPriceOracle.deployed();
+  console.log("DAI Loan Price Oracle:  ", daiLoanPriceOracle.address);
 
   /* Deploy Loan Price Oracle for WETH */
-  const wethPriceOracle = await PriceOracle.deploy(wethTokenContract.address);
-  await wethPriceOracle.deployed();
-  console.log("WETH Loan Price Oracle: ", wethPriceOracle.address);
+  const wethLoanPriceOracle = await LoanPriceOracle.deploy(wethTokenContract.address);
+  await wethLoanPriceOracle.deployed();
+  console.log("WETH Loan Price Oracle: ", wethLoanPriceOracle.address);
 
   console.log("");
 
   /* Deploy DAI Vault */
-  const daiBlueChipVault = await Vault.deploy("Blue Chip / DAI", "BC", daiTokenContract.address, daiPriceOracle.address);
+  const daiBlueChipVault = await Vault.deploy("Blue Chip / DAI", "BC", daiTokenContract.address, daiLoanPriceOracle.address);
   await daiBlueChipVault.deployed();
   console.log("Blue Chip DAI Vault:    ", daiBlueChipVault.address);
   console.log("               Vault Name: ", await daiBlueChipVault.name());
@@ -53,7 +53,7 @@ async function main() {
   console.log("");
 
   /* Deploy WETH Vault */
-  const wethBlueChipVault = await Vault.deploy("Blue Chip / WETH", "BC", wethTokenContract.address, wethPriceOracle.address);
+  const wethBlueChipVault = await Vault.deploy("Blue Chip / WETH", "BC", wethTokenContract.address, wethLoanPriceOracle.address);
   await wethBlueChipVault.deployed();
   console.log("Blue Chip WETH Vault:    ", wethBlueChipVault.address);
   console.log("               Vault Name: ", await wethBlueChipVault.name());

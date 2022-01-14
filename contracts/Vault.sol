@@ -21,13 +21,13 @@ contract Vault is IVault, Ownable {
     IERC20 public immutable override currencyToken;
     IERC20 public immutable override seniorLPToken;
     IERC20 public immutable override juniorLPToken;
-    IPriceOracle public override priceOracle;
+    ILoanPriceOracle public override loanPriceOracle;
 
     /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
-    constructor(string memory vaultName, string memory lpSymbol, IERC20 currencyToken_, IPriceOracle priceOracle_) {
+    constructor(string memory vaultName, string memory lpSymbol, IERC20 currencyToken_, ILoanPriceOracle loanPriceOracle_) {
         name = vaultName;
         currencyToken = currencyToken_;
 
@@ -35,7 +35,7 @@ contract Vault is IVault, Ownable {
         seniorLPToken = new LPToken("Senior LP Token", string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
         juniorLPToken = new LPToken("Junior LP Token", string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
 
-        priceOracle = priceOracle_;
+        loanPriceOracle = loanPriceOracle_;
     }
 
     /**************************************************************************/
@@ -132,11 +132,11 @@ contract Vault is IVault, Ownable {
         emit TrancheRateUpdated(tranche, interestRate);
     }
 
-    function setPriceOracle(address priceOracle_) public onlyOwner {
-        console.log("setPriceOracle(priceOracle %s)", priceOracle_);
+    function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {
+        console.log("setLoanPriceOracle(loanPriceOracle %s)", loanPriceOracle_);
 
-        priceOracle = IPriceOracle(priceOracle_);
+        loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
 
-        emit PriceOracleUpdated(priceOracle_);
+        emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
 }

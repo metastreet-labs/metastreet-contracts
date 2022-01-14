@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import "./IPriceOracle.sol";
+import "./ILoanPriceOracle.sol";
 
 interface IVault {
     /* Getters */
@@ -12,7 +12,7 @@ interface IVault {
     function currencyToken() external view returns (IERC20);
     function seniorLPToken() external view returns (IERC20);
     function juniorLPToken() external view returns (IERC20);
-    function priceOracle() external view returns (IPriceOracle);
+    function loanPriceOracle() external view returns (ILoanPriceOracle);
 
     /* Primary API */
     function deposit(uint256[2] calldata amounts) external;
@@ -29,7 +29,7 @@ interface IVault {
     /* Setters */
     enum Tranche { Senior, Junior }
     function setTrancheRate(Tranche tranche, uint256 interestRate) external;
-    function setPriceOracle(address priceOracle_) external;
+    function setLoanPriceOracle(address loanPriceOracle_) external;
 
     /* Events */
     event Deposited(address indexed account, uint256[2] amounts);
@@ -38,5 +38,5 @@ interface IVault {
     event Redeemed(address indexed account, uint256[2] shares, uint256[2] amounts);
     event Withdrawn(address indexed account, uint256[2] amounts);
     event TrancheRateUpdated(Tranche tranche, uint256 interestRate);
-    event PriceOracleUpdated(address priceOracle);
+    event LoanPriceOracleUpdated(address loanPriceOracle);
 }
