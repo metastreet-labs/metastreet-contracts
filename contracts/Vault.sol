@@ -42,18 +42,17 @@ contract Vault is IVault, Ownable {
     /* Primary API */
     /**************************************************************************/
 
-    function deposit(Tranche tranche, uint256 depositAmount) public {
-        console.log("deposit(tranche %s, depositAmount %s)", uint8(tranche), depositAmount);
-
-        LPToken lpToken = (tranche == Tranche.Senior) ? LPToken(address(seniorLPToken)) : LPToken(address(juniorLPToken));
+    function deposit(uint256[2] calldata amounts) public {
+        console.log("deposit(amounts [%s, %s])", amounts[0], amounts[1]);
 
         /* Dummy deposit */
-        currencyToken.safeTransferFrom(msg.sender, address(this), depositAmount);
-        lpToken.mint(msg.sender, depositAmount);
+        currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
+        LPToken(address(seniorLPToken)).mint(msg.sender, amounts[0]);
+        LPToken(address(juniorLPToken)).mint(msg.sender, amounts[1]);
 
         /* FIXME */
 
-        emit Deposited(msg.sender, tranche, depositAmount);
+        emit Deposited(msg.sender, amounts);
     }
 
     function sellNote(IERC721 promissoryToken, uint256 tokenId, uint256 purchasePrice) public {
@@ -68,43 +67,41 @@ contract Vault is IVault, Ownable {
         emit NotePurchased(msg.sender, address(promissoryToken), tokenId, purchasePrice);
     }
 
-    function sellNoteAndDeposit(IERC721 promissoryToken, uint256 tokenId, uint256 purchasePrice, Tranche tranche) public {
-        console.log("sellNoteAndDeposit(promissoryToken %s, tokenId %s, purchasePrice %s, ...)", address(promissoryToken), tokenId, purchasePrice);
-
-        LPToken lpToken = (tranche == Tranche.Senior) ? LPToken(address(seniorLPToken)) : LPToken(address(juniorLPToken));
+    function sellNoteAndDeposit(IERC721 promissoryToken, uint256 tokenId, uint256[2] calldata amounts) public {
+        console.log("sellNoteAndDeposit(promissoryToken %s, tokenId %s, amounts [%s, ...])", address(promissoryToken), tokenId, amounts[0]);
 
         /* Dummy loan purchase and deposit */
         promissoryToken.safeTransferFrom(msg.sender, address(this), tokenId);
-        lpToken.mint(msg.sender, purchasePrice);
+        LPToken(address(seniorLPToken)).mint(msg.sender, amounts[0]);
+        LPToken(address(juniorLPToken)).mint(msg.sender, amounts[1]);
 
         /* FIXME */
 
-        emit NotePurchased(msg.sender, address(promissoryToken), tokenId, purchasePrice);
-        emit Deposited(msg.sender, tranche, purchasePrice);
+        emit NotePurchased(msg.sender, address(promissoryToken), tokenId, amounts[0] + amounts[1]);
+        emit Deposited(msg.sender, amounts);
     }
 
-    function redeem(Tranche tranche, uint256 shares) public {
-        console.log("redeem(tranche %s, shares %s)", uint8(tranche), shares);
-
-        LPToken lpToken = (tranche == Tranche.Senior) ? LPToken(address(seniorLPToken)) : LPToken(address(juniorLPToken));
+    function redeem(uint256[2] calldata shares) public {
+        console.log("redeem(shares [%s, %s])", shares[0], shares[1]);
 
         /* Dummy redeem */
-        lpToken.burn(msg.sender, shares);
+        LPToken(address(seniorLPToken)).burn(msg.sender, shares[0]);
+        LPToken(address(juniorLPToken)).burn(msg.sender, shares[1]);
 
         /* FIXME */
 
-        emit Redeemed(msg.sender, tranche, shares, shares);
+        emit Redeemed(msg.sender, shares, shares);
     }
 
-    function withdraw(Tranche tranche, uint256 amount) public {
-        console.log("withdraw(tranche %s, amount %s)", uint8(tranche), amount);
+    function withdraw(uint256[2] calldata amounts) public {
+        console.log("withdraw(amounts [%s, %s])", amounts[0], amounts[1]);
 
         /* Dummy withdrawal */
-        currencyToken.safeTransfer(msg.sender, amount);
+        currencyToken.safeTransfer(msg.sender, amounts[0] + amounts[1]);
 
         /* FIXME */
 
-        emit Withdrawn(msg.sender, tranche, amount);
+        emit Withdrawn(msg.sender, amounts);
     }
 
     /**************************************************************************/
