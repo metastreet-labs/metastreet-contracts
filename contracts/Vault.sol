@@ -55,29 +55,29 @@ contract Vault is IVault, Ownable {
         emit Deposited(msg.sender, amounts);
     }
 
-    function sellNote(IERC721 promissoryToken, uint256 tokenId, uint256 purchasePrice) public {
-        console.log("sellNote(promissoryToken %s, tokenId %s, purchasePrice %s)", address(promissoryToken), tokenId, purchasePrice);
+    function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
+        console.log("sellNote(noteToken %s, tokenId %s, purchasePrice %s)", address(noteToken), tokenId, purchasePrice);
 
         /* Dummy loan purchase */
-        promissoryToken.safeTransferFrom(msg.sender, address(this), tokenId);
+        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
         currencyToken.safeTransfer(msg.sender, purchasePrice);
 
         /* FIXME */
 
-        emit NotePurchased(msg.sender, address(promissoryToken), tokenId, purchasePrice);
+        emit NotePurchased(msg.sender, address(noteToken), tokenId, purchasePrice);
     }
 
-    function sellNoteAndDeposit(IERC721 promissoryToken, uint256 tokenId, uint256[2] calldata amounts) public {
-        console.log("sellNoteAndDeposit(promissoryToken %s, tokenId %s, amounts [%s, ...])", address(promissoryToken), tokenId, amounts[0]);
+    function sellNoteAndDeposit(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) public {
+        console.log("sellNoteAndDeposit(noteToken %s, tokenId %s, amounts [%s, ...])", address(noteToken), tokenId, amounts[0]);
 
         /* Dummy loan purchase and deposit */
-        promissoryToken.safeTransferFrom(msg.sender, address(this), tokenId);
+        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
         LPToken(address(seniorLPToken)).mint(msg.sender, amounts[0]);
         LPToken(address(juniorLPToken)).mint(msg.sender, amounts[1]);
 
         /* FIXME */
 
-        emit NotePurchased(msg.sender, address(promissoryToken), tokenId, amounts[0] + amounts[1]);
+        emit NotePurchased(msg.sender, address(noteToken), tokenId, amounts[0] + amounts[1]);
         emit Deposited(msg.sender, amounts);
     }
 
@@ -108,15 +108,15 @@ contract Vault is IVault, Ownable {
     /* Callbacks */
     /**************************************************************************/
 
-    function onLoanRepayment(IERC721 promissoryToken, uint256 tokenId) public {
+    function onLoanRepayment(IERC721 noteToken, uint256 tokenId) public {
         /* FIXME */
     }
 
-    function onLoanDefault(IERC721 promissoryToken, uint256 tokenId) public {
+    function onLoanDefault(IERC721 noteToken, uint256 tokenId) public {
         /* FIXME */
     }
 
-    function onLoanLiquidated(IERC721 promissoryToken, uint256 tokenId, uint256 proceeds) public {
+    function onLoanLiquidated(IERC721 noteToken, uint256 tokenId, uint256 proceeds) public {
         /* FIXME */
     }
 
