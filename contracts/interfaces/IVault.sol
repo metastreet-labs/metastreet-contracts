@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./ILoanPriceOracle.sol";
+import "./INote.sol";
 
 interface IVault {
     /* Getters */
@@ -13,6 +14,7 @@ interface IVault {
     function seniorLPToken() external view returns (IERC20);
     function juniorLPToken() external view returns (IERC20);
     function loanPriceOracle() external view returns (ILoanPriceOracle);
+    function noteInterfaces(address noteToken) external view returns (INote);
 
     /* Primary API */
     function deposit(uint256[2] calldata amounts) external;
@@ -29,6 +31,7 @@ interface IVault {
     /* Setters */
     function setSeniorTrancheRate(uint256 interestRate) external;
     function setLoanPriceOracle(address loanPriceOracle_) external;
+    function setNoteInterface(address noteToken, address noteInterface) external;
 
     /* Events */
     event Deposited(address indexed account, uint256[2] amounts);
@@ -38,4 +41,5 @@ interface IVault {
     event Withdrawn(address indexed account, uint256[2] amounts);
     event SeniorTrancheRateUpdated(uint256 interestRate);
     event LoanPriceOracleUpdated(address loanPriceOracle);
+    event NoteInterfaceUpdated(address noteToken, address noteInterface);
 }

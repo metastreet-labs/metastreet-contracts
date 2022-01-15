@@ -22,6 +22,7 @@ contract Vault is IVault, Ownable {
     IERC20 public immutable override seniorLPToken;
     IERC20 public immutable override juniorLPToken;
     ILoanPriceOracle public override loanPriceOracle;
+    mapping(address => INote) public override noteInterfaces;
 
     /**************************************************************************/
     /* Constructor */
@@ -138,5 +139,13 @@ contract Vault is IVault, Ownable {
         loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
 
         emit LoanPriceOracleUpdated(loanPriceOracle_);
+    }
+
+    function setNoteInterface(address noteToken, address noteInterface) public onlyOwner {
+        console.log("setNoteInterface(noteToken %s, noteInterface %s)", noteToken, noteInterface);
+
+        noteInterfaces[noteToken] = INote(noteInterface);
+
+        emit NoteInterfaceUpdated(noteToken, noteInterface);
     }
 }
