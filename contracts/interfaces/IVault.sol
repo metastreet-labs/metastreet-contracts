@@ -27,8 +27,7 @@ interface IVault {
     function onLoanLiquidated(IERC721 noteToken, uint256 tokenId, uint256 proceeds) external;
 
     /* Setters */
-    enum Tranche { Senior, Junior }
-    function setTrancheRate(Tranche tranche, uint256 interestRate) external;
+    function setSeniorTrancheRate(uint256 interestRate) external;
     function setLoanPriceOracle(address loanPriceOracle_) external;
 
     /* Events */
@@ -37,6 +36,6 @@ interface IVault {
                         uint256 purchasePrice);
     event Redeemed(address indexed account, uint256[2] shares, uint256[2] amounts);
     event Withdrawn(address indexed account, uint256[2] amounts);
-    event TrancheRateUpdated(Tranche tranche, uint256 interestRate);
+    event SeniorTrancheRateUpdated(uint256 interestRate);
     event LoanPriceOracleUpdated(address loanPriceOracle);
 }

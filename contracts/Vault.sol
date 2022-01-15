@@ -124,12 +124,12 @@ contract Vault is IVault, Ownable {
     /* Setters */
     /**************************************************************************/
 
-    function setTrancheRate(Tranche tranche, uint256 interestRate) public onlyOwner {
-        console.log("setTrancheRate(tranche %s, interestRate %s)", uint8(tranche), interestRate);
+    function setSeniorTrancheRate(uint256 interestRate) public onlyOwner {
+        console.log("setSeniorTrancheRate(interestRate %s)", interestRate);
 
         /* FIXME */
 
-        emit TrancheRateUpdated(tranche, interestRate);
+        emit SeniorTrancheRateUpdated(interestRate);
     }
 
     function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {
