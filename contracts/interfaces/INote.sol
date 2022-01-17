@@ -8,7 +8,7 @@ interface INote {
     struct LoanInfo {
         uint256 principal;
         uint256 repayment;
-        uint64 startTime;
+        uint256 startTime;
         uint32 duration;
         address currencyToken;
         address collateralToken;
