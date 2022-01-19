@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-interface INote {
+interface INoteAdapter {
     /* Structures */
     struct LoanInfo {
+        address borrower;
         uint256 principal;
         uint256 repayment;
         uint256 startTime;
@@ -19,9 +20,8 @@ interface INote {
     function promissoryNoteToken() external view returns (IERC721);
 
     function getLoanInfo(uint256 tokenId) external view returns (LoanInfo memory);
-    function isSupported(uint256 tokenId, address currencyToken) external view returns (bool);
+    function isSupported(uint256 tokenId, address vaultCurrencyToken) external view returns (bool);
     function isActive(uint256 tokenId) external view returns (bool);
-    function isRepaid(uint256 tokenId) external view returns (bool);
-    function isDefaulted(uint256 tokenId) external view returns (bool);
+    function isComplete(uint256 tokenId) external view returns (bool);
 }
 
