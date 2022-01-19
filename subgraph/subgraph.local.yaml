@@ -1,0 +1,48 @@
+specVersion: 0.0.2
+description: MetaStreet Labs Ethereum
+repository: https://github.com/metastreet-labs/metastreet-contracts
+schema:
+  file: ./schema.graphql
+dataSources:
+  # DAI ERC721 NoteToken
+  - kind: ethereum/contract
+    name: DAI ERC721 NoteToken
+    network: mainnet
+    source:
+      address: "0xc19Bc969cfc40DfF49605AedefC69a74c5Aef69E"
+      abi: IERC721
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - PromissoryNote
+      abis:
+        - name: IERC721
+          file: ../artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+      file: ./mapping/promissoryNotes.ts
+  # WETH ERC721 NoteToken
+  - kind: ethereum/contract
+    name: WETH ERC721 NoteToken
+    network: mainnet
+    source:
+      address: "0x58FfF7Cf21AEcD9D4b500E5490B10B07b9553E89"
+      abi: IERC721
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - PromissoryNote
+      abis:
+        - name: IERC721
+          file: ../artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+      file: ./mapping/promissoryNotes.ts

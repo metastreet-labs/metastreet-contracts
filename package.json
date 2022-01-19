@@ -9,9 +9,18 @@
     "format": "prettier --write 'contracts/**/*.sol'",
     "format:ts": "prettier --write '{test,scripts}/**/*.ts'",
     "analyze": "slither --filter-paths 'node_modules|contracts/test/thirdparty' .",
-    "node": "hardhat node"
+    "node": "hardhat node",
+    "subgraph-codegen": "graph codegen --output-dir ./subgraph/generated ./subgraph/subgraph.yaml",
+    "subgraph-build": "npm run subgraph-codegen && graph build --output-dir ./subgraph/build ./subgraph/subgraph.yaml",
+    "subgraph-codegen-local": "graph codegen --output-dir ./subgraph/generated ./subgraph/subgraph.local.yaml",
+    "subgraph-build-local": "npm run subgraph-codegen && graph build --output-dir ./subgraph/build ./subgraph/subgraph.local.yaml",
+    "subgraph-create-local": "graph create metastreet-labs/metastreet-contracts --node http://127.0.0.1:8020",
+    "subgraph-deploy-local": "graph deploy --debug --ipfs http://localhost:5001 --node http://127.0.0.1:8020/ --output-dir ./subgraph/build metastreet-labs/metastreet-contracts ./subgraph/subgraph.local.yaml",
+    "subgraph-watch-local": "graph deploy --watch --debug --node http://127.0.0.1:8020/ --ipfs http://localhost:5001 --output-dir ./subgraph/build metastreet-labs/metastreet-contracts ./subgraph/subgraph.local.yaml"
   },
   "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.25.3",
+    "@graphprotocol/graph-ts": "^0.24.1",
     "@nomiclabs/hardhat-ethers": "^2.0.4",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-waffle": "^2.0.1",

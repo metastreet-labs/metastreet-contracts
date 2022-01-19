@@ -1,0 +1,11 @@
+type User @entity {
+  id: ID!
+  promissoryNotes: [PromissoryNote!]! @derivedFrom(field: "owner")
+}
+
+type PromissoryNote @entity {
+  id: ID!
+  contractAddress: Bytes!
+  tokenId: BigInt!
+  owner: User!
+}
