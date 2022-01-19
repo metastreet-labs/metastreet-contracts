@@ -8,6 +8,8 @@ async function main() {
 
   const TestERC20 = await ethers.getContractFactory("TestERC20", accounts[9]);
   const TestERC721 = await ethers.getContractFactory("TestERC721", accounts[9]);
+  const TestLendingPlatform = await ethers.getContractFactory("TestLendingPlatform", accounts[9]);
+  const TestNoteAdapter = await ethers.getContractFactory("TestNoteAdapter", accounts[9]);
   const LoanPriceOracle = await ethers.getContractFactory("LoanPriceOracle", accounts[9]);
   const Vault = await ethers.getContractFactory("Vault", accounts[9]);
 
@@ -27,6 +29,28 @@ async function main() {
   console.log("BAYC Token Contract:    ", baycTokenContract.address);
 
   console.log("");
+
+  /* Deploy DAI Test Lending Platform */
+  const daiTestLendingPlatform = await TestLendingPlatform.deploy(daiTokenContract.address);
+  await daiTestLendingPlatform.deployed();
+  console.log("DAI Lending Platform:   ", daiTestLendingPlatform.address);
+  console.log("       Note Token Address: ", await daiTestLendingPlatform.noteToken());
+  console.log("");
+
+  /* Deploy WETH Test Lending Platform */
+  const wethTestLendingPlatform = await TestLendingPlatform.deploy(wethTokenContract.address);
+  await wethTestLendingPlatform.deployed();
+  console.log("WETH Lending Platform:  ", wethTestLendingPlatform.address);
+  console.log("       Note Token Address: ", await wethTestLendingPlatform.noteToken());
+  console.log("");
+
+  /* Deploy DAI Test Note Adapter */
+  const daiTestNoteAdapter = await TestNoteAdapter.deploy(daiTestLendingPlatform.address);
+  await daiTestNoteAdapter.deployed();
+
+  /* Deploy WETH Test Note Adapter */
+  const wethTestNoteAdapter = await TestNoteAdapter.deploy(wethTestLendingPlatform.address);
+  await wethTestNoteAdapter.deployed();
 
   /* Deploy Loan Price Oracle for DAI */
   const daiLoanPriceOracle = await LoanPriceOracle.deploy(daiTokenContract.address);
@@ -49,7 +73,6 @@ async function main() {
   console.log("  Senior LP Token Address: ", await daiBlueChipVault.seniorLPToken());
   console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.juniorLPToken())).symbol());
   console.log("  Senior LP Token Address: ", await daiBlueChipVault.juniorLPToken());
-
   console.log("");
 
   /* Deploy WETH Vault */
@@ -61,8 +84,15 @@ async function main() {
   console.log("  Senior LP Token Address: ", await wethBlueChipVault.seniorLPToken());
   console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.juniorLPToken())).symbol());
   console.log("  Junior LP Token Address: ", await wethBlueChipVault.juniorLPToken());
-
   console.log("");
+
+  await daiBlueChipVault.setNoteAdapter(await daiTestLendingPlatform.noteToken(), daiTestNoteAdapter.address);
+  console.log("Attached DAI Test Note Adapter to Blue Chip DAI Vault");
+
+  await wethBlueChipVault.setNoteAdapter(await wethTestLendingPlatform.noteToken(), wethTestNoteAdapter.address);
+  console.log("Attached WETH Test Note Adapter to Blue Chip WETH Vault");
+  console.log("");
+
   await daiTokenContract.transfer(accounts[0].address, 1000);
   console.log("Transferred 1000 DAI to account #0 (%s)", accounts[0].address);
 
