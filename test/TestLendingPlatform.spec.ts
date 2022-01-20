@@ -13,7 +13,6 @@ describe('TestLendingPlatform', function () {
   let nft1: TestERC721;
   let lendingPlatform: TestLendingPlatform;
   let noteToken: TestNoteToken;
-  let lastBlockTimestamp: number;
 
   beforeEach('create factories and deploy test tokens', async () => {
     accounts = await ethers.getSigners();
@@ -33,8 +32,6 @@ describe('TestLendingPlatform', function () {
     await lendingPlatform.deployed();
 
     noteToken = await ethers.getContractAt('TestNoteToken', await lendingPlatform.noteToken(), accounts[0]) as TestNoteToken;
-
-    lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
   })
 
   it('lend and repay', async function () {
