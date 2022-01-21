@@ -9,7 +9,14 @@ contract LPToken is ERC20 {
     /* State */
     /**************************************************************************/
 
+    struct Redemption {
+        uint256 pending;
+        uint256 withdrawn;
+        uint256 redemptionCounterTarget;
+    }
+
     address private _owner;
+    mapping(address => Redemption) public redemptions;
 
     /**************************************************************************/
     /* Constructor */

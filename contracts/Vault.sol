@@ -10,12 +10,41 @@ import "./LPToken.sol";
 
 import "hardhat/console.sol";
 
-contract Vault is IVault, Ownable {
+contract VaultStorage {
+    /* Structures */
+    struct TrancheState {
+        uint256 depositValue;
+        uint256 pendingRedemptions;
+        uint256 redemptionCounter;
+        uint256 processedRedemptionCounter;
+        mapping(uint64 => uint256) pendingReturns;
+    }
+
+    struct LoanState {
+        uint256 purchasePrice;
+        uint256 repayment;
+        uint256[2] trancheReturns;
+    }
+
+    /* Parameters */
+    uint256 public seniorTrancheRate;
+
+    /* State */
+    uint256 public totalLoanBalance;
+    uint256 public totalCashBalance;
+    uint256 public totalWithdrawalBalance;
+    TrancheState[2] public tranches;
+    mapping(address => mapping(uint256 => LoanState)) public loans;
+}
+
+contract Vault is Ownable, VaultStorage, IVault {
     using SafeERC20 for IERC20;
 
     /**************************************************************************/
     /* State */
     /**************************************************************************/
+
+    /* Main state inherited from VaultStorage contract */
 
     string public override name;
     IERC20 public immutable override currencyToken;

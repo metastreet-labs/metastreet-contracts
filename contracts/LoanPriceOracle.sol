@@ -12,7 +12,15 @@ contract LoanPriceOracle is ILoanPriceOracle, Ownable {
     /* State */
     /**************************************************************************/
 
+    struct CollateralParameters {
+        uint256 minDiscountRate;
+        uint256 aprSensitivity;
+        uint256 minPurchasePrice;
+        uint256 maxPurchasePrice;
+    }
+
     IERC20 public override currencyToken;
+    mapping(address => CollateralParameters) public parameters;
 
     /**************************************************************************/
     /* Constructor */
