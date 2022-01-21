@@ -34,7 +34,7 @@ interface IVault {
     function setNoteAdapter(address noteToken, address noteAdapter) external;
 
     /* Events */
-    event Deposited(address indexed account, uint256[2] amounts);
+    event Deposited(address indexed account, uint256[2] amounts, uint256[2] shares);
     event NotePurchased(address indexed account, address noteToken, uint256 tokenId,
                         uint256 purchasePrice);
     event Redeemed(address indexed account, uint256[2] shares, uint256[2] amounts);

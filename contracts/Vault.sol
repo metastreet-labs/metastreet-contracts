@@ -53,7 +53,7 @@ contract Vault is IVault, Ownable {
 
         /* FIXME */
 
-        emit Deposited(msg.sender, amounts);
+        emit Deposited(msg.sender, amounts, amounts);
     }
 
     function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
@@ -79,7 +79,7 @@ contract Vault is IVault, Ownable {
         /* FIXME */
 
         emit NotePurchased(msg.sender, address(noteToken), tokenId, amounts[0] + amounts[1]);
-        emit Deposited(msg.sender, amounts);
+        emit Deposited(msg.sender, amounts, amounts);
     }
 
     function redeem(uint256[2] calldata shares) public {
