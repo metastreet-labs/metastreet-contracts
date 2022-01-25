@@ -43,7 +43,29 @@ contract LPToken is ERC20 {
         _mint(to, amount);
     }
 
-    function burn(address account, uint256 amount) public virtual onlyOwner {
-        _burn(account, amount);
+    function redeem(address account, uint256 shares, uint256 amount, uint256 redemptionCounterTarget) public onlyOwner {
+        Redemption storage redemption = redemptions[account];
+
+        require(balanceOf(account) >= shares, "Insufficent shares");
+        require(redemption.pending == 0, "Redemption in progress");
+
+        redemption.pending = amount;
+        redemption.withdrawn = 0;
+        redemption.redemptionCounterTarget = redemptionCounterTarget;
+
+        _burn(account, shares);
+    }
+
+    function withdraw(address account, uint256 amount, uint256 processedRedemptionCounter) public onlyOwner {
+        Redemption storage redemption = redemptions[account];
+
+        require(redemption.pending >= amount, "Invalid amount");
+        require((processedRedemptionCounter - redemption.redemptionCounterTarget - redemption.withdrawn) >= amount, "Redemption not ready");
+
+        redemption.pending -= amount;
+        redemption.withdrawn += amount;
+
+        if (redemption.pending == 0)
+            delete redemptions[account];
     }
 }

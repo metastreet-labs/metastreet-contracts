@@ -21,6 +21,8 @@ interface IVault {
     function loanPriceOracle() external view returns (ILoanPriceOracle);
     function noteAdapters(address noteToken) external view returns (INoteAdapter);
 
+    function sharePrice(Tranche tranche) external view returns (uint256);
+
     /* Primary API */
     function deposit(Tranche tranche, uint256 amounts) external;
     function depositMultiple(uint256[2] calldata amounts) external;

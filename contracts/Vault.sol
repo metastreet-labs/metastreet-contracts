@@ -77,6 +77,11 @@ contract Vault is Ownable, VaultStorage, IVault {
         return (tranche == Tranche.Senior) ? _seniorLPToken : _juniorLPToken;
     }
 
+    function _computeSharePrice(Tranche tranche) internal view returns (uint256) {
+        /* FIXME */
+        return 100;
+    }
+
     /**************************************************************************/
     /* Getters */
     /**************************************************************************/
@@ -85,28 +90,37 @@ contract Vault is Ownable, VaultStorage, IVault {
         return IERC20(address(_lpToken(tranche)));
     }
 
+    function sharePrice(Tranche tranche) public view returns (uint256) {
+        return _computeSharePrice(tranche);
+    }
+
+    /**************************************************************************/
+    /* Internal Functions */
+    /**************************************************************************/
+
+    function _depositAndMint(Tranche tranche, uint256 amount) internal {
+        tranches[uint(tranche)].depositValue += amount;
+        totalCashBalance += amount;
+
+        uint256 shares = amount / _computeSharePrice(tranche);
+        _lpToken(tranche).mint(msg.sender, shares);
+
+        emit Deposited(msg.sender, tranche, amount, shares);
+    }
+
     /**************************************************************************/
     /* Primary API */
     /**************************************************************************/
 
     function deposit(Tranche tranche, uint256 amount) public {
-        console.log("deposit(tranche %s, amount %s)", uint(tranche), amount);
-
-        /* Dummy deposit */
+        _depositAndMint(tranche, amount);
         currencyToken.safeTransferFrom(msg.sender, address(this), amount);
-        _lpToken(tranche).mint(msg.sender, amount);
-
-        /* FIXME */
-
-        emit Deposited(msg.sender, tranche, amount, amount);
     }
 
     function depositMultiple(uint256[2] calldata amounts) public {
-        if (amounts[0] > 0)
-            deposit(Tranche.Senior, amounts[0]);
-
-        if (amounts[1] > 0)
-            deposit(Tranche.Junior, amounts[1]);
+        _depositAndMint(Tranche.Senior, amounts[0]);
+        _depositAndMint(Tranche.Junior, amounts[1]);
+        currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
     }
 
     function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
@@ -137,23 +151,26 @@ contract Vault is Ownable, VaultStorage, IVault {
     }
 
     function redeem(Tranche tranche, uint256 shares) public {
-        console.log("redeem(tranche %s, shares %s)", uint(tranche), shares);
+        TrancheState storage trancheState = tranches[uint(tranche)];
 
-        /* Dummy redeem */
-        _lpToken(tranche).burn(msg.sender, shares);
+        uint256 redemptionAmount = shares * _computeSharePrice(tranche);
 
-        /* FIXME */
+        trancheState.pendingRedemptions += redemptionAmount;
+        trancheState.redemptionCounter += redemptionAmount;
 
-        emit Redeemed(msg.sender, tranche, shares, shares);
+        _lpToken(tranche).redeem(msg.sender, shares, redemptionAmount, trancheState.redemptionCounter);
+
+        emit Redeemed(msg.sender, tranche, shares, redemptionAmount);
     }
 
     function withdraw(Tranche tranche, uint256 amount) public {
-        console.log("withdraw(tranche %s, amounts %s)", uint(tranche), amount);
+        TrancheState storage trancheState = tranches[uint(tranche)];
 
-        /* Dummy withdrawal */
+        totalWithdrawalBalance -= amount;
+
+        _lpToken(tranche).withdraw(msg.sender, amount, trancheState.processedRedemptionCounter);
+
         currencyToken.safeTransfer(msg.sender, amount);
-
-        /* FIXME */
 
         emit Withdrawn(msg.sender, tranche, amount);
     }
@@ -179,26 +196,17 @@ contract Vault is Ownable, VaultStorage, IVault {
     /**************************************************************************/
 
     function setSeniorTrancheRate(uint256 interestRate) public onlyOwner {
-        console.log("setSeniorTrancheRate(interestRate %s)", interestRate);
-
-        /* FIXME */
-
+        seniorTrancheRate = interestRate;
         emit SeniorTrancheRateUpdated(interestRate);
     }
 
     function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {
-        console.log("setLoanPriceOracle(loanPriceOracle %s)", loanPriceOracle_);
-
         loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
-
         emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
 
     function setNoteAdapter(address noteToken, address noteAdapter) public onlyOwner {
-        console.log("setNoteAdapter(noteToken %s, noteAdapter %s)", noteToken, noteAdapter);
-
         noteAdapters[noteToken] = INoteAdapter(noteAdapter);
-
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
 }
