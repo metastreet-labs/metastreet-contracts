@@ -8,20 +8,26 @@ import "./ILoanPriceOracle.sol";
 import "./INoteAdapter.sol";
 
 interface IVault {
+    /* Tranche selection enum */
+    enum Tranche {
+        Senior,
+        Junior
+    }
+
     /* Getters */
     function name() external view returns (string memory);
     function currencyToken() external view returns (IERC20);
-    function seniorLPToken() external view returns (IERC20);
-    function juniorLPToken() external view returns (IERC20);
+    function lpToken(Tranche tranche) external view returns (IERC20);
     function loanPriceOracle() external view returns (ILoanPriceOracle);
     function noteAdapters(address noteToken) external view returns (INoteAdapter);
 
     /* Primary API */
-    function deposit(uint256[2] calldata amounts) external;
+    function deposit(Tranche tranche, uint256 amounts) external;
+    function depositMultiple(uint256[2] calldata amounts) external;
     function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) external;
-    function sellNoteAndDeposit(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) external;
-    function redeem(uint256[2] calldata shares) external;
-    function withdraw(uint256[2] calldata amounts) external;
+    function sellNoteAndDepositMultiple(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) external;
+    function redeem(Tranche tranche, uint256 shares) external;
+    function withdraw(Tranche tranche, uint256 amount) external;
 
     /* Callbacks */
     function onLoanRepayment(IERC721 noteToken, uint256 tokenId) external;
@@ -34,11 +40,10 @@ interface IVault {
     function setNoteAdapter(address noteToken, address noteAdapter) external;
 
     /* Events */
-    event Deposited(address indexed account, uint256[2] amounts, uint256[2] shares);
-    event NotePurchased(address indexed account, address noteToken, uint256 tokenId,
-                        uint256 purchasePrice);
-    event Redeemed(address indexed account, uint256[2] shares, uint256[2] amounts);
-    event Withdrawn(address indexed account, uint256[2] amounts);
+    event Deposited(address indexed account, Tranche indexed tranche, uint256 amount, uint256 shares);
+    event NotePurchased(address indexed account, address noteToken, uint256 tokenId, uint256 purchasePrice);
+    event Redeemed(address indexed account, Tranche indexed tranche, uint256 shares, uint256 amount);
+    event Withdrawn(address indexed account, Tranche indexed tranche, uint256 amount);
     event SeniorTrancheRateUpdated(uint256 interestRate);
     event LoanPriceOracleUpdated(address loanPriceOracle);
     event NoteAdapterUpdated(address noteToken, address noteAdapter);

@@ -48,10 +48,11 @@ contract Vault is Ownable, VaultStorage, IVault {
 
     string public override name;
     IERC20 public immutable override currencyToken;
-    IERC20 public immutable override seniorLPToken;
-    IERC20 public immutable override juniorLPToken;
     ILoanPriceOracle public override loanPriceOracle;
     mapping(address => INoteAdapter) public override noteAdapters;
+
+    LPToken private immutable _seniorLPToken;
+    LPToken private immutable _juniorLPToken;
 
     /**************************************************************************/
     /* Constructor */
@@ -62,27 +63,50 @@ contract Vault is Ownable, VaultStorage, IVault {
         currencyToken = currencyToken_;
 
         string memory currencyTokenSymbol = IERC20Metadata(address(currencyToken)).name();
-        seniorLPToken = new LPToken("Senior LP Token", string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
-        juniorLPToken = new LPToken("Junior LP Token", string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
+        _seniorLPToken = new LPToken("Senior LP Token", string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
+        _juniorLPToken = new LPToken("Junior LP Token", string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
 
         loanPriceOracle = loanPriceOracle_;
+    }
+
+    /**************************************************************************/
+    /* Helper Functions */
+    /**************************************************************************/
+
+    function _lpToken(Tranche tranche) private view returns (LPToken) {
+        return (tranche == Tranche.Senior) ? _seniorLPToken : _juniorLPToken;
+    }
+
+    /**************************************************************************/
+    /* Getters */
+    /**************************************************************************/
+
+    function lpToken(Tranche tranche) public view returns (IERC20) {
+        return IERC20(address(_lpToken(tranche)));
     }
 
     /**************************************************************************/
     /* Primary API */
     /**************************************************************************/
 
-    function deposit(uint256[2] calldata amounts) public {
-        console.log("deposit(amounts [%s, %s])", amounts[0], amounts[1]);
+    function deposit(Tranche tranche, uint256 amount) public {
+        console.log("deposit(tranche %s, amount %s)", uint(tranche), amount);
 
         /* Dummy deposit */
-        currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
-        LPToken(address(seniorLPToken)).mint(msg.sender, amounts[0]);
-        LPToken(address(juniorLPToken)).mint(msg.sender, amounts[1]);
+        currencyToken.safeTransferFrom(msg.sender, address(this), amount);
+        _lpToken(tranche).mint(msg.sender, amount);
 
         /* FIXME */
 
-        emit Deposited(msg.sender, amounts, amounts);
+        emit Deposited(msg.sender, tranche, amount, amount);
+    }
+
+    function depositMultiple(uint256[2] calldata amounts) public {
+        if (amounts[0] > 0)
+            deposit(Tranche.Senior, amounts[0]);
+
+        if (amounts[1] > 0)
+            deposit(Tranche.Junior, amounts[1]);
     }
 
     function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
@@ -97,41 +121,41 @@ contract Vault is Ownable, VaultStorage, IVault {
         emit NotePurchased(msg.sender, address(noteToken), tokenId, purchasePrice);
     }
 
-    function sellNoteAndDeposit(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) public {
+    function sellNoteAndDepositMultiple(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) public {
         console.log("sellNoteAndDeposit(noteToken %s, tokenId %s, amounts [%s, ...])", address(noteToken), tokenId, amounts[0]);
 
         /* Dummy loan purchase and deposit */
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
-        LPToken(address(seniorLPToken)).mint(msg.sender, amounts[0]);
-        LPToken(address(juniorLPToken)).mint(msg.sender, amounts[1]);
+        _lpToken(Tranche.Senior).mint(msg.sender, amounts[0]);
+        _lpToken(Tranche.Junior).mint(msg.sender, amounts[1]);
 
         /* FIXME */
 
         emit NotePurchased(msg.sender, address(noteToken), tokenId, amounts[0] + amounts[1]);
-        emit Deposited(msg.sender, amounts, amounts);
+        emit Deposited(msg.sender, Tranche.Senior, amounts[0], amounts[0]);
+        emit Deposited(msg.sender, Tranche.Junior, amounts[1], amounts[1]);
     }
 
-    function redeem(uint256[2] calldata shares) public {
-        console.log("redeem(shares [%s, %s])", shares[0], shares[1]);
+    function redeem(Tranche tranche, uint256 shares) public {
+        console.log("redeem(tranche %s, shares %s)", uint(tranche), shares);
 
         /* Dummy redeem */
-        LPToken(address(seniorLPToken)).burn(msg.sender, shares[0]);
-        LPToken(address(juniorLPToken)).burn(msg.sender, shares[1]);
+        _lpToken(tranche).burn(msg.sender, shares);
 
         /* FIXME */
 
-        emit Redeemed(msg.sender, shares, shares);
+        emit Redeemed(msg.sender, tranche, shares, shares);
     }
 
-    function withdraw(uint256[2] calldata amounts) public {
-        console.log("withdraw(amounts [%s, %s])", amounts[0], amounts[1]);
+    function withdraw(Tranche tranche, uint256 amount) public {
+        console.log("withdraw(tranche %s, amounts %s)", uint(tranche), amount);
 
         /* Dummy withdrawal */
-        currencyToken.safeTransfer(msg.sender, amounts[0] + amounts[1]);
+        currencyToken.safeTransfer(msg.sender, amount);
 
         /* FIXME */
 
-        emit Withdrawn(msg.sender, amounts);
+        emit Withdrawn(msg.sender, tranche, amount);
     }
 
     /**************************************************************************/
