@@ -72,10 +72,10 @@ async function main() {
   await daiBlueChipVault.deployed();
   console.log("Blue Chip DAI Vault:    ", daiBlueChipVault.address);
   console.log("               Vault Name: ", await daiBlueChipVault.name());
-  console.log("   Senior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.seniorLPToken())).symbol());
-  console.log("  Senior LP Token Address: ", await daiBlueChipVault.seniorLPToken());
-  console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.juniorLPToken())).symbol());
-  console.log("  Senior LP Token Address: ", await daiBlueChipVault.juniorLPToken());
+  console.log("   Senior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.lpToken(0))).symbol());
+  console.log("  Senior LP Token Address: ", await daiBlueChipVault.lpToken(0));
+  console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.lpToken(1))).symbol());
+  console.log("  Senior LP Token Address: ", await daiBlueChipVault.lpToken(1));
   console.log("");
 
   /* Deploy WETH Vault */
@@ -83,10 +83,10 @@ async function main() {
   await wethBlueChipVault.deployed();
   console.log("Blue Chip WETH Vault:    ", wethBlueChipVault.address);
   console.log("               Vault Name: ", await wethBlueChipVault.name());
-  console.log("   Senior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.seniorLPToken())).symbol());
-  console.log("  Senior LP Token Address: ", await wethBlueChipVault.seniorLPToken());
-  console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.juniorLPToken())).symbol());
-  console.log("  Junior LP Token Address: ", await wethBlueChipVault.juniorLPToken());
+  console.log("   Senior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.lpToken(0))).symbol());
+  console.log("  Senior LP Token Address: ", await wethBlueChipVault.lpToken(0));
+  console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.lpToken(1))).symbol());
+  console.log("  Junior LP Token Address: ", await wethBlueChipVault.lpToken(1));
   console.log("");
 
   await daiBlueChipVault.setNoteAdapter(await daiTestLendingPlatform.noteToken(), daiTestNoteAdapter.address);
