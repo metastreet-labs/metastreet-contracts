@@ -167,7 +167,7 @@ contract TestNoteAdapter is INoteAdapter {
         loanInfo.borrower = borrower;
         loanInfo.principal = principal;
         loanInfo.repayment = repayment;
-        loanInfo.startTime = startTime;
+        loanInfo.maturity = startTime + duration;
         loanInfo.duration = duration;
         loanInfo.currencyToken = address(_lendingPlatform.currencyToken());
         loanInfo.collateralToken = collateralToken;
