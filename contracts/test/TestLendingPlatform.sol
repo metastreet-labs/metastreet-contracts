@@ -42,7 +42,7 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
         address borrower;
         uint256 principal;
         uint256 repayment;
-        uint256 startTime;
+        uint64 startTime;
         uint32 duration;
         address collateralToken;
         uint256 collateralTokenId;
@@ -74,7 +74,7 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
         loan.borrower = borrower;
         loan.principal = principal;
         loan.repayment = repayment;
-        loan.startTime = block.timestamp;
+        loan.startTime = uint64(block.timestamp);
         loan.duration = duration;
         loan.collateralToken = address(collateralToken);
         loan.collateralTokenId = collateralTokenId;
@@ -156,7 +156,7 @@ contract TestNoteAdapter is INoteAdapter {
     function getLoanInfo(uint256 tokenId) public view returns (LoanInfo memory) {
         /* Get loan from lending platform */
         (address borrower, uint256 principal, uint256 repayment,
-         uint256 startTime, uint32 duration, address collateralToken,
+         uint64 startTime, uint32 duration, address collateralToken,
          uint256 collateralTokenId) = _lendingPlatform.loans(tokenId);
 
         /* Check loan exists */
