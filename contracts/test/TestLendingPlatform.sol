@@ -139,21 +139,25 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
 }
 
 contract TestNoteAdapter is INoteAdapter {
-    TestLendingPlatform private immutable lendingPlatform;
+    TestLendingPlatform private immutable _lendingPlatform;
 
     constructor(TestLendingPlatform testLendingPlatform) {
-        lendingPlatform = testLendingPlatform;
+        _lendingPlatform = testLendingPlatform;
     }
 
     function noteToken() public view returns (IERC721) {
-        return IERC721(lendingPlatform.noteToken());
+        return IERC721(_lendingPlatform.noteToken());
+    }
+
+    function lendingPlatform() public view returns (address) {
+        return address(_lendingPlatform);
     }
 
     function getLoanInfo(uint256 tokenId) public view returns (LoanInfo memory) {
         /* Get loan from lending platform */
         (address borrower, uint256 principal, uint256 repayment,
          uint256 startTime, uint32 duration, address collateralToken,
-         uint256 collateralTokenId) = lendingPlatform.loans(tokenId);
+         uint256 collateralTokenId) = _lendingPlatform.loans(tokenId);
 
         /* Check loan exists */
         require(borrower != address(0x0), "Unknown loan");
@@ -165,7 +169,7 @@ contract TestNoteAdapter is INoteAdapter {
         loanInfo.repayment = repayment;
         loanInfo.startTime = startTime;
         loanInfo.duration = duration;
-        loanInfo.currencyToken = lendingPlatform.currencyToken.address;
+        loanInfo.currencyToken = address(_lendingPlatform.currencyToken());
         loanInfo.collateralToken = collateralToken;
         loanInfo.collateralTokenId = collateralTokenId;
 
@@ -175,14 +179,14 @@ contract TestNoteAdapter is INoteAdapter {
     function isSupported(uint256 tokenId, address vaultCurrencyToken) public view returns (bool) {
         /* All collateral tokens supported, so just check the note exists and
          * the currency token matches */
-        return lendingPlatform.noteToken().exists(tokenId) && lendingPlatform.currencyToken.address == vaultCurrencyToken;
+        return _lendingPlatform.noteToken().exists(tokenId) && address(_lendingPlatform.currencyToken()) == vaultCurrencyToken;
     }
 
     function isActive(uint256 tokenId) public view returns (bool) {
-        return lendingPlatform.noteToken().exists(tokenId);
+        return _lendingPlatform.noteToken().exists(tokenId);
     }
 
     function isComplete(uint256 tokenId) public view returns (bool) {
-        return lendingPlatform.loansComplete(tokenId);
+        return _lendingPlatform.loansComplete(tokenId);
     }
 }
