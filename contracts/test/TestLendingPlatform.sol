@@ -145,8 +145,8 @@ contract TestNoteAdapter is INoteAdapter {
         lendingPlatform = testLendingPlatform;
     }
 
-    function promissoryNoteToken() public view returns (IERC721) {
-        return IERC721(lendingPlatform.noteToken.address);
+    function noteToken() public view returns (IERC721) {
+        return IERC721(lendingPlatform.noteToken());
     }
 
     function getLoanInfo(uint256 tokenId) public view returns (LoanInfo memory) {
