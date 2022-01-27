@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./interfaces/IVault.sol";
 import "./LPToken.sol";
@@ -15,14 +16,23 @@ contract VaultStorage {
     struct TrancheState {
         uint256 depositValue;
         uint256 pendingRedemptions;
-        uint256 redemptionCounter;
-        uint256 processedRedemptionCounter;
+        uint256 redemptionQueue;
+        uint256 processedRedemptionQueue;
         mapping(uint64 => uint256) pendingReturns;
     }
 
+    struct TrancheStates {
+        TrancheState senior;
+        TrancheState junior;
+    }
+
     struct LoanState {
+        IERC721 collateralToken;
+        uint256 collateralTokenId;
         uint256 purchasePrice;
         uint256 repayment;
+        uint64 maturity;
+        bool liquidated;
         uint256[2] trancheReturns;
     }
 
@@ -30,15 +40,22 @@ contract VaultStorage {
     uint256 public seniorTrancheRate;
 
     /* State */
+    TrancheStates internal _tranches;
     uint256 public totalLoanBalance;
     uint256 public totalCashBalance;
     uint256 public totalWithdrawalBalance;
-    TrancheState[2] public tranches;
     mapping(address => mapping(uint256 => LoanState)) public loans;
 }
 
 contract Vault is Ownable, VaultStorage, IVault {
     using SafeERC20 for IERC20;
+
+    /**************************************************************************/
+    /* Constants */
+    /**************************************************************************/
+
+    uint64 constant TIME_BUCKET_DURATION = 7 days;
+    uint constant SHARE_PRICE_PRORATION_BUCKETS = 6;
 
     /**************************************************************************/
     /* State */
@@ -49,6 +66,7 @@ contract Vault is Ownable, VaultStorage, IVault {
     string public override name;
     IERC20 public immutable override currencyToken;
     ILoanPriceOracle public override loanPriceOracle;
+    address public override collateralLiquidator;
     mapping(address => INoteAdapter) public override noteAdapters;
 
     LPToken private immutable _seniorLPToken;
@@ -61,25 +79,12 @@ contract Vault is Ownable, VaultStorage, IVault {
     constructor(string memory vaultName, string memory lpSymbol, IERC20 currencyToken_, ILoanPriceOracle loanPriceOracle_) {
         name = vaultName;
         currencyToken = currencyToken_;
+        loanPriceOracle = loanPriceOracle_;
 
+        /* Create senior and junior tranche LP Tokens */
         string memory currencyTokenSymbol = IERC20Metadata(address(currencyToken)).name();
         _seniorLPToken = new LPToken("Senior LP Token", string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
         _juniorLPToken = new LPToken("Junior LP Token", string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
-
-        loanPriceOracle = loanPriceOracle_;
-    }
-
-    /**************************************************************************/
-    /* Helper Functions */
-    /**************************************************************************/
-
-    function _lpToken(Tranche tranche) private view returns (LPToken) {
-        return (tranche == Tranche.Senior) ? _seniorLPToken : _juniorLPToken;
-    }
-
-    function _computeSharePrice(Tranche tranche) internal view returns (uint256) {
-        /* FIXME */
-        return 100;
     }
 
     /**************************************************************************/
@@ -90,105 +95,375 @@ contract Vault is Ownable, VaultStorage, IVault {
         return IERC20(address(_lpToken(tranche)));
     }
 
+    function trancheInfo(Tranche tranche) public view returns (uint256, uint256, uint256, uint256) {
+        TrancheState storage trancheState = _trancheState(tranche);
+        return (trancheState.depositValue, trancheState.pendingRedemptions,
+                trancheState.redemptionQueue, trancheState.processedRedemptionQueue);
+    }
+
     function sharePrice(Tranche tranche) public view returns (uint256) {
         return _computeSharePrice(tranche);
     }
 
     /**************************************************************************/
-    /* Internal Functions */
+    /* Internal Helpers and Functions */
     /**************************************************************************/
 
-    function _depositAndMint(Tranche tranche, uint256 amount) internal {
-        tranches[uint(tranche)].depositValue += amount;
+    function _lpToken(Tranche tranche) internal view returns (LPToken) {
+        return (tranche == Tranche.Senior) ? _seniorLPToken : _juniorLPToken;
+    }
+
+    function _trancheState(Tranche tranche) internal view returns (TrancheState storage) {
+        return (tranche == Tranche.Senior) ? _tranches.senior : _tranches.junior;
+    }
+
+    function _timestampToTimeBucket(uint64 timestamp) internal pure returns (uint64) {
+        return timestamp / TIME_BUCKET_DURATION;
+    }
+
+    function _timeBucketToTimestamp(uint64 timeBucket) internal pure returns (uint64) {
+        return timeBucket * TIME_BUCKET_DURATION;
+    }
+
+    function _computeEstimatedValue(Tranche tranche) internal view returns (uint256) {
+        TrancheState storage trancheState = _trancheState(tranche);
+
+        /* Get the current time bucket and elapsed time into current time bucket */
+        uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
+        uint256 elapsedTime = block.timestamp - _timeBucketToTimestamp(currentTimeBucket);
+
+        /* Sum the prorated returns from pending returns for each time bucket */
+        uint256 proratedReturns;
+        for (uint i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
+            proratedReturns += (elapsedTime * trancheState.pendingReturns[currentTimeBucket + uint64(i)]) / (TIME_BUCKET_DURATION * (i + 1));
+        }
+
+        /* Return the deposit value and prorated returns */
+        return trancheState.depositValue + proratedReturns;
+    }
+
+    function _computeSharePrice(Tranche tranche) internal view returns (uint256) {
+        return _computeEstimatedValue(tranche) / _lpToken(tranche).totalSupply();
+    }
+
+    function _processRedemptions(TrancheState storage trancheState, uint256 proceeds) internal returns (uint256) {
+        /* Compute maximum amount of redemption possible */
+        uint256 redemptionAmount = Math.min(trancheState.pendingRedemptions, proceeds);
+
+        /* Update tranche redemption state */
+        trancheState.pendingRedemptions -= redemptionAmount;
+        trancheState.processedRedemptionQueue += redemptionAmount;
+
+        /* Move redemption from cash to to withdrawal balance */
+        totalCashBalance -= redemptionAmount;
+        totalWithdrawalBalance += redemptionAmount;
+
+        /* Return amount of cash leftover (for further tranche redemptions) */
+        return proceeds - redemptionAmount;
+    }
+
+    function _deposit(Tranche tranche, uint256 amount) internal {
+        /* Increase deposit value of tranche */
+        _trancheState(tranche).depositValue += amount;
+
+        /* Increase total cash balance */
         totalCashBalance += amount;
 
+        /* Compute number of shares to mint from current tranche share price */
         uint256 shares = amount / _computeSharePrice(tranche);
+
+        /* Mint LP tokens to user */
         _lpToken(tranche).mint(msg.sender, shares);
 
         emit Deposited(msg.sender, tranche, amount, shares);
     }
 
-    /**************************************************************************/
-    /* Primary API */
-    /**************************************************************************/
+    function _sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) internal {
+        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
 
-    function deposit(Tranche tranche, uint256 amount) public {
-        _depositAndMint(tranche, amount);
-        currencyToken.safeTransferFrom(msg.sender, address(this), amount);
-    }
+        /* Validate note token is supported */
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
 
-    function depositMultiple(uint256[2] calldata amounts) public {
-        _depositAndMint(Tranche.Senior, amounts[0]);
-        _depositAndMint(Tranche.Junior, amounts[1]);
-        currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
-    }
+        /* Check if loan parameters are supported */
+        require(noteAdapter.isSupported(tokenId, address(currencyToken)), "Unsupported note parameters");
 
-    function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
-        console.log("sellNote(noteToken %s, tokenId %s, purchasePrice %s)", address(noteToken), tokenId, purchasePrice);
+        /* Get loan info */
+        INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(tokenId);
 
-        /* Dummy loan purchase */
-        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
-        currencyToken.safeTransfer(msg.sender, purchasePrice);
+        /* Get loan purchase price */
+        uint256 loanPurchasePrice = loanPriceOracle.priceLoan(loanInfo.collateralToken, loanInfo.collateralTokenId,
+                                                              loanInfo.principal, loanInfo.repayment,
+                                                              loanInfo.duration, loanInfo.maturity);
 
-        /* FIXME */
+        /* Validate purchase price */
+        require(purchasePrice == loanPurchasePrice, "Invalid purchase price");
+
+        /* Validate cash available */
+        require(totalCashBalance >= purchasePrice, "Insufficient vault cash");
+
+        /* Calculate tranche returns FIXME */
+        uint256 seniorTrancheReturn = 0;
+        uint256 juniorTrancheReturn = 0;
+
+        /* Compute loan maturity time bucket */
+        uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
+
+        /* Increment pending tranche returns */
+        _tranches.senior.pendingReturns[loanMaturityTimeBucket] += seniorTrancheReturn;
+        _tranches.junior.pendingReturns[loanMaturityTimeBucket] += juniorTrancheReturn;
+
+        /* Update global cash and loan balances */
+        totalCashBalance -= purchasePrice;
+        totalLoanBalance == purchasePrice;
+
+        /* Store loan state */
+        LoanState storage loanState = loans[address(noteToken)][tokenId];
+        loanState.collateralToken = IERC721(loanInfo.collateralToken);
+        loanState.collateralTokenId = loanInfo.collateralTokenId;
+        loanState.purchasePrice = purchasePrice;
+        loanState.repayment = loanInfo.repayment;
+        loanState.maturity = loanInfo.maturity;
+        loanState.liquidated = false;
+        loanState.trancheReturns = [seniorTrancheReturn, juniorTrancheReturn];
 
         emit NotePurchased(msg.sender, address(noteToken), tokenId, purchasePrice);
     }
 
-    function sellNoteAndDepositMultiple(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) public {
-        console.log("sellNoteAndDeposit(noteToken %s, tokenId %s, amounts [%s, ...])", address(noteToken), tokenId, amounts[0]);
+    /**************************************************************************/
+    /* User API */
+    /**************************************************************************/
 
-        /* Dummy loan purchase and deposit */
+    function deposit(Tranche tranche, uint256 amount) public {
+        /* Deposit into tranche */
+        _deposit(tranche, amount);
+
+        /* Transfer cash from user to vault */
+        currencyToken.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function depositMultiple(uint256[2] calldata amounts) public {
+        /* Deposit into tranches */
+        _deposit(Tranche.Senior, amounts[0]);
+        _deposit(Tranche.Junior, amounts[1]);
+
+        /* Transfer total cash from user to vault */
+        currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
+    }
+
+    function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
+        /* Purchase the note */
+        _sellNote(noteToken, tokenId, purchasePrice);
+
+        /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
-        _lpToken(Tranche.Senior).mint(msg.sender, amounts[0]);
-        _lpToken(Tranche.Junior).mint(msg.sender, amounts[1]);
 
-        /* FIXME */
+        /* Transfer cash from vault to user */
+        currencyToken.safeTransfer(msg.sender, purchasePrice);
+    }
 
-        emit NotePurchased(msg.sender, address(noteToken), tokenId, amounts[0] + amounts[1]);
-        emit Deposited(msg.sender, Tranche.Senior, amounts[0], amounts[0]);
-        emit Deposited(msg.sender, Tranche.Junior, amounts[1], amounts[1]);
+    function sellNoteAndDeposit(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) public {
+        uint256 purchasePrice = amounts[0] + amounts[1];
+
+        /* Sell the note */
+        _sellNote(noteToken, tokenId, purchasePrice);
+
+        /* Transfer promissory note from user to vault */
+        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
+
+        /* Deposit sale proceeds in tranches */
+        if (amounts[0] > 0)
+            _deposit(Tranche.Senior, amounts[0]);
+        if (amounts[1] > 0)
+            _deposit(Tranche.Junior, amounts[1]);
+    }
+
+    function sellNoteAndDepositBatch(IERC721[] calldata noteToken, uint256[] calldata tokenId, uint256[2][] calldata amounts) public {
+        /* Validate arrays are all of the same length */
+        require((noteToken.length == tokenId.length) && (noteToken.length == amounts.length), "Invalid parameters");
+
+        for (uint i = 0; i < noteToken.length; i++) {
+            sellNoteAndDeposit(noteToken[i], tokenId[i], amounts[i]);
+        }
     }
 
     function redeem(Tranche tranche, uint256 shares) public {
-        TrancheState storage trancheState = tranches[uint(tranche)];
+        TrancheState storage trancheState = _trancheState(tranche);
 
+        /* Compute redemption amount */
         uint256 redemptionAmount = shares * _computeSharePrice(tranche);
 
+        /* Schedule redemption in tranche */
         trancheState.pendingRedemptions += redemptionAmount;
-        trancheState.redemptionCounter += redemptionAmount;
+        trancheState.redemptionQueue += redemptionAmount;
 
-        _lpToken(tranche).redeem(msg.sender, shares, redemptionAmount, trancheState.redemptionCounter);
+        /* Schedule redemption with user's token state and burn LP tokens */
+        _lpToken(tranche).redeem(msg.sender, shares, redemptionAmount, trancheState.redemptionQueue);
 
         emit Redeemed(msg.sender, tranche, shares, redemptionAmount);
     }
 
     function withdraw(Tranche tranche, uint256 amount) public {
-        TrancheState storage trancheState = tranches[uint(tranche)];
+        TrancheState storage trancheState = _trancheState(tranche);
 
+        /* Update user's token state with redemption */
+        _lpToken(tranche).withdraw(msg.sender, amount, trancheState.processedRedemptionQueue);
+
+        /* Decrease global withdrawal balance */
         totalWithdrawalBalance -= amount;
 
-        _lpToken(tranche).withdraw(msg.sender, amount, trancheState.processedRedemptionCounter);
-
+        /* Transfer cash from vault to user */
         currencyToken.safeTransfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, tranche, amount);
+    }
+
+    function withdrawCollateral(IERC721 noteToken, uint256 tokenId) public {
+        /* Validate caller is collateral liquidation contract */
+        require(msg.sender == collateralLiquidator, "Invalid caller");
+
+        /* Lookup loan metadata */
+        LoanState storage loanState = loans[address(noteToken)][tokenId];
+
+        /* Validate loan exists with contract */
+        require(loanState.purchasePrice != 0, "Unknown loan");
+
+        /* Validate loan was liquidated */
+        require(loanState.liquidated, "Loan not liquidated");
+
+        /* Transafer collateral to liquidator */
+        loanState.collateralToken.safeTransferFrom(address(this), collateralLiquidator, loanState.collateralTokenId);
+
+        emit CollateralWithdrawn(address(noteToken), tokenId, address(loanState.collateralToken), loanState.collateralTokenId,
+                                 collateralLiquidator);
     }
 
     /**************************************************************************/
     /* Callbacks */
     /**************************************************************************/
 
-    function onLoanRepayment(IERC721 noteToken, uint256 tokenId) public {
-        /* FIXME */
+    function onLoanRepaid(IERC721 noteToken, uint256 tokenId) public {
+        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+
+        /* Validate note token is supported */
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+
+        /* Lookup loan state */
+        LoanState storage loanState = loans[address(noteToken)][tokenId];
+
+        /* Validate loan exists with contract */
+        require(loanState.purchasePrice != 0, "Unknown loan");
+
+        /* Validate loan was repaid, either because caller is the lending
+         * platform (trusted), or by checking the loan is complete and the
+         * collateral is not in contract's possession (trustless) */
+        bool loanRepaid = (msg.sender == noteAdapter.lendingPlatform()) ||
+                            (noteAdapter.isComplete(tokenId) &&
+                                loanState.collateralToken.ownerOf(loanState.collateralTokenId) != address(this));
+        require(loanRepaid, "Loan not repaid");
+
+        /* Compute loan maturity time bucket */
+        uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loanState.maturity);
+
+        /* Unschedule pending returns */
+        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loanState.trancheReturns[uint(Tranche.Senior)];
+        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loanState.trancheReturns[uint(Tranche.Junior)];
+
+        /* Increase tranche deposit values */
+        _tranches.senior.depositValue += loanState.trancheReturns[uint(Tranche.Senior)];
+        _tranches.junior.depositValue += loanState.trancheReturns[uint(Tranche.Junior)];
+
+        /* Decrease total loan and cash balances */
+        totalLoanBalance -= loanState.purchasePrice;
+        totalCashBalance += loanState.repayment;
+
+        /* Process redemptions for both tranches */
+        uint256 proceeds = loanState.repayment;
+        proceeds = _processRedemptions(_tranches.senior, proceeds);
+        _processRedemptions(_tranches.junior, proceeds);
+
+        /* Delete loan metadata */
+        delete loans[address(noteToken)][tokenId];
     }
 
-    function onLoanDefault(IERC721 noteToken, uint256 tokenId) public {
-        /* FIXME */
+    function onLoanLiquidated(IERC721 noteToken, uint256 tokenId) public {
+        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+
+        /* Validate note token is supported */
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+
+        /* Lookup loan metadata */
+        LoanState storage loanState = loans[address(noteToken)][tokenId];
+
+        /* Validate loan exists with contract */
+        require(loanState.purchasePrice != 0, "Unknown loan");
+
+        /* Validate loan was liquidated, either because caller is the lending
+         * platform (trusted), or by checking the loan is complete and the
+         * collateral is in the contract's possession (trustless) */
+        bool loanLiquidated = (msg.sender == noteAdapter.lendingPlatform()) ||
+                                (noteAdapter.isComplete(tokenId) &&
+                                    loanState.collateralToken.ownerOf(loanState.collateralTokenId) == address(this));
+        require(loanLiquidated, "Loan not liquidated");
+
+        /* Validate loan liquidation wasn't already processed */
+        require(!loanState.liquidated, "Loan liquidation processed");
+
+        /* Compute loan maturity time bucket */
+        uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loanState.maturity);
+
+        /* Unschedule pending returns */
+        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loanState.trancheReturns[uint(Tranche.Senior)];
+        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loanState.trancheReturns[uint(Tranche.Junior)];
+
+        /* Compute tranche losses */
+        uint256 juniorTrancheLoss = Math.max(loanState.purchasePrice, _tranches.junior.depositValue);
+        uint256 seniorTrancheLoss = loanState.purchasePrice - juniorTrancheLoss;
+
+        /* Decrease tranche deposit values */
+        _tranches.senior.depositValue -= seniorTrancheLoss;
+        _tranches.junior.depositValue -= juniorTrancheLoss;
+
+        /* Decrease total loan balance */
+        totalLoanBalance -= loanState.purchasePrice;
+
+        /* Update tranche returns for collateral liquidation */
+        loanState.trancheReturns[uint(Tranche.Senior)] += seniorTrancheLoss;
+        loanState.trancheReturns[uint(Tranche.Junior)] = 0;
+
+        /* Mark loan liquidated in loan state */
+        loanState.liquidated = true;
     }
 
-    function onLoanLiquidated(IERC721 noteToken, uint256 tokenId, uint256 proceeds) public {
-        /* FIXME */
+    function onCollateralLiquidated(IERC721 noteToken, uint256 tokenId, uint256 proceeds) public {
+        /* Validate caller is collateral liquidation contract */
+        require(msg.sender == collateralLiquidator, "Invalid caller");
+
+        /* Lookup loan metadata */
+        LoanState storage loanState = loans[address(noteToken)][tokenId];
+
+        /* Validate loan exists with contract */
+        require(loanState.purchasePrice != 0, "Unknown loan");
+
+        /* Validate loan was liquidated */
+        require(loanState.liquidated, "Loan not liquidated");
+
+        /* Compute tranche repayments */
+        uint256 seniorTrancheRepayment = Math.min(proceeds, loanState.trancheReturns[uint(Tranche.Senior)]);
+        uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
+
+        /* Increase tranche deposit values */
+        _tranches.senior.depositValue += seniorTrancheRepayment;
+        _tranches.junior.depositValue += juniorTrancheRepayment;
+
+        /* Increase total cash balance */
+        totalCashBalance += proceeds;
+
+        /* Process redemptions for both tranches */
+        proceeds = _processRedemptions(_tranches.senior, proceeds);
+        _processRedemptions(_tranches.junior, proceeds);
+
+        /* Delete loan metadata */
+        delete loans[address(noteToken)][tokenId];
     }
 
     /**************************************************************************/
@@ -203,6 +478,11 @@ contract Vault is Ownable, VaultStorage, IVault {
     function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {
         loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
+    }
+
+    function setCollateralLiquidator(address collateralLiquidator_) public onlyOwner {
+        collateralLiquidator = collateralLiquidator_;
+        emit CollateralLiquidatorUpdated(collateralLiquidator_);
     }
 
     function setNoteAdapter(address noteToken, address noteAdapter) public onlyOwner {
