@@ -2,4 +2,5 @@ node_modules
 artifacts
 cache
 coverage*
+contracts/test/thirdparty
 gasReporterOutput.json
