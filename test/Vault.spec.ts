@@ -50,9 +50,27 @@ describe("Vault", function () {
     juniorLPToken = (await ethers.getContractAt("IERC20Metadata", await vault.lpToken(1))) as IERC20Metadata;
   });
 
-  it("initial properties", async function () {});
+  it("initial properties", async function () {
+    expect(await vault.owner()).to.equal(accounts[0].address);
+    expect(await vault.currencyToken()).to.equal(tok1.address);
+    expect(await vault.loanPriceOracle()).to.equal(ethers.constants.AddressZero);
+    expect(await vault.collateralLiquidator()).to.equal(ethers.constants.AddressZero);
 
-  it("tranche states initialized", async function () {});
+    expect(await seniorLPToken.symbol()).to.equal("msLP-TEST-TOK1");
+    expect(await juniorLPToken.symbol()).to.equal("mjLP-TEST-TOK1");
+  });
+
+  it("tranche states initialized", async function () {
+    for (const trancheId in [0, 1]) {
+      const trancheState = await vault.trancheState(trancheId);
+      expect(trancheState.depositValue).to.equal(0);
+      expect(trancheState.pendingRedemptions).to.equal(0);
+      expect(trancheState.redemptionQueue).to.equal(0);
+      expect(trancheState.processedRedemptionQueue).to.equal(0);
+
+      expect(await vault.sharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
+    }
+  });
 
   it("deposit senior", async function () {});
 
