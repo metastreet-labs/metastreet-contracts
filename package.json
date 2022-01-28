@@ -4,9 +4,9 @@
     "test": "hardhat test",
     "test:coverage": "hardhat coverage",
     "lint": "solhint 'contracts/**/*.sol'",
-    "lint:js": "eslint '{test,scripts}/**'",
+    "lint:ts": "eslint '{test,scripts}/**'",
     "format": "prettier --write 'contracts/**/*.sol'",
-    "format:js": "prettier --write '{test,scripts}/**/*.ts'",
+    "format:ts": "prettier --write '{test,scripts}/**/*.ts'",
     "analyze": "slither --filter-paths 'node_modules|contracts/test/thirdparty' .",
     "node": "hardhat node"
   },
