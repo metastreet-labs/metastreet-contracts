@@ -54,8 +54,8 @@ contract Vault is Ownable, VaultState, IVault {
     /* Constants */
     /**************************************************************************/
 
-    uint64 constant TIME_BUCKET_DURATION = 7 days;
-    uint constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+    uint64 public constant TIME_BUCKET_DURATION = 7 days;
+    uint public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
 
     /**************************************************************************/
     /* State */
