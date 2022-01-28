@@ -17,7 +17,7 @@ contract TestERC721 is ERC721 {
     }
 
     function mint(address to, uint256 tokenId) public virtual {
-        require(msg.sender == owner, "This function is restricted to the owner");
+        require(msg.sender == owner, "Caller is not the owner");
         _safeMint(to, tokenId);
     }
 }
