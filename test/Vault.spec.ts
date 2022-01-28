@@ -72,7 +72,42 @@ describe("Vault", function () {
     }
   });
 
-  it("deposit senior", async function () {});
+  it("deposit senior", async function () {
+    const depositor = accounts[1];
+    const amount = ethers.utils.parseEther("1.23");
+
+    /* Transfer 1.23 TOK1 to depositor account */
+    await tok1.transfer(depositor.address, amount);
+    /* Approve vault for transfer */
+    await tok1.connect(depositor).approve(vault.address, ethers.constants.MaxUint256);
+
+    /* Check token balances before deposit */
+    expect(await tok1.balanceOf(depositor.address)).to.equal(amount);
+    expect(await seniorLPToken.balanceOf(depositor.address)).to.equal(ethers.constants.Zero);
+
+    /* Deposit into vault */
+    const depositTx = await vault.connect(depositor).deposit(0, amount);
+    await expectEvent(depositTx, tok1.address, tok1, "Transfer", {
+      from: depositor.address,
+      to: vault.address,
+      value: amount,
+    });
+    await expectEvent(depositTx, seniorLPToken.address, seniorLPToken, "Transfer", {
+      from: ethers.constants.AddressZero,
+      to: depositor.address,
+      value: amount,
+    });
+    await expectEvent(depositTx, vault.address, vault, "Deposited", {
+      account: depositor.address,
+      trancheId: 0,
+      amount: amount,
+      shares: amount,
+    });
+
+    /* Check token balances after deposit */
+    expect(await tok1.balanceOf(depositor.address)).to.equal(ethers.constants.Zero);
+    expect(await seniorLPToken.balanceOf(depositor.address)).to.equal(amount);
+  });
 
   it("deposit junior", async function () {});
 
