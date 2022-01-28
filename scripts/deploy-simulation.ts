@@ -27,7 +27,11 @@ async function main() {
   console.log("WETH Token Contract:    ", wethTokenContract.address);
 
   /* Deploy BAYC */
-  const baycTokenContract = await TestERC721.deploy("BoredApeYachtClub", "BAYC", "ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/");
+  const baycTokenContract = await TestERC721.deploy(
+    "BoredApeYachtClub",
+    "BAYC",
+    "ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/"
+  );
   await baycTokenContract.deployed();
   console.log("BAYC Token Contract:    ", baycTokenContract.address);
 
@@ -68,24 +72,46 @@ async function main() {
   console.log("");
 
   /* Deploy DAI Vault */
-  const daiBlueChipVault = await Vault.deploy("Blue Chip / DAI", "BC", daiTokenContract.address, daiLoanPriceOracle.address);
+  const daiBlueChipVault = await Vault.deploy(
+    "Blue Chip / DAI",
+    "BC",
+    daiTokenContract.address,
+    daiLoanPriceOracle.address
+  );
   await daiBlueChipVault.deployed();
   console.log("Blue Chip DAI Vault:    ", daiBlueChipVault.address);
   console.log("               Vault Name: ", await daiBlueChipVault.name());
-  console.log("   Senior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.lpToken(0))).symbol());
+  console.log(
+    "   Senior LP Token Symbol: ",
+    await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.lpToken(0))).symbol()
+  );
   console.log("  Senior LP Token Address: ", await daiBlueChipVault.lpToken(0));
-  console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.lpToken(1))).symbol());
+  console.log(
+    "   Junior LP Token Symbol: ",
+    await (await ethers.getContractAt("IERC20Metadata", await daiBlueChipVault.lpToken(1))).symbol()
+  );
   console.log("  Senior LP Token Address: ", await daiBlueChipVault.lpToken(1));
   console.log("");
 
   /* Deploy WETH Vault */
-  const wethBlueChipVault = await Vault.deploy("Blue Chip / WETH", "BC", wethTokenContract.address, wethLoanPriceOracle.address);
+  const wethBlueChipVault = await Vault.deploy(
+    "Blue Chip / WETH",
+    "BC",
+    wethTokenContract.address,
+    wethLoanPriceOracle.address
+  );
   await wethBlueChipVault.deployed();
   console.log("Blue Chip WETH Vault:    ", wethBlueChipVault.address);
   console.log("               Vault Name: ", await wethBlueChipVault.name());
-  console.log("   Senior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.lpToken(0))).symbol());
+  console.log(
+    "   Senior LP Token Symbol: ",
+    await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.lpToken(0))).symbol()
+  );
   console.log("  Senior LP Token Address: ", await wethBlueChipVault.lpToken(0));
-  console.log("   Junior LP Token Symbol: ", await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.lpToken(1))).symbol());
+  console.log(
+    "   Junior LP Token Symbol: ",
+    await (await ethers.getContractAt("IERC20Metadata", await wethBlueChipVault.lpToken(1))).symbol()
+  );
   console.log("  Junior LP Token Address: ", await wethBlueChipVault.lpToken(1));
   console.log("");
 
@@ -131,17 +157,36 @@ async function main() {
 
   console.log("");
 
-  async function createLoan(lendingPlatform: TestLendingPlatform, collateralTokenAddress: string, collateralTokenId: number,
-                            principal: BigNumberish, repayment: BigNumberish, duration: number): Promise<BigNumberish> {
-    const lendTx = await lendingPlatform.lend(accounts[1].address, accounts[0].address, collateralTokenAddress,
-                                              collateralTokenId, principal, repayment, duration);
-    return (await extractEvent(lendTx, lendingPlatform.address, lendingPlatform, 'LoanCreated')).args.loanId;
+  async function createLoan(
+    lendingPlatform: TestLendingPlatform,
+    collateralTokenAddress: string,
+    collateralTokenId: number,
+    principal: BigNumberish,
+    repayment: BigNumberish,
+    duration: number
+  ): Promise<BigNumberish> {
+    const lendTx = await lendingPlatform.lend(
+      accounts[1].address,
+      accounts[0].address,
+      collateralTokenAddress,
+      collateralTokenId,
+      principal,
+      repayment,
+      duration
+    );
+    return (await extractEvent(lendTx, lendingPlatform.address, lendingPlatform, "LoanCreated")).args.loanId;
   }
 
   let loanId: BigNumberish;
 
-  loanId = await createLoan(daiTestLendingPlatform, baycTokenContract.address, 123,
-                            ethers.utils.parseEther("10"), ethers.utils.parseEther("10.42"), 30 * 86400);
+  loanId = await createLoan(
+    daiTestLendingPlatform,
+    baycTokenContract.address,
+    123,
+    ethers.utils.parseEther("10"),
+    ethers.utils.parseEther("10.42"),
+    30 * 86400
+  );
   console.log("Created DAI Loan ID %s:  Borrower account #1, Lender account #0,", loanId);
   console.log("                        Principal 10 DAI, Repayment 10.42 DAI, Duration 30 days,");
   console.log("                        Collateral Token ID 123\n");
@@ -152,14 +197,26 @@ async function main() {
   await network.provider.send("evm_mine");
   console.log("Fast-forwarded time by 15 days\n");
 
-  loanId = await createLoan(wethTestLendingPlatform, baycTokenContract.address, 456,
-                            ethers.utils.parseEther("30"), ethers.utils.parseEther("30.12"), 30 * 86400);
+  loanId = await createLoan(
+    wethTestLendingPlatform,
+    baycTokenContract.address,
+    456,
+    ethers.utils.parseEther("30"),
+    ethers.utils.parseEther("30.12"),
+    30 * 86400
+  );
   console.log("Created WETH Loan ID %s: Borrower account #1, Lender account #0,", loanId);
   console.log("                        Principal 30 WETH, Repayment 30.12 WETH, Duration 30 days,");
   console.log("                        Collateral Token ID 456\n");
 
-  loanId = await createLoan(wethTestLendingPlatform, baycTokenContract.address, 768,
-                            ethers.utils.parseEther("15"), ethers.utils.parseEther("15.85"), 60 * 86400);
+  loanId = await createLoan(
+    wethTestLendingPlatform,
+    baycTokenContract.address,
+    768,
+    ethers.utils.parseEther("15"),
+    ethers.utils.parseEther("15.85"),
+    60 * 86400
+  );
   console.log("Created WETH Loan ID %s: Borrower account #1, Lender account #0,", loanId);
   console.log("                        Principal 15 WETH, Repayment 15.85 WETH, Duration 60 days,");
   console.log("                        Collateral Token ID 768");
