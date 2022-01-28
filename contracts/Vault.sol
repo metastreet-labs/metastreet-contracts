@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "prb-math/contracts/PRBMathUD60x18.sol";
 
 import "./interfaces/IVault.sol";
 import "./LPToken.sol";
@@ -35,7 +36,7 @@ contract VaultState {
     }
 
     /* Parameters */
-    uint256 public seniorTrancheRate;
+    uint256 public seniorTrancheRate; /* UD60x18, in amount per seconds */
 
     /* State */
     Tranches internal _tranches;
@@ -84,8 +85,11 @@ contract Vault is Ownable, VaultState, IVault {
         currencyToken = currencyToken_;
         loanPriceOracle = loanPriceOracle_;
 
+        IERC20Metadata currencyTokenMetadata = IERC20Metadata(address(currencyToken));
+        require(currencyTokenMetadata.decimals() == 18, "Unsupported token decimals");
+
         /* Create senior and junior tranche LP Tokens */
-        string memory currencyTokenSymbol = IERC20Metadata(address(currencyToken)).name();
+        string memory currencyTokenSymbol = currencyTokenMetadata.symbol();
         _seniorLPToken = new LPToken(
             "Senior LP Token",
             string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol)))
@@ -150,24 +154,31 @@ contract Vault is Ownable, VaultState, IVault {
     function _computeEstimatedValue(TrancheId trancheId) internal view returns (uint256) {
         Tranche storage tranche = _trancheState(trancheId);
 
-        /* Get the current time bucket and elapsed time into current time bucket */
+        /* Get the current time bucket */
         uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
-        uint256 elapsedTime = block.timestamp - _timeBucketToTimestamp(currentTimeBucket);
 
-        /* Sum the prorated returns from pending returns for each time bucket */
+        /* Compute elapsed time into current time bucket and convert to UD60x18 */
+        uint256 elapsedTime = PRBMathUD60x18.fromUint(block.timestamp - _timeBucketToTimestamp(currentTimeBucket));
+
+        /* Sum the prorated returns from pending returns in each time bucket */
         uint256 proratedReturns;
         for (uint256 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
-            proratedReturns +=
-                (elapsedTime * tranche.pendingReturns[currentTimeBucket + uint64(i)]) /
-                (TIME_BUCKET_DURATION * (i + 1));
+            proratedReturns += PRBMathUD60x18.div(
+                PRBMathUD60x18.mul(elapsedTime, tranche.pendingReturns[currentTimeBucket + uint64(i)]),
+                PRBMathUD60x18.fromUint(TIME_BUCKET_DURATION) * (i + 1)
+            );
         }
 
-        /* Return the deposit value and prorated returns */
+        /* Return the deposit value plus prorated returns */
         return tranche.depositValue + proratedReturns;
     }
 
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
-        return _computeEstimatedValue(trancheId) / _lpToken(trancheId).totalSupply();
+        uint256 estimatedValue = _computeEstimatedValue(trancheId);
+        return
+            (estimatedValue == 0)
+                ? 1e18
+                : PRBMathUD60x18.div(estimatedValue, PRBMathUD60x18.fromUint(_lpToken(trancheId).totalSupply()));
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
@@ -187,14 +198,14 @@ contract Vault is Ownable, VaultState, IVault {
     }
 
     function _deposit(TrancheId trancheId, uint256 amount) internal {
+        /* Compute number of shares to mint from current tranche share price */
+        uint256 shares = PRBMathUD60x18.div(amount, _computeSharePrice(trancheId));
+
         /* Increase deposit value of tranche */
         _trancheState(trancheId).depositValue += amount;
 
         /* Increase total cash balance */
         totalCashBalance += amount;
-
-        /* Compute number of shares to mint from current tranche share price */
-        uint256 shares = amount / _computeSharePrice(trancheId);
 
         /* Mint LP tokens to user */
         _lpToken(trancheId).mint(msg.sender, shares);
@@ -231,23 +242,44 @@ contract Vault is Ownable, VaultState, IVault {
         /* Validate purchase price */
         require(purchasePrice == loanPurchasePrice, "Invalid purchase price");
 
-        /* Validate cash available */
-        require(totalCashBalance >= purchasePrice, "Insufficient vault cash");
+        /* Validate repayment */
+        require(loanInfo.repayment > purchasePrice, "Purchase price too high");
 
-        /* Calculate tranche returns FIXME */
-        uint256 seniorTrancheReturn = 0;
-        uint256 juniorTrancheReturn = 0;
+        /* Validate cash available */
+        require(totalCashBalance >= purchasePrice, "Insufficient cash in vault");
+
+        /* Calculate tranche contribution based on their deposit proportion */
+        /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
+        uint256 seniorTrancheContribution = PRBMathUD60x18.div(
+            PRBMathUD60x18.mul(_tranches.senior.depositValue, purchasePrice),
+            _tranches.senior.depositValue + _tranches.junior.depositValue
+        );
+
+        /* Calculate senior tranche return */
+        /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) */
+        uint256 loanTimeRemaining = loanInfo.maturity - block.timestamp;
+        uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
+            seniorTrancheContribution,
+            1e18 + PRBMathUD60x18.mul(seniorTrancheRate, loanTimeRemaining)
+        );
+
+        /* Validate senior tranche return */
+        require(seniorTrancheReturn < (loanInfo.repayment - purchasePrice), "Senior tranche return too low");
+
+        /* Calculate junior tranche return */
+        /* Junior Tranche Return = Repayment - Purchase Price - Senior Tranche Return */
+        uint256 juniorTrancheReturn = loanInfo.repayment - purchasePrice - seniorTrancheReturn;
 
         /* Compute loan maturity time bucket */
         uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
 
-        /* Increment pending tranche returns */
+        /* Schedule pending tranche returns */
         _tranches.senior.pendingReturns[loanMaturityTimeBucket] += seniorTrancheReturn;
         _tranches.junior.pendingReturns[loanMaturityTimeBucket] += juniorTrancheReturn;
 
         /* Update global cash and loan balances */
         totalCashBalance -= purchasePrice;
-        totalLoanBalance == purchasePrice;
+        totalLoanBalance += purchasePrice;
 
         /* Store loan state */
         Loan storage loan = loans[address(noteToken)][tokenId];
@@ -303,17 +335,18 @@ contract Vault is Ownable, VaultState, IVault {
         uint256 tokenId,
         uint256[2] calldata amounts
     ) public {
+        /* Calculate total purchase price */
         uint256 purchasePrice = amounts[0] + amounts[1];
 
-        /* Sell the note */
+        /* Purchase the note */
         _sellNote(noteToken, tokenId, purchasePrice);
-
-        /* Transfer promissory note from user to vault */
-        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
 
         /* Deposit sale proceeds in tranches */
         if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);
         if (amounts[1] > 0) _deposit(TrancheId.Junior, amounts[1]);
+
+        /* Transfer promissory note from user to vault */
+        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
     }
 
     function sellNoteAndDepositBatch(
@@ -333,7 +366,7 @@ contract Vault is Ownable, VaultState, IVault {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Compute redemption amount */
-        uint256 redemptionAmount = shares * _computeSharePrice(trancheId);
+        uint256 redemptionAmount = PRBMathUD60x18.mul(shares, _computeSharePrice(trancheId));
 
         /* Schedule redemption in tranche */
         tranche.pendingRedemptions += redemptionAmount;
@@ -373,7 +406,7 @@ contract Vault is Ownable, VaultState, IVault {
         /* Validate loan was liquidated */
         require(loan.liquidated, "Loan not liquidated");
 
-        /* Transafer collateral to liquidator */
+        /* Transfer collateral to liquidator */
         loan.collateralToken.safeTransferFrom(address(this), collateralLiquidator, loan.collateralTokenId);
 
         emit CollateralWithdrawn(
