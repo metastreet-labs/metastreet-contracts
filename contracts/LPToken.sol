@@ -43,7 +43,12 @@ contract LPToken is ERC20 {
         _mint(to, amount);
     }
 
-    function redeem(address account, uint256 shares, uint256 amount, uint256 redemptionCounterTarget) public onlyOwner {
+    function redeem(
+        address account,
+        uint256 shares,
+        uint256 amount,
+        uint256 redemptionCounterTarget
+    ) public onlyOwner {
         Redemption storage redemption = redemptions[account];
 
         require(balanceOf(account) >= shares, "Insufficent shares");
@@ -56,16 +61,22 @@ contract LPToken is ERC20 {
         _burn(account, shares);
     }
 
-    function withdraw(address account, uint256 amount, uint256 processedRedemptionCounter) public onlyOwner {
+    function withdraw(
+        address account,
+        uint256 amount,
+        uint256 processedRedemptionCounter
+    ) public onlyOwner {
         Redemption storage redemption = redemptions[account];
 
         require(redemption.pending >= amount, "Invalid amount");
-        require((processedRedemptionCounter - redemption.redemptionCounterTarget - redemption.withdrawn) >= amount, "Redemption not ready");
+        require(
+            (processedRedemptionCounter - redemption.redemptionCounterTarget - redemption.withdrawn) >= amount,
+            "Redemption not ready"
+        );
 
         redemption.pending -= amount;
         redemption.withdrawn += amount;
 
-        if (redemption.pending == 0)
-            delete redemptions[account];
+        if (redemption.pending == 0) delete redemptions[account];
     }
 }

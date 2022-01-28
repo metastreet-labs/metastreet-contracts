@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./interfaces/IVault.sol";
 import "./LPToken.sol";
 
-import "hardhat/console.sol";
-
 contract VaultState {
     /* Structures */
     struct Tranche {
@@ -55,7 +53,7 @@ contract Vault is Ownable, VaultState, IVault {
     /**************************************************************************/
 
     uint64 public constant TIME_BUCKET_DURATION = 7 days;
-    uint public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
 
     /**************************************************************************/
     /* State */
@@ -76,15 +74,26 @@ contract Vault is Ownable, VaultState, IVault {
     /* Constructor */
     /**************************************************************************/
 
-    constructor(string memory vaultName, string memory lpSymbol, IERC20 currencyToken_, ILoanPriceOracle loanPriceOracle_) {
+    constructor(
+        string memory vaultName,
+        string memory lpSymbol,
+        IERC20 currencyToken_,
+        ILoanPriceOracle loanPriceOracle_
+    ) {
         name = vaultName;
         currencyToken = currencyToken_;
         loanPriceOracle = loanPriceOracle_;
 
         /* Create senior and junior tranche LP Tokens */
         string memory currencyTokenSymbol = IERC20Metadata(address(currencyToken)).name();
-        _seniorLPToken = new LPToken("Senior LP Token", string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
-        _juniorLPToken = new LPToken("Junior LP Token", string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol))));
+        _seniorLPToken = new LPToken(
+            "Senior LP Token",
+            string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol)))
+        );
+        _juniorLPToken = new LPToken(
+            "Junior LP Token",
+            string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol)))
+        );
     }
 
     /**************************************************************************/
@@ -95,10 +104,23 @@ contract Vault is Ownable, VaultState, IVault {
         return IERC20(address(_lpToken(trancheId)));
     }
 
-    function trancheState(TrancheId trancheId) public view returns (uint256 depositValue, uint256 pendingRedemptions, uint256 redemptionQueue, uint256 processedRedemptionQueue) {
+    function trancheState(TrancheId trancheId)
+        public
+        view
+        returns (
+            uint256 depositValue,
+            uint256 pendingRedemptions,
+            uint256 redemptionQueue,
+            uint256 processedRedemptionQueue
+        )
+    {
         Tranche storage tranche = _trancheState(trancheId);
-        return (tranche.depositValue, tranche.pendingRedemptions,
-                tranche.redemptionQueue, tranche.processedRedemptionQueue);
+        return (
+            tranche.depositValue,
+            tranche.pendingRedemptions,
+            tranche.redemptionQueue,
+            tranche.processedRedemptionQueue
+        );
     }
 
     function sharePrice(TrancheId trancheId) public view returns (uint256) {
@@ -106,7 +128,7 @@ contract Vault is Ownable, VaultState, IVault {
     }
 
     /**************************************************************************/
-    /* Internal Helpers and Functions */
+    /* Internal Helper Functions */
     /**************************************************************************/
 
     function _lpToken(TrancheId trancheId) internal view returns (LPToken) {
@@ -134,8 +156,10 @@ contract Vault is Ownable, VaultState, IVault {
 
         /* Sum the prorated returns from pending returns for each time bucket */
         uint256 proratedReturns;
-        for (uint i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
-            proratedReturns += (elapsedTime * tranche.pendingReturns[currentTimeBucket + uint64(i)]) / (TIME_BUCKET_DURATION * (i + 1));
+        for (uint256 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
+            proratedReturns +=
+                (elapsedTime * tranche.pendingReturns[currentTimeBucket + uint64(i)]) /
+                (TIME_BUCKET_DURATION * (i + 1));
         }
 
         /* Return the deposit value and prorated returns */
@@ -178,7 +202,11 @@ contract Vault is Ownable, VaultState, IVault {
         emit Deposited(msg.sender, trancheId, amount, shares);
     }
 
-    function _sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) internal {
+    function _sellNote(
+        IERC721 noteToken,
+        uint256 tokenId,
+        uint256 purchasePrice
+    ) internal {
         INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
@@ -191,9 +219,14 @@ contract Vault is Ownable, VaultState, IVault {
         INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(tokenId);
 
         /* Get loan purchase price */
-        uint256 loanPurchasePrice = loanPriceOracle.priceLoan(loanInfo.collateralToken, loanInfo.collateralTokenId,
-                                                              loanInfo.principal, loanInfo.repayment,
-                                                              loanInfo.duration, loanInfo.maturity);
+        uint256 loanPurchasePrice = loanPriceOracle.priceLoan(
+            loanInfo.collateralToken,
+            loanInfo.collateralTokenId,
+            loanInfo.principal,
+            loanInfo.repayment,
+            loanInfo.duration,
+            loanInfo.maturity
+        );
 
         /* Validate purchase price */
         require(purchasePrice == loanPurchasePrice, "Invalid purchase price");
@@ -250,7 +283,11 @@ contract Vault is Ownable, VaultState, IVault {
         currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
     }
 
-    function sellNote(IERC721 noteToken, uint256 tokenId, uint256 purchasePrice) public {
+    function sellNote(
+        IERC721 noteToken,
+        uint256 tokenId,
+        uint256 purchasePrice
+    ) public {
         /* Purchase the note */
         _sellNote(noteToken, tokenId, purchasePrice);
 
@@ -261,7 +298,11 @@ contract Vault is Ownable, VaultState, IVault {
         currencyToken.safeTransfer(msg.sender, purchasePrice);
     }
 
-    function sellNoteAndDeposit(IERC721 noteToken, uint256 tokenId, uint256[2] calldata amounts) public {
+    function sellNoteAndDeposit(
+        IERC721 noteToken,
+        uint256 tokenId,
+        uint256[2] calldata amounts
+    ) public {
         uint256 purchasePrice = amounts[0] + amounts[1];
 
         /* Sell the note */
@@ -271,17 +312,19 @@ contract Vault is Ownable, VaultState, IVault {
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
 
         /* Deposit sale proceeds in tranches */
-        if (amounts[0] > 0)
-            _deposit(TrancheId.Senior, amounts[0]);
-        if (amounts[1] > 0)
-            _deposit(TrancheId.Junior, amounts[1]);
+        if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);
+        if (amounts[1] > 0) _deposit(TrancheId.Junior, amounts[1]);
     }
 
-    function sellNoteAndDepositBatch(IERC721[] calldata noteToken, uint256[] calldata tokenId, uint256[2][] calldata amounts) public {
+    function sellNoteAndDepositBatch(
+        IERC721[] calldata noteToken,
+        uint256[] calldata tokenId,
+        uint256[2][] calldata amounts
+    ) public {
         /* Validate arrays are all of the same length */
         require((noteToken.length == tokenId.length) && (noteToken.length == amounts.length), "Invalid parameters");
 
-        for (uint i = 0; i < noteToken.length; i++) {
+        for (uint256 i = 0; i < noteToken.length; i++) {
             sellNoteAndDeposit(noteToken[i], tokenId[i], amounts[i]);
         }
     }
@@ -333,8 +376,13 @@ contract Vault is Ownable, VaultState, IVault {
         /* Transafer collateral to liquidator */
         loan.collateralToken.safeTransferFrom(address(this), collateralLiquidator, loan.collateralTokenId);
 
-        emit CollateralWithdrawn(address(noteToken), tokenId, address(loan.collateralToken), loan.collateralTokenId,
-                                 collateralLiquidator);
+        emit CollateralWithdrawn(
+            address(noteToken),
+            tokenId,
+            address(loan.collateralToken),
+            loan.collateralTokenId,
+            collateralLiquidator
+        );
     }
 
     /**************************************************************************/
@@ -357,20 +405,19 @@ contract Vault is Ownable, VaultState, IVault {
          * platform (trusted), or by checking the loan is complete and the
          * collateral is not in contract's possession (trustless) */
         bool loanRepaid = (msg.sender == noteAdapter.lendingPlatform()) ||
-                            (noteAdapter.isComplete(tokenId) &&
-                                loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
+            (noteAdapter.isComplete(tokenId) && loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
         require(loanRepaid, "Loan not repaid");
 
         /* Compute loan maturity time bucket */
         uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loan.maturity);
 
         /* Unschedule pending returns */
-        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint(TrancheId.Senior)];
-        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint(TrancheId.Junior)];
+        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Senior)];
+        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Increase tranche deposit values */
-        _tranches.senior.depositValue += loan.trancheReturns[uint(TrancheId.Senior)];
-        _tranches.junior.depositValue += loan.trancheReturns[uint(TrancheId.Junior)];
+        _tranches.senior.depositValue += loan.trancheReturns[uint256(TrancheId.Senior)];
+        _tranches.junior.depositValue += loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Decrease total loan and cash balances */
         totalLoanBalance -= loan.purchasePrice;
@@ -401,8 +448,7 @@ contract Vault is Ownable, VaultState, IVault {
          * platform (trusted), or by checking the loan is complete and the
          * collateral is in the contract's possession (trustless) */
         bool loanLiquidated = (msg.sender == noteAdapter.lendingPlatform()) ||
-                                (noteAdapter.isComplete(tokenId) &&
-                                    loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
+            (noteAdapter.isComplete(tokenId) && loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
         require(loanLiquidated, "Loan not liquidated");
 
         /* Validate loan liquidation wasn't already processed */
@@ -412,8 +458,8 @@ contract Vault is Ownable, VaultState, IVault {
         uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loan.maturity);
 
         /* Unschedule pending returns */
-        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint(TrancheId.Senior)];
-        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint(TrancheId.Junior)];
+        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Senior)];
+        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Compute tranche losses */
         uint256 juniorTrancheLoss = Math.max(loan.purchasePrice, _tranches.junior.depositValue);
@@ -427,14 +473,18 @@ contract Vault is Ownable, VaultState, IVault {
         totalLoanBalance -= loan.purchasePrice;
 
         /* Update tranche returns for collateral liquidation */
-        loan.trancheReturns[uint(TrancheId.Senior)] += seniorTrancheLoss;
-        loan.trancheReturns[uint(TrancheId.Junior)] = 0;
+        loan.trancheReturns[uint256(TrancheId.Senior)] += seniorTrancheLoss;
+        loan.trancheReturns[uint256(TrancheId.Junior)] = 0;
 
         /* Mark loan liquidated in loan state */
         loan.liquidated = true;
     }
 
-    function onCollateralLiquidated(IERC721 noteToken, uint256 tokenId, uint256 proceeds) public {
+    function onCollateralLiquidated(
+        IERC721 noteToken,
+        uint256 tokenId,
+        uint256 proceeds
+    ) public {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == collateralLiquidator, "Invalid caller");
 
@@ -448,7 +498,7 @@ contract Vault is Ownable, VaultState, IVault {
         require(loan.liquidated, "Loan not liquidated");
 
         /* Compute tranche repayments */
-        uint256 seniorTrancheRepayment = Math.min(proceeds, loan.trancheReturns[uint(TrancheId.Senior)]);
+        uint256 seniorTrancheRepayment = Math.min(proceeds, loan.trancheReturns[uint256(TrancheId.Senior)]);
         uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
 
         /* Increase tranche deposit values */

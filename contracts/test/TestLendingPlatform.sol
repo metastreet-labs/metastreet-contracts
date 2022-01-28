@@ -7,8 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "contracts/interfaces/INoteAdapter.sol";
 
 contract TestNoteToken is ERC721, Ownable {
-    constructor() ERC721("Test Promissory Note", "TPN") {
-    }
+    constructor() ERC721("Test Promissory Note", "TPN") {}
 
     function mint(address to, uint256 tokenId) public virtual onlyOwner {
         _safeMint(to, tokenId);
@@ -64,8 +63,15 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
     /* Primary API */
     /**************************************************************************/
 
-    function lend(address borrower, address lender, IERC721 collateralToken, uint256 collateralTokenId,
-                  uint256 principal, uint256 repayment, uint32 duration) public {
+    function lend(
+        address borrower,
+        address lender,
+        IERC721 collateralToken,
+        uint256 collateralTokenId,
+        uint256 principal,
+        uint256 repayment,
+        uint32 duration
+    ) public {
         require(repayment >= principal, "Repayment less than principal");
 
         uint256 loanId = _loanId++;
@@ -111,7 +117,11 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
 
         loansComplete[loanId] = true;
 
-        IERC721(loan.collateralToken).safeTransferFrom(address(this), noteToken.ownerOf(loanId), loan.collateralTokenId);
+        IERC721(loan.collateralToken).safeTransferFrom(
+            address(this),
+            noteToken.ownerOf(loanId),
+            loan.collateralTokenId
+        );
         noteToken.burn(loanId);
 
         emit LoanLiquidated(loanId);
@@ -133,7 +143,12 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
     /* Receiver Hooks */
     /******************************************************/
 
-    function onERC721Received(address /* operator */, address /* from */, uint256 /* tokenId */, bytes calldata /* data */) external pure override returns (bytes4) {
+    function onERC721Received(
+        address, /* operator */
+        address, /* from */
+        uint256, /* tokenId */
+        bytes calldata /* data */
+    ) external pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 }
@@ -155,9 +170,15 @@ contract TestNoteAdapter is INoteAdapter {
 
     function getLoanInfo(uint256 tokenId) public view returns (LoanInfo memory) {
         /* Get loan from lending platform */
-        (address borrower, uint256 principal, uint256 repayment,
-         uint64 startTime, uint32 duration, address collateralToken,
-         uint256 collateralTokenId) = _lendingPlatform.loans(tokenId);
+        (
+            address borrower,
+            uint256 principal,
+            uint256 repayment,
+            uint64 startTime,
+            uint32 duration,
+            address collateralToken,
+            uint256 collateralTokenId
+        ) = _lendingPlatform.loans(tokenId);
 
         /* Check loan exists */
         require(borrower != address(0x0), "Unknown loan");
@@ -179,7 +200,9 @@ contract TestNoteAdapter is INoteAdapter {
     function isSupported(uint256 tokenId, address vaultCurrencyToken) public view returns (bool) {
         /* All collateral tokens supported, so just check the note exists and
          * the currency token matches */
-        return _lendingPlatform.noteToken().exists(tokenId) && address(_lendingPlatform.currencyToken()) == vaultCurrencyToken;
+        return
+            _lendingPlatform.noteToken().exists(tokenId) &&
+            address(_lendingPlatform.currencyToken()) == vaultCurrencyToken;
     }
 
     function isActive(uint256 tokenId) public view returns (bool) {

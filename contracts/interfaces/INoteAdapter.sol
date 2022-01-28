@@ -18,11 +18,14 @@ interface INoteAdapter {
 
     /* Primary API */
     function noteToken() external view returns (IERC721);
+
     function lendingPlatform() external view returns (address);
 
     function getLoanInfo(uint256 tokenId) external view returns (LoanInfo memory);
+
     function isSupported(uint256 tokenId, address vaultCurrencyToken) external view returns (bool);
+
     function isActive(uint256 tokenId) external view returns (bool);
+
     function isComplete(uint256 tokenId) external view returns (bool);
 }
-

@@ -34,9 +34,18 @@ contract LoanPriceOracle is ILoanPriceOracle, Ownable {
     /* Primary API */
     /**************************************************************************/
 
-    function priceLoan(address tokenContract, uint256 tokenId, uint256 principal, uint256 repayment, uint256 duration, uint256 maturity) public view returns (uint256) {
+    function priceLoan(
+        address tokenContract,
+        uint256 tokenId,
+        uint256 principal,
+        uint256 repayment,
+        uint256 duration,
+        uint256 maturity
+    ) public view returns (uint256) {
         console.log("priceLoan(tokenContract %s, tokenId %s, principal %s, ...)", tokenContract, tokenId, principal);
-        repayment; duration; maturity;
+        repayment;
+        duration;
+        maturity;
 
         /* FIXME */
 
