@@ -95,7 +95,7 @@ contract Vault is Ownable, VaultState, IVault {
         return IERC20(address(_lpToken(trancheId)));
     }
 
-    function trancheState(TrancheId trancheId) public view returns (uint256, uint256, uint256, uint256) {
+    function trancheState(TrancheId trancheId) public view returns (uint256 depositValue, uint256 pendingRedemptions, uint256 redemptionQueue, uint256 processedRedemptionQueue) {
         Tranche storage tranche = _trancheState(trancheId);
         return (tranche.depositValue, tranche.pendingRedemptions,
                 tranche.redemptionQueue, tranche.processedRedemptionQueue);

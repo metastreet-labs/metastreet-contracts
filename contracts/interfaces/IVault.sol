@@ -22,7 +22,7 @@ interface IVault {
     function collateralLiquidator() external view returns (address);
     function noteAdapters(address noteToken) external view returns (INoteAdapter);
 
-    function trancheState(TrancheId trancheId) external view returns (uint256, uint256, uint256, uint256);
+    function trancheState(TrancheId trancheId) external view returns (uint256 depositValue, uint256 pendingRedemptions, uint256 redemptionQueue, uint256 processedRedemptionQueue);
     function sharePrice(TrancheId trancheId) external view returns (uint256);
 
     /* User API */
