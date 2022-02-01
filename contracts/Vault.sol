@@ -330,6 +330,19 @@ contract Vault is Ownable, VaultState, IVault {
         currencyToken.safeTransfer(msg.sender, purchasePrice);
     }
 
+    function sellNoteBatch(
+        IERC721[] calldata noteToken,
+        uint256[] calldata tokenId,
+        uint256[] calldata amounts
+    ) public {
+        /* Validate arrays are all of the same length */
+        require((noteToken.length == tokenId.length) && (noteToken.length == amounts.length), "Invalid parameters");
+
+        for (uint256 i = 0; i < noteToken.length; i++) {
+            sellNote(noteToken[i], tokenId[i], amounts[i]);
+        }
+    }
+
     function sellNoteAndDeposit(
         IERC721 noteToken,
         uint256 tokenId,

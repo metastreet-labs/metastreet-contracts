@@ -50,6 +50,12 @@ interface IVault {
         uint256 purchasePrice
     ) external;
 
+    function sellNoteBatch(
+        IERC721[] calldata noteToken,
+        uint256[] calldata tokenId,
+        uint256[] calldata amounts
+    ) external;
+
     function sellNoteAndDeposit(
         IERC721 noteToken,
         uint256 tokenId,
