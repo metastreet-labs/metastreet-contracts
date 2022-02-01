@@ -50,84 +50,160 @@ describe("Vault", function () {
     juniorLPToken = (await ethers.getContractAt("IERC20Metadata", await vault.lpToken(1))) as IERC20Metadata;
   });
 
-  it("initial properties", async function () {
-    expect(await vault.owner()).to.equal(accounts[0].address);
-    expect(await vault.currencyToken()).to.equal(tok1.address);
-    expect(await vault.loanPriceOracle()).to.equal(ethers.constants.AddressZero);
-    expect(await vault.collateralLiquidator()).to.equal(ethers.constants.AddressZero);
+  describe("initial state", async function () {
+    it("getters are correct", async function () {
+      expect(await vault.owner()).to.equal(accounts[0].address);
+      expect(await vault.currencyToken()).to.equal(tok1.address);
+      expect(await vault.loanPriceOracle()).to.equal(ethers.constants.AddressZero);
+      expect(await vault.collateralLiquidator()).to.equal(ethers.constants.AddressZero);
 
-    expect(await seniorLPToken.symbol()).to.equal("msLP-TEST-TOK1");
-    expect(await juniorLPToken.symbol()).to.equal("mjLP-TEST-TOK1");
-  });
-
-  it("tranche states initialized", async function () {
-    for (const trancheId in [0, 1]) {
-      const trancheState = await vault.trancheState(trancheId);
-      expect(trancheState.depositValue).to.equal(0);
-      expect(trancheState.pendingRedemptions).to.equal(0);
-      expect(trancheState.redemptionQueue).to.equal(0);
-      expect(trancheState.processedRedemptionQueue).to.equal(0);
-
-      expect(await vault.sharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
-    }
-  });
-
-  it("deposit senior", async function () {
-    const depositor = accounts[1];
-    const amount = ethers.utils.parseEther("1.23");
-
-    /* Transfer 1.23 TOK1 to depositor account */
-    await tok1.transfer(depositor.address, amount);
-    /* Approve vault for transfer */
-    await tok1.connect(depositor).approve(vault.address, ethers.constants.MaxUint256);
-
-    /* Check token balances before deposit */
-    expect(await tok1.balanceOf(depositor.address)).to.equal(amount);
-    expect(await seniorLPToken.balanceOf(depositor.address)).to.equal(ethers.constants.Zero);
-
-    /* Deposit into vault */
-    const depositTx = await vault.connect(depositor).deposit(0, amount);
-    await expectEvent(depositTx, tok1.address, tok1, "Transfer", {
-      from: depositor.address,
-      to: vault.address,
-      value: amount,
-    });
-    await expectEvent(depositTx, seniorLPToken.address, seniorLPToken, "Transfer", {
-      from: ethers.constants.AddressZero,
-      to: depositor.address,
-      value: amount,
-    });
-    await expectEvent(depositTx, vault.address, vault, "Deposited", {
-      account: depositor.address,
-      trancheId: 0,
-      amount: amount,
-      shares: amount,
+      expect(await seniorLPToken.symbol()).to.equal("msLP-TEST-TOK1");
+      expect(await juniorLPToken.symbol()).to.equal("mjLP-TEST-TOK1");
     });
 
-    /* Check token balances after deposit */
-    expect(await tok1.balanceOf(depositor.address)).to.equal(ethers.constants.Zero);
-    expect(await seniorLPToken.balanceOf(depositor.address)).to.equal(amount);
+    it("tranche states are initialized", async function () {
+      for (const trancheId in [0, 1]) {
+        const trancheState = await vault.trancheState(trancheId);
+        expect(trancheState.depositValue).to.equal(0);
+        expect(trancheState.pendingRedemptions).to.equal(0);
+        expect(trancheState.redemptionQueue).to.equal(0);
+        expect(trancheState.processedRedemptionQueue).to.equal(0);
+
+        expect(await vault.sharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
+      }
+    });
   });
 
-  it("deposit junior", async function () {});
+  describe("#deposit", async function () {
+    it("deposits into senior tranche", async function () {
+      const depositor = accounts[1];
+      const amount = ethers.utils.parseEther("1.23");
 
-  it("deposit multiple", async function () {});
+      /* Transfer 1.23 TOK1 to depositor account */
+      await tok1.transfer(depositor.address, amount);
+      /* Approve vault for transfer */
+      await tok1.connect(depositor).approve(vault.address, ethers.constants.MaxUint256);
 
-  it("sell note", async function () {});
+      /* Check token balances before deposit */
+      expect(await tok1.balanceOf(depositor.address)).to.equal(amount);
+      expect(await seniorLPToken.balanceOf(depositor.address)).to.equal(ethers.constants.Zero);
 
-  it("sell note and deposit", async function () {});
+      /* Deposit into vault */
+      const depositTx = await vault.connect(depositor).deposit(0, amount);
+      await expectEvent(depositTx, tok1.address, tok1, "Transfer", {
+        from: depositor.address,
+        to: vault.address,
+        value: amount,
+      });
+      await expectEvent(depositTx, seniorLPToken.address, seniorLPToken, "Transfer", {
+        from: ethers.constants.AddressZero,
+        to: depositor.address,
+        value: amount,
+      });
+      await expectEvent(depositTx, vault.address, vault, "Deposited", {
+        account: depositor.address,
+        trancheId: 0,
+        amount: amount,
+        shares: amount,
+      });
 
-  it("sell note and deposit batch", async function () {});
+      /* Check token balances after deposit */
+      expect(await tok1.balanceOf(depositor.address)).to.equal(ethers.constants.Zero);
+      expect(await seniorLPToken.balanceOf(depositor.address)).to.equal(amount);
+    });
 
-  it("share price proration", async function () {});
+    it("deposits into junior tranche", async function () {});
 
-  it("loan repayment", async function () {});
+    it("fails on insufficient funds", async function () {});
+  });
 
-  it("loan default", async function () {});
+  describe("#depositMultiple", async function () {
+    it("deposits into both tranches", async function () {});
+  });
 
-  it("single redemption", async function () {});
+  describe("#sellNote", async function () {
+    it("sells note", async function () {});
+    it("fails on unsupported note token", async function () {});
+    it("fails on unsupported note parameters", async function () {});
+    it("fails on invalid purchase price", async function () {});
+    it("fails on high purchase price", async function () {});
+    it("fails on insufficient cash", async function () {});
+    it("fails on low senior tranche return", async function () {});
+  });
 
-  it("multiple redemptions", async function () {});
+  describe("#sellNoteAndDeposit", async function () {
+    it("sells note and deposits", async function () {});
+  });
 
-  it("withdraw", async function () {});
+  describe("#sellNoteBatch", async function () {
+    it("sells many notes", async function () {});
+  });
+
+  describe("#sellNoteAndDepositBatch", async function () {
+    it("sells many notes and deposits proceeds", async function () {});
+  });
+
+  describe("#redeem", async function () {
+    it("redeems", async function () {});
+    it("fails on invalid shares", async function () {});
+    it("fails on outstanding redemption", async function () {});
+  });
+
+  describe("#withdraw", async function () {
+    it("withdraws successfully", async function () {});
+    it("partial withdraws successfully", async function () {});
+    it("fails on invalid amount", async function () {});
+    it("fails on redemption not ready", async function () {});
+  });
+
+  describe("#withdrawCollateral", async function () {
+    it("withdraws collateral after liquidation", async function () {});
+    it("fails on invalid caller", async function () {});
+    it("fails on invalid loan", async function () {});
+    it("fails on unliquidated loan", async function () {});
+    it("fails on already withdrawn collateral", async function () {});
+  });
+
+  describe("#onLoanRepaid", async function () {
+    it("succeeds on repaid loan", async function () {});
+    it("fails on unsupported note", async function () {});
+    it("fails on unknown loan", async function () {});
+    it("fails on unrepaid loan", async function () {});
+    it("fails on processed loan", async function () {});
+  });
+
+  describe("#onLoanLiquidated", async function () {
+    it("succeeds on liquidated loan", async function () {});
+    it("fails on unsupported note", async function () {});
+    it("fails on unknown loan", async function () {});
+    it("fails on unliquidated loan", async function () {});
+    it("fails on processed loan", async function () {});
+  });
+
+  describe("#onCollateralLiquidated", async function () {
+    it("succeeds on liquidated collateral", async function () {});
+    it("fails on invalid caller", async function () {});
+    it("fails on unliquidated loan", async function () {});
+    it("fails on liquidated loan and collateral", async function () {});
+  });
+
+  describe("#setSeniorTrancheRate", async function () {
+    it("sets senior tranche rate successfully", async function () {});
+    it("fails on invalid caller", async function () {});
+  });
+
+  describe("#setLoanPriceOracle", async function () {
+    it("sets loan price oracle successfully", async function () {});
+    it("fails on invalid caller", async function () {});
+  });
+
+  describe("#setCollateralLiquidator", async function () {
+    it("sets collateral liquidator successfully", async function () {});
+    it("fails on invalid caller", async function () {});
+  });
+
+  describe("#setNoteAdapter", async function () {
+    it("sets note adapter successfully", async function () {});
+    it("fails on invalid caller", async function () {});
+  });
 });

@@ -30,9 +30,19 @@ describe("LoanPriceOracle", function () {
     await loanPriceOracle.deployed();
   });
 
-  it("set parameters", async function () {});
+  describe("#priceLoan", async function () {
+    it("prices 15/30 day loan successfully", async function () {});
+    it("prices 45/60 day loan successfully", async function () {});
+    it("prices 85/90 day loan successfully", async function () {});
+    it("fails on insufficient time remaining", async function () {});
+    it("fails on unsupported token contract", async function () {});
+    it("fails on unsupported duration", async function () {});
+    it("fails on purchase price out of bounds", async function () {});
+  });
 
-  it("price loan", async function () {});
-
-  it("price loan errors", async function () {});
+  describe("#setTokenParameters", async function () {
+    it("sets token parameters successfully", async function () {});
+    it("replaces token parameters successfully", async function () {});
+    it("fails on invalid caller", async function () {});
+  });
 });
