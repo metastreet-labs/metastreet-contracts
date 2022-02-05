@@ -119,7 +119,7 @@ describe("TestLendingPlatform", function () {
     await tok1.transfer(borrower.address, repayment.sub(principal));
 
     /* Repay loan */
-    const repayTx = await lendingPlatform.connect(borrower).repay(loanId);
+    const repayTx = await lendingPlatform.connect(borrower).repay(loanId, false);
 
     await expectEvent(repayTx, tok1.address, tok1, "Transfer", {
       from: borrower.address,
@@ -146,7 +146,7 @@ describe("TestLendingPlatform", function () {
     expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent repayment fails */
-    await expect(lendingPlatform.repay(loanId)).to.be.revertedWith("Unknown loan");
+    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Unknown loan");
     /* Check subsequent liquidate fails */
     await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Unknown loan");
   });
@@ -219,6 +219,6 @@ describe("TestLendingPlatform", function () {
     /* Check subsequent liquidate fails */
     await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Unknown loan");
     /* Check subsequent repayment fails */
-    await expect(lendingPlatform.repay(loanId)).to.be.revertedWith("Unknown loan");
+    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Unknown loan");
   });
 });

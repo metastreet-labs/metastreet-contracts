@@ -3,6 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+
+import "contracts/interfaces/ILoanReceiver.sol";
 
 import "./TestNoteToken.sol";
 
@@ -76,7 +79,7 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
         emit LoanCreated(loanId, borrower, lender);
     }
 
-    function repay(uint256 loanId) public {
+    function repay(uint256 loanId, bool callback) public {
         LoanTerms storage loan = loans[loanId];
 
         require(loan.borrower != address(0x0), "Unknown loan");
@@ -84,9 +87,14 @@ contract TestLendingPlatform is Ownable, IERC165, IERC721Receiver {
 
         loansComplete[loanId] = true;
 
-        currencyToken.safeTransferFrom(loan.borrower, noteToken.ownerOf(loanId), loan.repayment);
+        address noteOwner = noteToken.ownerOf(loanId);
+
+        currencyToken.safeTransferFrom(loan.borrower, noteOwner, loan.repayment);
         IERC721(loan.collateralToken).safeTransferFrom(address(this), loan.borrower, loan.collateralTokenId);
         noteToken.burn(loanId);
+
+        if (callback && Address.isContract(noteOwner))
+            ILoanReceiver(noteOwner).onLoanRepaid(address(noteToken), loanId);
 
         emit LoanRepaid(loanId);
 
