@@ -259,7 +259,7 @@ contract Vault is Ownable, VaultState, IVault {
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
             1e18 + PRBMathUD60x18.mul(seniorTrancheRate, loanTimeRemaining)
-        );
+        ) - seniorTrancheContribution;
 
         /* Validate senior tranche return */
         require(seniorTrancheReturn < (loanInfo.repayment - purchasePrice), "Senior tranche return too low");
