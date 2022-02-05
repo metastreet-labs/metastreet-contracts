@@ -185,8 +185,9 @@ contract Vault is Ownable, VaultState, IVault {
         /* Update tranche redemption state */
         tranche.pendingRedemptions -= redemptionAmount;
         tranche.processedRedemptionQueue += redemptionAmount;
+        tranche.depositValue -= redemptionAmount;
 
-        /* Move redemption from cash to to withdrawal balance */
+        /* Move redemption from cash to withdrawal balance */
         totalCashBalance -= redemptionAmount;
         totalWithdrawalBalance += redemptionAmount;
 
