@@ -131,6 +131,10 @@ contract Vault is Ownable, VaultState, IVault {
         return _computeSharePrice(trancheId);
     }
 
+    function redemptionSharePrice(TrancheId trancheId) public view returns (uint256) {
+        return _computeRedemptionSharePrice(trancheId);
+    }
+
     /**************************************************************************/
     /* Internal Helper Functions */
     /**************************************************************************/
@@ -176,6 +180,11 @@ contract Vault is Ownable, VaultState, IVault {
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 estimatedValue = _computeEstimatedValue(trancheId);
         return (estimatedValue == 0) ? 1e18 : PRBMathUD60x18.div(estimatedValue, _lpToken(trancheId).totalSupply());
+    }
+
+    function _computeRedemptionSharePrice(TrancheId trancheId) internal view returns (uint256) {
+        Tranche storage tranche = _trancheState(trancheId);
+        return (tranche.depositValue == 0) ? 1e18 : tranche.depositValue;
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
@@ -377,7 +386,7 @@ contract Vault is Ownable, VaultState, IVault {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Compute redemption amount */
-        uint256 redemptionAmount = PRBMathUD60x18.mul(shares, _computeSharePrice(trancheId));
+        uint256 redemptionAmount = PRBMathUD60x18.mul(shares, _computeRedemptionSharePrice(trancheId));
 
         /* Schedule redemption in tranche */
         tranche.pendingRedemptions += redemptionAmount;

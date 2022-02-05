@@ -39,6 +39,8 @@ interface IVault {
 
     function sharePrice(TrancheId trancheId) external view returns (uint256);
 
+    function redemptionSharePrice(TrancheId trancheId) external view returns (uint256);
+
     /* User API */
     function deposit(TrancheId trancheId, uint256 amount) external;
 
