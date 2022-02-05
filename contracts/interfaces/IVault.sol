@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./ILoanPriceOracle.sol";
 import "./INoteAdapter.sol";
+import "./ILoanReceiver.sol";
 
-interface IVault {
+interface IVault is ILoanReceiver {
     /* Tranche identifier */
     enum TrancheId {
         Senior,
@@ -78,12 +79,10 @@ interface IVault {
     function withdrawCollateral(IERC721 noteToken, uint256 tokenId) external;
 
     /* Callbacks */
-    function onLoanRepaid(IERC721 noteToken, uint256 tokenId) external;
-
-    function onLoanLiquidated(IERC721 noteToken, uint256 tokenId) external;
+    function onLoanLiquidated(address noteToken, uint256 tokenId) external;
 
     function onCollateralLiquidated(
-        IERC721 noteToken,
+        address noteToken,
         uint256 tokenId,
         uint256 proceeds
     ) external;

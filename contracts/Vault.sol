@@ -443,14 +443,14 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     /* Callbacks */
     /**************************************************************************/
 
-    function onLoanRepaid(IERC721 noteToken, uint256 tokenId) public {
-        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+    function onLoanRepaid(address noteToken, uint256 tokenId) public {
+        INoteAdapter noteAdapter = noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
 
         /* Lookup loan state */
-        Loan storage loan = loans[address(noteToken)][tokenId];
+        Loan storage loan = loans[noteToken][tokenId];
 
         /* Validate loan exists with contract */
         require(loan.purchasePrice != 0, "Unknown loan");
@@ -482,18 +482,18 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         proceeds = _processRedemptions(_tranches.senior, proceeds);
         _processRedemptions(_tranches.junior, proceeds);
 
-        /* Delete loan metadata */
-        delete loans[address(noteToken)][tokenId];
+        /* Invalidate loan metadata */
+        loan.purchasePrice = 0;
     }
 
-    function onLoanLiquidated(IERC721 noteToken, uint256 tokenId) public {
-        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+    function onLoanLiquidated(address noteToken, uint256 tokenId) public {
+        INoteAdapter noteAdapter = noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[address(noteToken)][tokenId];
+        Loan storage loan = loans[noteToken][tokenId];
 
         /* Validate loan exists with contract */
         require(loan.purchasePrice != 0, "Unknown loan");
@@ -535,7 +535,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     }
 
     function onCollateralLiquidated(
-        IERC721 noteToken,
+        address noteToken,
         uint256 tokenId,
         uint256 proceeds
     ) public {
@@ -543,7 +543,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         require(msg.sender == collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[address(noteToken)][tokenId];
+        Loan storage loan = loans[noteToken][tokenId];
 
         /* Validate loan exists with contract */
         require(loan.purchasePrice != 0, "Unknown loan");
@@ -566,8 +566,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         proceeds = _processRedemptions(_tranches.senior, proceeds);
         _processRedemptions(_tranches.junior, proceeds);
 
-        /* Delete loan metadata */
-        delete loans[address(noteToken)][tokenId];
+        /* Invalidate loan metadata */
+        loan.purchasePrice = 0;
     }
 
     /**************************************************************************/
