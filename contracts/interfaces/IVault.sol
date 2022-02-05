@@ -73,7 +73,11 @@ interface IVault is ILoanReceiver {
 
     function redeem(TrancheId trancheId, uint256 shares) external;
 
+    function redeemMultiple(uint256[2] calldata shares) external;
+
     function withdraw(TrancheId trancheId, uint256 amount) external;
+
+    function withdrawMultiple(uint256[2] calldata amounts) external;
 
     /* Collateral Liquidator API */
     function withdrawCollateral(IERC721 noteToken, uint256 tokenId) external;

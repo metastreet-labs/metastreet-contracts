@@ -399,6 +399,11 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
 
+    function redeemMultiple(uint256[2] calldata shares) public {
+        redeem(TrancheId.Senior, shares[0]);
+        redeem(TrancheId.Junior, shares[1]);
+    }
+
     function withdraw(TrancheId trancheId, uint256 amount) public {
         Tranche storage tranche = _trancheState(trancheId);
 
@@ -412,6 +417,11 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         currencyToken.safeTransfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, trancheId, amount);
+    }
+
+    function withdrawMultiple(uint256[2] calldata amounts) public {
+        withdraw(TrancheId.Senior, amounts[0]);
+        withdraw(TrancheId.Junior, amounts[1]);
     }
 
     function withdrawCollateral(IERC721 noteToken, uint256 tokenId) public {
