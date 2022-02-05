@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -46,7 +47,7 @@ contract VaultState {
     mapping(address => mapping(uint256 => Loan)) public loans;
 }
 
-contract Vault is Ownable, VaultState, IVault {
+contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     using SafeERC20 for IERC20;
 
     /**************************************************************************/
@@ -591,5 +592,28 @@ contract Vault is Ownable, VaultState, IVault {
     function setNoteAdapter(address noteToken, address noteAdapter) public onlyOwner {
         noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
+    }
+
+    /******************************************************/
+    /* ERC165 interface */
+    /******************************************************/
+
+    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
+
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+        return (interfaceId == _INTERFACE_ID_ERC165) || (interfaceId == IERC721Receiver.onERC721Received.selector);
+    }
+
+    /******************************************************/
+    /* Receiver Hooks */
+    /******************************************************/
+
+    function onERC721Received(
+        address, /* operator */
+        address, /* from */
+        uint256, /* tokenId */
+        bytes calldata /* data */
+    ) external pure override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }
