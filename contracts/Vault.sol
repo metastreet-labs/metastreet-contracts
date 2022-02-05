@@ -175,10 +175,7 @@ contract Vault is Ownable, VaultState, IVault {
 
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 estimatedValue = _computeEstimatedValue(trancheId);
-        return
-            (estimatedValue == 0)
-                ? 1e18
-                : PRBMathUD60x18.div(estimatedValue, PRBMathUD60x18.fromUint(_lpToken(trancheId).totalSupply()));
+        return (estimatedValue == 0) ? 1e18 : PRBMathUD60x18.div(estimatedValue, _lpToken(trancheId).totalSupply());
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
