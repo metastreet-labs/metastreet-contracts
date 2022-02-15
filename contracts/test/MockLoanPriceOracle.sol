@@ -47,8 +47,11 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
 
     function setTokenParameters(address tokenContract, bytes calldata packedParameters) public {}
 
-    function setState(MockError error, uint256 price) public {
+    function setError(MockError error) public {
         _error = error;
+    }
+
+    function setPrice(uint256 price) public {
         _price = price;
     }
 }
