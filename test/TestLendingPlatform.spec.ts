@@ -74,24 +74,24 @@ describe("TestLendingPlatform", function () {
       duration
     );
 
-    const loanId = (await extractEvent(lendTx, lendingPlatform.address, lendingPlatform, "LoanCreated")).args.loanId;
+    const loanId = (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
 
-    await expectEvent(lendTx, nft1.address, nft1, "Transfer", {
+    await expectEvent(lendTx, nft1, "Transfer", {
       from: borrower.address,
       to: lendingPlatform.address,
       tokenId: collateralTokenId,
     });
-    await expectEvent(lendTx, tok1.address, tok1, "Transfer", {
+    await expectEvent(lendTx, tok1, "Transfer", {
       from: lender.address,
       to: borrower.address,
       value: principal,
     });
-    await expectEvent(lendTx, noteToken.address, noteToken, "Transfer", {
+    await expectEvent(lendTx, noteToken, "Transfer", {
       from: ethers.constants.AddressZero,
       to: lender.address,
       tokenId: loanId,
     });
-    await expectEvent(lendTx, lendingPlatform.address, lendingPlatform, "LoanCreated", {
+    await expectEvent(lendTx, lendingPlatform, "LoanCreated", {
       loanId: loanId,
       borrower: borrower.address,
       lender: lender.address,
@@ -121,22 +121,22 @@ describe("TestLendingPlatform", function () {
     /* Repay loan */
     const repayTx = await lendingPlatform.connect(borrower).repay(loanId, false);
 
-    await expectEvent(repayTx, tok1.address, tok1, "Transfer", {
+    await expectEvent(repayTx, tok1, "Transfer", {
       from: borrower.address,
       to: lender.address,
       value: repayment,
     });
-    await expectEvent(repayTx, nft1.address, nft1, "Transfer", {
+    await expectEvent(repayTx, nft1, "Transfer", {
       from: lendingPlatform.address,
       to: borrower.address,
       tokenId: collateralTokenId,
     });
-    await expectEvent(repayTx, noteToken.address, noteToken, "Transfer", {
+    await expectEvent(repayTx, noteToken, "Transfer", {
       from: lender.address,
       to: ethers.constants.AddressZero,
       tokenId: loanId,
     });
-    await expectEvent(repayTx, lendingPlatform.address, lendingPlatform, "LoanRepaid", { loanId: loanId });
+    await expectEvent(repayTx, lendingPlatform, "LoanRepaid", { loanId: loanId });
     expect(await nft1.ownerOf(collateralTokenId)).to.equal(borrower.address);
     expect(await tok1.balanceOf(borrower.address)).to.equal(ethers.constants.Zero);
     expect(await tok1.balanceOf(lender.address)).to.equal(repayment);
@@ -184,7 +184,7 @@ describe("TestLendingPlatform", function () {
       duration
     );
 
-    const loanId = (await extractEvent(lendTx, lendingPlatform.address, lendingPlatform, "LoanCreated")).args.loanId;
+    const loanId = (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
 
     /* Check early liquidate fails */
     await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan not expired");
@@ -197,17 +197,17 @@ describe("TestLendingPlatform", function () {
     /* Liquidate loan */
     const liquidateTx = await lendingPlatform.liquidate(loanId);
 
-    await expectEvent(liquidateTx, nft1.address, nft1, "Transfer", {
+    await expectEvent(liquidateTx, nft1, "Transfer", {
       from: lendingPlatform.address,
       to: lender.address,
       tokenId: collateralTokenId,
     });
-    await expectEvent(liquidateTx, noteToken.address, noteToken, "Transfer", {
+    await expectEvent(liquidateTx, noteToken, "Transfer", {
       from: lender.address,
       to: ethers.constants.AddressZero,
       tokenId: loanId,
     });
-    await expectEvent(liquidateTx, lendingPlatform.address, lendingPlatform, "LoanLiquidated", { loanId: loanId });
+    await expectEvent(liquidateTx, lendingPlatform, "LoanLiquidated", { loanId: loanId });
     expect(await nft1.ownerOf(collateralTokenId)).to.equal(lender.address);
     expect(await tok1.balanceOf(borrower.address)).to.equal(principal);
     expect(await tok1.balanceOf(lender.address)).to.equal(ethers.constants.Zero);
