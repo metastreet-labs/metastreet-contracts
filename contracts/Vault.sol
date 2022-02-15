@@ -529,7 +529,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Compute tranche losses */
-        uint256 juniorTrancheLoss = Math.max(loan.purchasePrice, _tranches.junior.depositValue);
+        uint256 juniorTrancheLoss = Math.min(loan.purchasePrice, _tranches.junior.depositValue);
         uint256 seniorTrancheLoss = loan.purchasePrice - juniorTrancheLoss;
 
         /* Decrease tranche deposit values */
