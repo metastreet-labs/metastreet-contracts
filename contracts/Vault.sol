@@ -185,7 +185,10 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
     function _computeRedemptionSharePrice(TrancheId trancheId) internal view returns (uint256) {
         Tranche storage tranche = _trancheState(trancheId);
-        return (tranche.depositValue == 0) ? 1e18 : tranche.depositValue;
+        return
+            (tranche.depositValue == 0)
+                ? 1e18
+                : PRBMathUD60x18.div(tranche.depositValue, _lpToken(trancheId).totalSupply());
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
