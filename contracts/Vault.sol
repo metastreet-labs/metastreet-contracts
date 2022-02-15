@@ -271,7 +271,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         uint256 loanTimeRemaining = loanInfo.maturity - block.timestamp;
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
-            1e18 + PRBMathUD60x18.mul(seniorTrancheRate, loanTimeRemaining)
+            1e18 + PRBMathUD60x18.mul(seniorTrancheRate, loanTimeRemaining * 1e18)
         ) - seniorTrancheContribution;
 
         /* Validate senior tranche return */
