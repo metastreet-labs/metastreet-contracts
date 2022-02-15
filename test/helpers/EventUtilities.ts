@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
 
 import { Contract, ContractTransaction } from "ethers";
 import { LogDescription } from "@ethersproject/abi";
