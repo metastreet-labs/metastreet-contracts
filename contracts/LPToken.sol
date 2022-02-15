@@ -51,7 +51,7 @@ contract LPToken is ERC20 {
     ) public onlyOwner {
         Redemption storage redemption = redemptions[account];
 
-        require(balanceOf(account) >= shares, "Insufficent shares");
+        require(balanceOf(account) >= shares, "Insufficient shares");
         require(redemption.pending == 0, "Redemption in progress");
 
         redemption.pending = amount;
