@@ -70,13 +70,13 @@ contract LPToken is ERC20 {
 
         require(redemption.pending >= amount, "Invalid amount");
         require(
-            (processedRedemptionCounter - redemption.redemptionCounterTarget - redemption.withdrawn) >= amount,
+            (processedRedemptionCounter -
+                (redemption.redemptionCounterTarget - redemption.pending + redemption.withdrawn)) >= amount,
             "Redemption not ready"
         );
 
-        redemption.pending -= amount;
         redemption.withdrawn += amount;
 
-        if (redemption.pending == 0) delete redemptions[account];
+        if (redemption.withdrawn == redemption.pending) delete redemptions[account];
     }
 }
