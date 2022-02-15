@@ -12,7 +12,7 @@ contract LPToken is ERC20 {
     struct Redemption {
         uint256 pending;
         uint256 withdrawn;
-        uint256 redemptionCounterTarget;
+        uint256 redemptionQueueTarget;
     }
 
     address private _owner;
@@ -47,7 +47,7 @@ contract LPToken is ERC20 {
         address account,
         uint256 shares,
         uint256 amount,
-        uint256 redemptionCounterTarget
+        uint256 redemptionQueueTarget
     ) public onlyOwner {
         Redemption storage redemption = redemptions[account];
 
@@ -56,7 +56,7 @@ contract LPToken is ERC20 {
 
         redemption.pending = amount;
         redemption.withdrawn = 0;
-        redemption.redemptionCounterTarget = redemptionCounterTarget;
+        redemption.redemptionQueueTarget = redemptionQueueTarget;
 
         _burn(account, shares);
     }
@@ -64,14 +64,14 @@ contract LPToken is ERC20 {
     function withdraw(
         address account,
         uint256 amount,
-        uint256 processedRedemptionCounter
+        uint256 processedRedemptionQueue
     ) public onlyOwner {
         Redemption storage redemption = redemptions[account];
 
         require(redemption.pending >= amount, "Invalid amount");
         require(
-            (processedRedemptionCounter -
-                (redemption.redemptionCounterTarget - redemption.pending + redemption.withdrawn)) >= amount,
+            (processedRedemptionQueue -
+                (redemption.redemptionQueueTarget - redemption.pending + redemption.withdrawn)) >= amount,
             "Redemption not ready"
         );
 
