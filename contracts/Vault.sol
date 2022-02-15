@@ -229,7 +229,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Check if loan parameters are supported */
         require(noteAdapter.isSupported(tokenId, address(currencyToken)), "Unsupported note parameters");
