@@ -174,7 +174,7 @@ async function main() {
       repayment,
       duration
     );
-    return (await extractEvent(lendTx, lendingPlatform.address, lendingPlatform, "LoanCreated")).args.loanId;
+    return (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
   }
 
   let loanId: BigNumberish;
