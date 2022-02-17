@@ -116,6 +116,13 @@ async function main() {
   console.log("  Junior LP Token Address: ", await wethBlueChipVault.lpToken(1));
   console.log("");
 
+  await daiBlueChipVault.setReserveRatio(ethers.utils.parseEther("0.10"));
+  console.log("Set 10% Reserve Ratio on Blue Chip DAI Vault");
+
+  await wethBlueChipVault.setReserveRatio(ethers.utils.parseEther("0.15"));
+  console.log("Set 15% Reserve Ratio on Blue Chip WETH Vault");
+  console.log("");
+
   await daiBlueChipVault.setNoteAdapter(await daiTestLendingPlatform.noteToken(), daiTestNoteAdapter.address);
   console.log("Attached DAI Test Note Adapter to Blue Chip DAI Vault");
 
