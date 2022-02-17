@@ -38,6 +38,7 @@ contract VaultState {
 
     /* Parameters */
     uint256 public seniorTrancheRate; /* UD60x18, in amount per seconds */
+    uint256 public reserveRatio; /* UD60x18 */
 
     /* State */
     Tranches internal _tranches;
@@ -136,6 +137,10 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         return _computeRedemptionSharePrice(trancheId);
     }
 
+    function cashReservesAvailable() public view returns (uint256) {
+        return _computeCashReservesAvailable();
+    }
+
     /**************************************************************************/
     /* Internal Helper Functions */
     /**************************************************************************/
@@ -189,6 +194,10 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
             (tranche.depositValue == 0)
                 ? 1e18
                 : PRBMathUD60x18.div(tranche.depositValue, _lpToken(trancheId).totalSupply());
+    }
+
+    function _computeCashReservesAvailable() internal view returns (uint256) {
+        return Math.min(totalCashBalance, PRBMathUD60x18.mul(reserveRatio, totalCashBalance + totalLoanBalance));
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
@@ -257,7 +266,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         require(loanInfo.repayment > purchasePrice, "Purchase price too high");
 
         /* Validate cash available */
-        require(totalCashBalance >= purchasePrice, "Insufficient cash in vault");
+        require(totalCashBalance - _computeCashReservesAvailable() >= purchasePrice, "Insufficient cash in vault");
 
         /* Calculate tranche contribution based on their deposit proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
@@ -398,6 +407,9 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
         /* Schedule redemption with user's token state and burn LP tokens */
         _lpToken(trancheId).redeem(msg.sender, shares, redemptionAmount, tranche.redemptionQueue);
+
+        /* Process redemption from cash reserves */
+        _processRedemptions(tranche, _computeCashReservesAvailable());
 
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
@@ -590,6 +602,11 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     function setSeniorTrancheRate(uint256 interestRate) public onlyOwner {
         seniorTrancheRate = interestRate;
         emit SeniorTrancheRateUpdated(interestRate);
+    }
+
+    function setReserveRatio(uint256 ratio) public onlyOwner {
+        reserveRatio = ratio;
+        emit ReserveRatioUpdated(ratio);
     }
 
     function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {

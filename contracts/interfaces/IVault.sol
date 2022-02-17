@@ -94,6 +94,8 @@ interface IVault is ILoanReceiver {
     /* Setters */
     function setSeniorTrancheRate(uint256 interestRate) external;
 
+    function setReserveRatio(uint256 ratio) external;
+
     function setLoanPriceOracle(address loanPriceOracle_) external;
 
     function setCollateralLiquidator(address collateralLiquidator_) external;
@@ -114,6 +116,7 @@ interface IVault is ILoanReceiver {
     );
 
     event SeniorTrancheRateUpdated(uint256 interestRate);
+    event ReserveRatioUpdated(uint256 reserveRatio);
     event LoanPriceOracleUpdated(address loanPriceOracle);
     event CollateralLiquidatorUpdated(address collateralLiquidator);
     event NoteAdapterUpdated(address noteToken, address noteAdapter);
