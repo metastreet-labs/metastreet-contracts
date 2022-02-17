@@ -130,15 +130,23 @@ async function main() {
   console.log("Attached WETH Test Note Adapter to Blue Chip WETH Vault");
   console.log("");
 
-  console.log("Lender is   account #0 (%s)", accounts[0].address);
-  console.log("Borrower is account #1 (%s)", accounts[1].address);
+  console.log("Lender is      account #0 (%s)", accounts[0].address);
+  console.log("Borrower is    account #1 (%s)", accounts[1].address);
+  console.log("Depositer 1 is account #2 (%s)", accounts[2].address);
+  console.log("Depositer 2 is account #3 (%s)", accounts[3].address);
   console.log("");
 
   await daiTokenContract.transfer(accounts[0].address, ethers.utils.parseEther("1000"));
-  console.log("Transferred 1000 DAI to account #0");
+  await daiTokenContract.transfer(accounts[1].address, ethers.utils.parseEther("1000"));
+  await daiTokenContract.transfer(accounts[2].address, ethers.utils.parseEther("1000"));
+  await daiTokenContract.transfer(accounts[3].address, ethers.utils.parseEther("1000"));
+  console.log("Transferred 1000 DAI to account #0, #1, #2, #3");
 
   await wethTokenContract.transfer(accounts[0].address, ethers.utils.parseEther("1000"));
-  console.log("Transferred 1000 WETH to account #0");
+  await wethTokenContract.transfer(accounts[1].address, ethers.utils.parseEther("1000"));
+  await wethTokenContract.transfer(accounts[2].address, ethers.utils.parseEther("1000"));
+  await wethTokenContract.transfer(accounts[3].address, ethers.utils.parseEther("1000"));
+  console.log("Transferred 1000 WETH to account #0, #1, #2, #3");
 
   await baycTokenContract.mint(accounts[1].address, 123);
   await baycTokenContract.mint(accounts[1].address, 456);
@@ -155,7 +163,7 @@ async function main() {
   console.log("Approved DAI transfer for DAI Test Lending Platform for account #1");
 
   await wethTokenContract.connect(accounts[1]).approve(wethTestLendingPlatform.address, ethers.constants.MaxUint256);
-  console.log("Approved WETH transfer for DAI Test Lending Platform for account #1");
+  console.log("Approved WETH transfer for WETH Test Lending Platform for account #1");
 
   await daiTokenContract.connect(accounts[0]).approve(daiTestLendingPlatform.address, ethers.constants.MaxUint256);
   console.log("Approved DAI transfer for DAI Test Lending Platform for account #0");
