@@ -141,6 +141,10 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         return _computeCashReservesAvailable();
     }
 
+    function utilization() public view returns (uint256) {
+        return _computeUtilization();
+    }
+
     /**************************************************************************/
     /* Internal Helper Functions */
     /**************************************************************************/
@@ -198,6 +202,11 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
     function _computeCashReservesAvailable() internal view returns (uint256) {
         return Math.min(totalCashBalance, PRBMathUD60x18.mul(reserveRatio, totalCashBalance + totalLoanBalance));
+    }
+
+    function _computeUtilization() internal view returns (uint256) {
+        uint256 totalBalance = totalCashBalance + totalLoanBalance;
+        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(totalLoanBalance, totalCashBalance + totalLoanBalance);
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {

@@ -142,8 +142,10 @@ describe("Vault", function () {
 
         expect(await vault.sharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
         expect(await vault.redemptionSharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
-        expect(await vault.cashReservesAvailable()).to.equal(ethers.constants.Zero);
       }
+
+      expect(await vault.cashReservesAvailable()).to.equal(ethers.constants.Zero);
+      expect(await vault.utilization()).to.equal(ethers.constants.Zero);
     });
   });
 
@@ -1820,6 +1822,44 @@ describe("Vault", function () {
       await expect(
         vault.connect(accountBorrower).onCollateralLiquidated(noteToken.address, 12345, ethers.utils.parseEther("2.2"))
       ).to.be.revertedWith("Invalid caller");
+    });
+  });
+
+  describe("#utilization", async function () {
+    [25, 50, 100].forEach((utilization) => {
+      it(`achieves utilization of ${utilization}%`, async function () {
+        const depositAmount = ethers.utils.parseEther("10");
+        const principal = depositAmount.mul(utilization).div(100);
+        const repayment = principal.mul(110).div(100);
+        const duration = 86400;
+
+        /* Disable reserves */
+        await vault.setReserveRatio(ethers.constants.Zero);
+
+        /* Deposit cash */
+        await vault.connect(accountDepositor1).deposit(0, depositAmount);
+
+        /* Create loan */
+        const loanId = await createLoan(
+          lendingPlatform,
+          nft1,
+          accountBorrower,
+          accountLender1,
+          principal,
+          repayment,
+          duration
+        );
+
+        /* Setup loan price with mock loan price oracle */
+        await mockLoanPriceOracle.setPrice(principal);
+
+        /* Sell note to vault */
+        await vault.connect(accountLender1).sellNote(noteToken.address, loanId, principal);
+
+        expect(await vault.utilization()).to.equal(
+          ethers.BigNumber.from(utilization).mul(ethers.constants.WeiPerEther).div(100)
+        );
+      });
     });
   });
 
