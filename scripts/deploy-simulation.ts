@@ -4,7 +4,12 @@ import { BigNumberish } from "@ethersproject/bignumber";
 
 import { TestLendingPlatform } from "../typechain";
 import { extractEvent } from "../test/helpers/EventUtilities";
-import { TokenParameters, encodeTokenParameters, normalizeRate } from "../test/helpers/LoanPriceOracleHelpers";
+import {
+  CollateralParameters,
+  encodeCollateralParameters,
+  normalizeRate,
+  computePiecewiseLinearModel,
+} from "../test/helpers/LoanPriceOracleHelpers";
 
 async function main() {
   const accounts = await ethers.getSigners();
@@ -173,36 +178,48 @@ async function main() {
 
   console.log("");
 
-  /* Setup token parameters for loan price oracles */
-  const tokenParameters: TokenParameters[] = [
-    {
-      duration: 30 * 86400,
-      minDiscountRate: normalizeRate("0.25"),
-      aprSensitivity: normalizeRate("0.00010"),
-      minPurchasePrice: ethers.utils.parseEther("100"),
-      maxPurchasePrice: ethers.utils.parseEther("1000"),
-    },
-    {
-      duration: 60 * 86400,
-      minDiscountRate: normalizeRate("0.35"),
-      aprSensitivity: normalizeRate("0.00025"),
-      minPurchasePrice: ethers.utils.parseEther("100"),
-      maxPurchasePrice: ethers.utils.parseEther("1000"),
-    },
-    {
-      duration: 90 * 86400,
-      minDiscountRate: normalizeRate("0.60"),
-      aprSensitivity: normalizeRate("0.00050"),
-      minPurchasePrice: ethers.utils.parseEther("100"),
-      maxPurchasePrice: ethers.utils.parseEther("1000"),
-    },
-  ];
+  /* Setup collateral parameters for loan price oracles */
+  const minimumDiscountRate = normalizeRate("0.05");
 
-  await daiLoanPriceOracle.setTokenParameters(baycTokenContract.address, encodeTokenParameters(tokenParameters));
-  console.log("Setup BAYC token parameters for DAI Loan Price Oracle");
+  const collateralParameters: CollateralParameters = {
+    collateralValue: ethers.utils.parseEther("100"),
+    aprUtilizationSensitivity: computePiecewiseLinearModel({
+      minRate: normalizeRate("0.05"),
+      targetRate: normalizeRate("0.10"),
+      maxRate: normalizeRate("2.00"),
+      target: ethers.utils.parseEther("0.90"),
+      max: ethers.utils.parseEther("1.00"),
+    }),
+    aprLoanToValueSensitivity: computePiecewiseLinearModel({
+      minRate: normalizeRate("0.05"),
+      targetRate: normalizeRate("0.10"),
+      maxRate: normalizeRate("2.00"),
+      target: ethers.utils.parseEther("0.30"),
+      max: ethers.utils.parseEther("0.60"),
+    }),
+    aprDurationSensitivity: computePiecewiseLinearModel({
+      minRate: normalizeRate("0.05"),
+      targetRate: normalizeRate("0.10"),
+      maxRate: normalizeRate("2.00"),
+      target: ethers.BigNumber.from(30 * 86400).mul(ethers.constants.WeiPerEther),
+      max: ethers.BigNumber.from(90 * 86400).mul(ethers.constants.WeiPerEther),
+    }),
+    sensitivityWeights: [50, 25, 25],
+  };
 
-  await wethLoanPriceOracle.setTokenParameters(baycTokenContract.address, encodeTokenParameters(tokenParameters));
-  console.log("Setup BAYC token parameters for WETH Loan Price Oracle");
+  await daiLoanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
+  await daiLoanPriceOracle.setCollateralParameters(
+    baycTokenContract.address,
+    encodeCollateralParameters(collateralParameters)
+  );
+  console.log("Setup BAYC collateral parameters for DAI Loan Price Oracle");
+
+  await wethLoanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
+  await wethLoanPriceOracle.setCollateralParameters(
+    baycTokenContract.address,
+    encodeCollateralParameters(collateralParameters)
+  );
+  console.log("Setup BAYC collateral parameters for WETH Loan Price Oracle");
 
   console.log("");
 
