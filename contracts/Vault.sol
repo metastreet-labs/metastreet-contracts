@@ -265,7 +265,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
             loanInfo.principal,
             loanInfo.repayment,
             loanInfo.duration,
-            loanInfo.maturity
+            loanInfo.maturity,
+            _computeUtilization()
         );
 
         /* Validate purchase price */

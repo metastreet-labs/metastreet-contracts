@@ -8,7 +8,7 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         None,
         Unsupported,
         InsufficientTimeRemaining,
-        PurchasePriceOutOfBounds
+        ParameterOutOfBounds
     }
 
     IERC20 public override currencyToken;
@@ -25,7 +25,8 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         uint256 principal,
         uint256 repayment,
         uint256 duration,
-        uint256 maturity
+        uint256 maturity,
+        uint256 utilization
     ) public view returns (uint256) {
         collateralTokenContract;
         collateralTokenId;
@@ -33,19 +34,27 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         repayment;
         duration;
         maturity;
+        utilization;
 
         if (_error == MockError.Unsupported) {
             revert PriceError_Unsupported();
         } else if (_error == MockError.InsufficientTimeRemaining) {
             revert PriceError_InsufficientTimeRemaining();
-        } else if (_error == MockError.PurchasePriceOutOfBounds) {
-            revert PriceError_PurchasePriceOutOfBounds();
+        } else if (_error == MockError.ParameterOutOfBounds) {
+            revert PriceError_ParameterOutOfBounds(0);
         }
 
         return _price;
     }
 
-    function setTokenParameters(address tokenContract, bytes calldata packedParameters) public {}
+    function setMinimumDiscountRate(uint256 rate) pure public {
+        rate;
+    }
+
+    function setCollateralParameters(address tokenContract, bytes calldata packedParameters) pure public {
+        tokenContract;
+        packedParameters;
+    }
 
     function setError(MockError error) public {
         _error = error;

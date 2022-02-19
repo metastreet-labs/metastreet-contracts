@@ -7,7 +7,7 @@ interface ILoanPriceOracle {
     /* Loan pricing error codes */
     error PriceError_Unsupported();
     error PriceError_InsufficientTimeRemaining();
-    error PriceError_PurchasePriceOutOfBounds();
+    error PriceError_ParameterOutOfBounds(uint256 index);
 
     /* Getters */
     function currencyToken() external view returns (IERC20);
@@ -19,12 +19,16 @@ interface ILoanPriceOracle {
         uint256 principal,
         uint256 repayment,
         uint256 duration,
-        uint256 maturity
+        uint256 maturity,
+        uint256 utilization
     ) external returns (uint256);
 
     /* Setters */
-    function setTokenParameters(address tokenContract, bytes calldata packedParameters) external;
+    function setMinimumDiscountRate(uint256 rate) external;
+
+    function setCollateralParameters(address tokenContract, bytes calldata packedParameters) external;
 
     /* Events */
-    event TokenParametersUpdated(address tokenContract);
+    event MinimumDiscountRateUpdated(uint256 rate);
+    event CollateralParametersUpdated(address tokenContract);
 }

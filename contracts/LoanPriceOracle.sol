@@ -12,21 +12,25 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* State */
     /**************************************************************************/
 
-    struct CollateralParameters {
+    struct PiecewiseLinearModel {
         /* All parameters are UD60x18 */
-        uint256 minDiscountRate;
-        uint256 aprSensitivity;
-        uint256 minPurchasePrice;
-        uint256 maxPurchasePrice;
+        uint256 slope1;
+        uint256 slope2;
+        uint256 target;
+        uint256 max;
     }
 
-    struct TokenParameters {
-        uint256 duration;
-        CollateralParameters collateralParameters;
+    struct CollateralParameters {
+        uint256 collateralValue; /* UD60x18 */
+        PiecewiseLinearModel aprUtilizationSensitivity;
+        PiecewiseLinearModel aprLoanToValueSensitivity;
+        PiecewiseLinearModel aprDurationSensitivity;
+        uint8[3] sensitivityWeights; /* 0-100 */
     }
 
     IERC20 public override currencyToken;
-    mapping(address => mapping(uint256 => CollateralParameters)) public parameters;
+    mapping(address => CollateralParameters) public parameters;
+    uint256 public minimumDiscountRate; /* UD60x18, in amount per seconds */
 
     /**************************************************************************/
     /* Constructor */
@@ -42,9 +46,27 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Internal Helper Functions */
     /**************************************************************************/
 
-    function _mapTimeRemainingToDuration(uint256 timeRemaining) internal pure returns (uint256) {
-        /* Map time remaining up to the next 30 days */
-        return (30 days) * ((timeRemaining / 30 days) + 1);
+    function _computeRateComponent(PiecewiseLinearModel storage model, uint256 x) internal view returns (uint256) {
+        uint256 y = (x <= model.target)
+            ? minimumDiscountRate + PRBMathUD60x18.mul(x, model.slope1)
+            : minimumDiscountRate +
+                PRBMathUD60x18.mul(model.target, model.slope1) +
+                PRBMathUD60x18.mul(x - model.target, model.slope2);
+        return (x < model.max) ? y : type(uint256).max;
+    }
+
+    function _computeWeightedRate(uint8[3] storage weights, uint256[3] memory components)
+        internal
+        view
+        returns (uint256)
+    {
+        return
+            PRBMathUD60x18.div(
+                PRBMathUD60x18.mul(components[0], PRBMathUD60x18.fromUint(weights[0])) +
+                    PRBMathUD60x18.mul(components[1], PRBMathUD60x18.fromUint(weights[1])) +
+                    PRBMathUD60x18.mul(components[2], PRBMathUD60x18.fromUint(weights[2])),
+                PRBMathUD60x18.fromUint(100)
+            );
     }
 
     /**************************************************************************/
@@ -57,46 +79,58 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         uint256 principal,
         uint256 repayment,
         uint256 duration,
-        uint256 maturity
+        uint256 maturity,
+        uint256 utilization
     ) public view returns (uint256) {
         /* Unused variables */
         collateralTokenId;
         duration;
 
-        /* Calculate time remaining of loan */
+        /* Calculate loan time remaining */
         uint256 loanTimeRemaining = maturity - block.timestamp;
         if (loanTimeRemaining < 7 days) {
             revert PriceError_InsufficientTimeRemaining();
         }
 
-        /* Map time remaining to duration bucket for collateral parameter lookup */
-        uint256 durationBucket = _mapTimeRemainingToDuration(loanTimeRemaining);
-
         /* Look up collateral parameters */
-        CollateralParameters storage collateralParameters = parameters[collateralTokenContract][durationBucket];
-        if (collateralParameters.minDiscountRate == 0) {
+        CollateralParameters storage collateralParameters = parameters[collateralTokenContract];
+        if (collateralParameters.collateralValue == 0) {
             revert PriceError_Unsupported();
         }
 
-        /* Calculate discount rate */
-        /* Discount Rate = APR Sensitivity * Loan Principal Amount + Min Discount Rate */
-        uint256 discountRate = PRBMathUD60x18.mul(principal, collateralParameters.aprSensitivity) +
-            collateralParameters.minDiscountRate;
+        /* Convert loan time remaining */
+        loanTimeRemaining = PRBMathUD60x18.fromUint(loanTimeRemaining);
+
+        /* Calculate loan to value */
+        uint256 loanToValue = PRBMathUD60x18.div(principal, collateralParameters.collateralValue);
+
+        /* Compute discount rate components for utilization, loan-to-value, and duration */
+        uint256[3] memory rateComponents = [
+            _computeRateComponent(collateralParameters.aprUtilizationSensitivity, utilization),
+            _computeRateComponent(collateralParameters.aprLoanToValueSensitivity, loanToValue),
+            _computeRateComponent(collateralParameters.aprDurationSensitivity, loanTimeRemaining)
+        ];
+
+        /* Check component validities */
+        if (rateComponents[0] == type(uint256).max) {
+            revert PriceError_ParameterOutOfBounds(0);
+        }
+        if (rateComponents[1] == type(uint256).max) {
+            revert PriceError_ParameterOutOfBounds(1);
+        }
+        if (rateComponents[2] == type(uint256).max) {
+            revert PriceError_ParameterOutOfBounds(2);
+        }
+
+        /* Calculate discount rate from components */
+        uint256 discountRate = _computeWeightedRate(collateralParameters.sensitivityWeights, rateComponents);
 
         /* Calculate purchase price */
-        /* Purchase Price = Loan Repayment Value / (1 + Discount Rate) ^ t */
+        /* Purchase Price = Loan Repayment Value / (1 + Discount Rate * t) */
         uint256 purchasePrice = PRBMathUD60x18.div(
             repayment,
-            PRBMathUD60x18.powu(1e18 + discountRate, loanTimeRemaining)
+            1e18 + PRBMathUD60x18.mul(discountRate, loanTimeRemaining)
         );
-
-        /* Validate purchase price is in bounds */
-        if (
-            purchasePrice < collateralParameters.minPurchasePrice ||
-            purchasePrice > collateralParameters.maxPurchasePrice
-        ) {
-            revert PriceError_PurchasePriceOutOfBounds();
-        }
 
         return purchasePrice;
     }
@@ -105,13 +139,15 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Setters */
     /**************************************************************************/
 
-    function setTokenParameters(address tokenContract, bytes calldata packedTokenParameters) public onlyOwner {
-        TokenParameters[] memory tokenParameters = abi.decode(packedTokenParameters, (TokenParameters[]));
+    function setMinimumDiscountRate(uint256 rate) public onlyOwner {
+        minimumDiscountRate = rate;
 
-        for (uint256 i = 0; i < tokenParameters.length; i++) {
-            parameters[tokenContract][tokenParameters[i].duration] = tokenParameters[i].collateralParameters;
-        }
+        emit MinimumDiscountRateUpdated(rate);
+    }
 
-        emit TokenParametersUpdated(tokenContract);
+    function setCollateralParameters(address tokenContract, bytes calldata packedTokenParameters) public onlyOwner {
+        parameters[tokenContract] = abi.decode(packedTokenParameters, (CollateralParameters));
+
+        emit CollateralParametersUpdated(tokenContract);
     }
 }

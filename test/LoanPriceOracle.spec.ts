@@ -6,7 +6,12 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { TestERC20, TestERC721, LoanPriceOracle } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
-import { TokenParameters, encodeTokenParameters, normalizeRate } from "./helpers/LoanPriceOracleHelpers";
+import {
+  CollateralParameters,
+  encodeCollateralParameters,
+  normalizeRate,
+  computePiecewiseLinearModel,
+} from "./helpers/LoanPriceOracleHelpers";
 
 describe("LoanPriceOracle", function () {
   let accounts: SignerWithAddress[];
@@ -34,227 +39,247 @@ describe("LoanPriceOracle", function () {
     lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
   });
 
-  const tokenParameters: TokenParameters[] = [
-    {
-      duration: 30 * 86400,
-      minDiscountRate: normalizeRate("0.25"),
-      aprSensitivity: normalizeRate("0.00010"),
-      minPurchasePrice: ethers.utils.parseEther("100"),
-      maxPurchasePrice: ethers.utils.parseEther("1000"),
-    },
-    {
-      duration: 60 * 86400,
-      minDiscountRate: normalizeRate("0.35"),
-      aprSensitivity: normalizeRate("0.00025"),
-      minPurchasePrice: ethers.utils.parseEther("100"),
-      maxPurchasePrice: ethers.utils.parseEther("1000"),
-    },
-    {
-      duration: 90 * 86400,
-      minDiscountRate: normalizeRate("0.60"),
-      aprSensitivity: normalizeRate("0.00050"),
-      minPurchasePrice: ethers.utils.parseEther("100"),
-      maxPurchasePrice: ethers.utils.parseEther("1000"),
-    },
-  ];
+  const minimumDiscountRate = normalizeRate("0.05");
+
+  const collateralParameters: CollateralParameters = {
+    collateralValue: ethers.utils.parseEther("100"),
+    aprUtilizationSensitivity: computePiecewiseLinearModel({
+      minRate: normalizeRate("0.05"),
+      targetRate: normalizeRate("0.10"),
+      maxRate: normalizeRate("2.00"),
+      target: ethers.utils.parseEther("0.90"),
+      max: ethers.utils.parseEther("1.00"),
+    }),
+    aprLoanToValueSensitivity: computePiecewiseLinearModel({
+      minRate: normalizeRate("0.05"),
+      targetRate: normalizeRate("0.10"),
+      maxRate: normalizeRate("2.00"),
+      target: ethers.utils.parseEther("0.30"),
+      max: ethers.utils.parseEther("0.60"),
+    }),
+    aprDurationSensitivity: computePiecewiseLinearModel({
+      minRate: normalizeRate("0.05"),
+      targetRate: normalizeRate("0.10"),
+      maxRate: normalizeRate("2.00"),
+      target: ethers.BigNumber.from(30 * 86400).mul(ethers.constants.WeiPerEther),
+      max: ethers.BigNumber.from(90 * 86400).mul(ethers.constants.WeiPerEther),
+    }),
+    sensitivityWeights: [50, 25, 25],
+  };
 
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
-      await loanPriceOracle.setTokenParameters(nft1.address, encodeTokenParameters(tokenParameters));
+      await loanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
+      await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
     });
 
-    it("prices 0/30 day loan successfully", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
+    it("price loan on utilization component", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = lastBlockTimestamp + duration;
+      const utilization1 = ethers.utils.parseEther("0.25");
+      const utilization2 = ethers.utils.parseEther("0.95");
 
-      expect(await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)).to.equal(
-        ethers.utils.parseEther("215.171583856609272759")
+      /* Override weights */
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters({ ...collateralParameters, sensitivityWeights: [100, 0, 0] })
       );
+
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization1)
+      ).to.equal(ethers.utils.parseEther("21.885078487968299640"));
+
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization2)
+      ).to.equal(ethers.utils.parseEther("20.252208671780253302"));
     });
-    it("prices 15/30 day loan successfully", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
+    it("price loan on loan-to-value component", async function () {
+      const principal1 = ethers.utils.parseEther("20");
+      const repayment1 = ethers.utils.parseEther("22");
+      const principal2 = ethers.utils.parseEther("40");
+      const repayment2 = ethers.utils.parseEther("44");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + 15 * 86400;
-
-      expect(await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)).to.equal(
-        ethers.utils.parseEther("217.572399108303671479")
-      );
-    });
-    it("prices 0/60 day loan successfully", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
-      const duration = 60 * 86400;
       const maturity = lastBlockTimestamp + duration;
+      const utilization = ethers.utils.parseEther("0.90");
 
-      expect(await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)).to.equal(
-        ethers.utils.parseEther("205.999581210593115702")
+      /* Override weights */
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters({ ...collateralParameters, sensitivityWeights: [0, 100, 0] })
       );
-    });
-    it("prices 30/60 day loan successfully", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
-      const duration = 60 * 86400;
-      const maturity = lastBlockTimestamp + 30 * 86400;
 
-      expect(await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)).to.equal(
-        ethers.utils.parseEther("215.171583856609272759")
-      );
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal1, repayment1, duration, maturity, utilization)
+      ).to.equal(ethers.utils.parseEther("21.850340308111155077"));
+
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal2, repayment2, duration, maturity, utilization)
+      ).to.equal(ethers.utils.parseEther("41.498710740852714115"));
     });
-    it("prices 0/90 day loan successfully", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
-      const duration = 90 * 86400;
+    it("price loan on duration component", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
+      const duration1 = 20 * 86400;
+      const maturity1 = lastBlockTimestamp + duration1;
+      const duration2 = 60 * 86400;
+      const maturity2 = lastBlockTimestamp + duration2;
+      const utilization = ethers.utils.parseEther("0.90");
+
+      /* Override weights */
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters({ ...collateralParameters, sensitivityWeights: [0, 0, 100] })
+      );
+
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration1, maturity1, utilization)
+      ).to.equal(ethers.utils.parseEther("21.900044884740500216"));
+
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration2, maturity2, utilization)
+      ).to.equal(ethers.utils.parseEther("18.761840677394126555"));
+    });
+    it("price loan on all components", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
+      const duration = 35 * 86400;
       const maturity = lastBlockTimestamp + duration;
+      const utilization = ethers.utils.parseEther("0.85");
 
-      expect(await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)).to.equal(
-        ethers.utils.parseEther("185.123807742220851468")
-      );
-    });
-    it("prices 45/90 day loan successfully", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
-      const duration = 90 * 86400;
-      const maturity = lastBlockTimestamp + 45 * 86400;
-
-      expect(await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)).to.equal(
-        ethers.utils.parseEther("209.413861313696991852")
-      );
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.equal(ethers.utils.parseEther("21.720873764014917270"));
     });
     it("fails on insufficient time remaining", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = lastBlockTimestamp + 5 * 86400;
+      const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
-        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)
+        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
       ).to.be.revertedWith("PriceError_InsufficientTimeRemaining()");
     });
     it("fails on unsupported token contract", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = lastBlockTimestamp + duration;
+      const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
-        loanPriceOracle.priceLoan(tok1.address, 1234, principal, repayment, duration, maturity)
+        loanPriceOracle.priceLoan(tok1.address, 1234, principal, repayment, duration, maturity, utilization)
       ).to.be.revertedWith("PriceError_Unsupported()");
     });
-    it("fails on unsupported duration", async function () {
-      const principal = ethers.utils.parseEther("200");
-      const repayment = ethers.utils.parseEther("220");
-      const duration = 120 * 86400;
+    it("fails on parameter out of bounds (utilization)", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
+      const duration = 30 * 86400;
       const maturity = lastBlockTimestamp + duration;
+      const utilization = ethers.utils.parseEther("1.10"); /* not actually possible */
 
       await expect(
-        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)
-      ).to.be.revertedWith("PriceError_Unsupported()");
+        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.be.revertedWith("PriceError_ParameterOutOfBounds(0)");
     });
-    it("fails on purchase price out of bounds", async function () {
-      const principal = ethers.utils.parseEther("1000");
-      const repayment = ethers.utils.parseEther("1200");
+    it("fails on parameters out of bounds (loan to value)", async function () {
+      const principal = ethers.utils.parseEther("100");
+      const repayment = ethers.utils.parseEther("120");
       const duration = 60 * 86400;
       const maturity = lastBlockTimestamp + duration;
+      const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
-        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity)
-      ).to.be.revertedWith("PriceError_PurchasePriceOutOfBounds()");
+        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.be.revertedWith("PriceError_ParameterOutOfBounds(1)");
+    });
+    it("fails on parameter out of bounds (duration)", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("22");
+      const duration = 120 * 86400;
+      const maturity = lastBlockTimestamp + duration;
+      const utilization = ethers.utils.parseEther("0.90");
+
+      await expect(
+        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.be.revertedWith("PriceError_ParameterOutOfBounds(2)");
     });
   });
 
-  describe("#setTokenParameters", async function () {
-    it("sets token parameters successfully", async function () {
-      const setTx = await loanPriceOracle.setTokenParameters(nft1.address, encodeTokenParameters(tokenParameters));
-      await expectEvent(setTx, loanPriceOracle, "TokenParametersUpdated", {
+  describe("#setCollateralParameters", async function () {
+    it("sets collateral parameters successfully", async function () {
+      const setTx = await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters(collateralParameters)
+      );
+      await expectEvent(setTx, loanPriceOracle, "CollateralParametersUpdated", {
         tokenContract: nft1.address,
       });
 
-      expect((await loanPriceOracle.parameters(nft1.address, 30 * 86400)).minDiscountRate).to.equal(
-        tokenParameters[0].minDiscountRate
+      expect((await loanPriceOracle.parameters(nft1.address)).collateralValue).to.equal(
+        collateralParameters.collateralValue
       );
-      expect((await loanPriceOracle.parameters(nft1.address, 30 * 86400)).aprSensitivity).to.equal(
-        tokenParameters[0].aprSensitivity
+      expect((await loanPriceOracle.parameters(nft1.address)).aprUtilizationSensitivity).to.deep.equal(
+        Object.values(collateralParameters.aprUtilizationSensitivity)
       );
-      expect((await loanPriceOracle.parameters(nft1.address, 30 * 86400)).minPurchasePrice).to.equal(
-        tokenParameters[0].minPurchasePrice
+      expect((await loanPriceOracle.parameters(nft1.address)).aprLoanToValueSensitivity).to.deep.equal(
+        Object.values(collateralParameters.aprLoanToValueSensitivity)
       );
-      expect((await loanPriceOracle.parameters(nft1.address, 30 * 86400)).maxPurchasePrice).to.equal(
-        tokenParameters[0].maxPurchasePrice
+      expect((await loanPriceOracle.parameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
+        Object.values(collateralParameters.aprDurationSensitivity)
       );
-
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).minDiscountRate).to.equal(
-        tokenParameters[1].minDiscountRate
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).aprSensitivity).to.equal(
-        tokenParameters[1].aprSensitivity
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).minPurchasePrice).to.equal(
-        tokenParameters[1].minPurchasePrice
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).maxPurchasePrice).to.equal(
-        tokenParameters[1].maxPurchasePrice
-      );
-
-      expect((await loanPriceOracle.parameters(nft1.address, 90 * 86400)).minDiscountRate).to.equal(
-        tokenParameters[2].minDiscountRate
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 90 * 86400)).aprSensitivity).to.equal(
-        tokenParameters[2].aprSensitivity
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 90 * 86400)).minPurchasePrice).to.equal(
-        tokenParameters[2].minPurchasePrice
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 90 * 86400)).maxPurchasePrice).to.equal(
-        tokenParameters[2].maxPurchasePrice
-      );
+      /* FIXME struct decoding bug */
+      // expect((await loanPriceOracle.parameters(nft1.address)).sensitivityWeights).to.deep.equal(collateralParameters.sensitivityWeights);
     });
-    it("replaces token parameters successfully", async function () {
-      await loanPriceOracle.setTokenParameters(nft1.address, encodeTokenParameters(tokenParameters));
+    it("replaces collateral parameters successfully", async function () {
+      await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
 
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).minDiscountRate).to.equal(
-        tokenParameters[1].minDiscountRate
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).aprSensitivity).to.equal(
-        tokenParameters[1].aprSensitivity
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).minPurchasePrice).to.equal(
-        tokenParameters[1].minPurchasePrice
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).maxPurchasePrice).to.equal(
-        tokenParameters[1].maxPurchasePrice
+      const collateralParametersUpdate: CollateralParameters = {
+        ...collateralParameters,
+        collateralValue: ethers.utils.parseEther("125"),
+        aprDurationSensitivity: computePiecewiseLinearModel({
+          minRate: normalizeRate("0.05"),
+          targetRate: normalizeRate("0.15"),
+          maxRate: normalizeRate("2.00"),
+          target: ethers.BigNumber.from(40 * 86400).mul(ethers.constants.WeiPerEther),
+          max: ethers.BigNumber.from(120 * 86400).mul(ethers.constants.WeiPerEther),
+        }),
+      };
+
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters(collateralParametersUpdate)
       );
 
-      const tokenParametersUpdate: TokenParameters[] = [
-        {
-          duration: 60 * 86400,
-          minDiscountRate: normalizeRate("0.50"),
-          aprSensitivity: normalizeRate("0.00030"),
-          minPurchasePrice: ethers.utils.parseEther("200"),
-          maxPurchasePrice: ethers.utils.parseEther("2000"),
-        },
-      ];
-
-      await loanPriceOracle.setTokenParameters(nft1.address, encodeTokenParameters(tokenParametersUpdate));
-
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).minDiscountRate).to.equal(
-        tokenParametersUpdate[0].minDiscountRate
+      expect((await loanPriceOracle.parameters(nft1.address)).collateralValue).to.equal(
+        collateralParametersUpdate.collateralValue
       );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).aprSensitivity).to.equal(
-        tokenParametersUpdate[0].aprSensitivity
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).minPurchasePrice).to.equal(
-        tokenParametersUpdate[0].minPurchasePrice
-      );
-      expect((await loanPriceOracle.parameters(nft1.address, 60 * 86400)).maxPurchasePrice).to.equal(
-        tokenParametersUpdate[0].maxPurchasePrice
+      expect((await loanPriceOracle.parameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
+        Object.values(collateralParametersUpdate.aprDurationSensitivity)
       );
     });
     it("fails on invalid caller", async function () {
       await expect(
-        loanPriceOracle.connect(accounts[1]).setTokenParameters(nft1.address, encodeTokenParameters(tokenParameters))
+        loanPriceOracle
+          .connect(accounts[1])
+          .setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters))
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#setMinimumDiscountRate", async function () {
+    it("sets minimum discount rate successfully", async function () {
+      const rate = normalizeRate("0.075");
+
+      await loanPriceOracle.setMinimumDiscountRate(rate);
+      expect(await loanPriceOracle.minimumDiscountRate()).to.equal(rate);
+    });
+    it("fails on invalid caller", async function () {
+      await expect(
+        loanPriceOracle.connect(accounts[1]).setMinimumDiscountRate(normalizeRate("0.05"))
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
