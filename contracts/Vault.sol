@@ -278,7 +278,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         /* Validate cash available */
         require(totalCashBalance - _computeCashReservesAvailable() >= purchasePrice, "Insufficient cash in vault");
 
-        /* Calculate tranche contribution based on their deposit proportion */
+        /* Calculate senior tranche contribution based on deposit proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
         uint256 seniorTrancheContribution = PRBMathUD60x18.div(
             PRBMathUD60x18.mul(_tranches.senior.depositValue, purchasePrice),
@@ -287,10 +287,9 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
         /* Calculate senior tranche return */
         /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) */
-        uint256 loanTimeRemaining = loanInfo.maturity - block.timestamp;
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
-            1e18 + PRBMathUD60x18.mul(seniorTrancheRate, loanTimeRemaining * 1e18)
+            1e18 + PRBMathUD60x18.mul(seniorTrancheRate, (loanInfo.maturity - block.timestamp) * 1e18)
         ) - seniorTrancheContribution;
 
         /* Validate senior tranche return */
