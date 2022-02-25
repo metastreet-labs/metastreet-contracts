@@ -27,6 +27,7 @@ contract VaultState {
     }
 
     struct Loan {
+        bool active;
         IERC721 collateralToken;
         uint256 collateralTokenId;
         uint256 purchasePrice;
@@ -311,6 +312,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
         /* Store loan state */
         Loan storage loan = loans[address(noteToken)][tokenId];
+        loan.active = true;
         loan.collateralToken = IERC721(loanInfo.collateralToken);
         loan.collateralTokenId = loanInfo.collateralTokenId;
         loan.purchasePrice = purchasePrice;
@@ -473,7 +475,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         Loan storage loan = loans[address(noteToken)][tokenId];
 
         /* Validate loan exists with contract */
-        require(loan.purchasePrice != 0, "Unknown loan");
+        require(loan.active, "Unknown loan");
 
         /* Validate loan was liquidated */
         require(loan.liquidated, "Loan not liquidated");
@@ -504,7 +506,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         Loan storage loan = loans[noteToken][tokenId];
 
         /* Validate loan exists with contract */
-        require(loan.purchasePrice != 0, "Unknown loan");
+        require(loan.active, "Unknown loan");
 
         /* Validate loan was repaid, either because caller is the lending
          * platform (trusted), or by checking the loan is complete and the
@@ -533,8 +535,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         proceeds = _processRedemptions(_tranches.senior, proceeds);
         _processRedemptions(_tranches.junior, proceeds);
 
-        /* Invalidate loan metadata */
-        loan.purchasePrice = 0;
+        /* Disable loan */
+        loan.active = false;
 
         emit LoanRepaid(
             noteToken,
@@ -553,7 +555,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         Loan storage loan = loans[noteToken][tokenId];
 
         /* Validate loan exists with contract */
-        require(loan.purchasePrice != 0, "Unknown loan");
+        require(loan.active, "Unknown loan");
 
         /* Validate loan was liquidated, either because caller is the lending
          * platform (trusted), or by checking the loan is complete and the
@@ -605,7 +607,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         Loan storage loan = loans[noteToken][tokenId];
 
         /* Validate loan exists with contract */
-        require(loan.purchasePrice != 0, "Unknown loan");
+        require(loan.active, "Unknown loan");
 
         /* Validate loan was liquidated */
         require(loan.liquidated, "Loan not liquidated");
@@ -625,8 +627,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         proceeds = _processRedemptions(_tranches.senior, proceeds);
         _processRedemptions(_tranches.junior, proceeds);
 
-        /* Invalidate loan metadata */
-        loan.purchasePrice = 0;
+        /* Disable loan */
+        loan.active = false;
 
         emit CollateralLiquidated(noteToken, tokenId, proceeds);
     }
