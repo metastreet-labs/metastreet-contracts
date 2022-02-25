@@ -241,7 +241,7 @@ describe("Vault", function () {
     });
   });
 
-  describe("#depositMultiple", async function () {
+  describe("#deposit (multicall)", async function () {
     it("deposits into both tranches", async function () {
       const amount1 = ethers.utils.parseEther("1.23");
       const amount2 = ethers.utils.parseEther("2.34");
@@ -255,12 +255,34 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.constants.Zero);
 
       /* Deposit into vault */
-      const depositTx = await vault.connect(accountDepositor1).depositMultiple([amount1, amount2]);
-      await expectEvent(depositTx, tok1, "Transfer", {
-        from: accountDepositor1.address,
-        to: vault.address,
-        value: amount1.add(amount2),
-      });
+      const depositTx = await vault
+        .connect(accountDepositor1)
+        .multicall([
+          vault.interface.encodeFunctionData("deposit", [0, amount1]),
+          vault.interface.encodeFunctionData("deposit", [1, amount2]),
+        ]);
+      await expectEvent(
+        depositTx,
+        tok1,
+        "Transfer",
+        {
+          from: accountDepositor1.address,
+          to: vault.address,
+          value: amount1,
+        },
+        0
+      );
+      await expectEvent(
+        depositTx,
+        tok1,
+        "Transfer",
+        {
+          from: accountDepositor1.address,
+          to: vault.address,
+          value: amount2,
+        },
+        1
+      );
       await expectEvent(depositTx, seniorLPToken, "Transfer", {
         from: ethers.constants.AddressZero,
         to: accountDepositor1.address,
@@ -304,6 +326,24 @@ describe("Vault", function () {
       expect((await vault.trancheState(1)).depositValue).to.equal(amount2);
       expect((await vault.balanceState()).totalCashBalance).to.equal(amount1.add(amount2));
     });
+    it("fails on reverted call", async function () {
+      const amount1 = ethers.utils.parseEther("1.23");
+      const amount2 = ethers.utils.parseEther("2.34");
+
+      await expect(
+        vault
+          .connect(accountDepositor1)
+          .multicall([
+            vault.interface.encodeFunctionData("deposit", [0, amount1]),
+            vault.interface.encodeFunctionData("redeem", [0, amount2]),
+          ])
+      ).to.be.revertedWith("Insufficient shares");
+    });
+    it("fails on invalid call", async function () {
+      await expect(vault.connect(accountDepositor1).multicall(["0xaabbccdd12345678"])).to.be.revertedWith(
+        "Low-level delegate call failed"
+      );
+    });
   });
 
   describe("#sellNote", async function () {
@@ -314,7 +354,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -456,7 +497,8 @@ describe("Vault", function () {
       const duration = 86400 * 100;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -486,7 +528,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -546,7 +589,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -571,292 +615,6 @@ describe("Vault", function () {
             ethers.utils.parseEther("1.1"),
           ])
       ).to.be.revertedWith("Invalid purchase price");
-    });
-  });
-
-  describe("#sellNoteBatch", async function () {
-    it("sells many notes", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
-      const principal = ethers.utils.parseEther("2.0");
-      const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
-
-      /* Create loans */
-      const loanId1 = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender1,
-        principal,
-        repayment,
-        duration
-      );
-      const loanId2 = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender1,
-        principal,
-        repayment,
-        duration
-      );
-
-      /* Setup loan prices with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
-
-      /* Check state before sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
-
-      /* Sell notes to vault */
-      const sellTx = await vault
-        .connect(accountLender1)
-        .sellNoteBatch([noteToken.address, noteToken.address], [loanId1, loanId2], [principal, principal]);
-      await expectEvent(
-        sellTx,
-        tok1,
-        "Transfer",
-        {
-          from: vault.address,
-          to: accountLender1.address,
-          value: principal,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        tok1,
-        "Transfer",
-        {
-          from: vault.address,
-          to: accountLender1.address,
-          value: principal,
-        },
-        1
-      );
-      await expectEvent(
-        sellTx,
-        noteToken,
-        "Transfer",
-        {
-          from: accountLender1.address,
-          to: vault.address,
-          tokenId: loanId1,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        noteToken,
-        "Transfer",
-        {
-          from: accountLender1.address,
-          to: vault.address,
-          tokenId: loanId2,
-        },
-        1
-      );
-      await expectEvent(
-        sellTx,
-        vault,
-        "NotePurchased",
-        {
-          account: accountLender1.address,
-          noteToken: noteToken.address,
-          tokenId: loanId1,
-          purchasePrice: principal,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        vault,
-        "NotePurchased",
-        {
-          account: accountLender1.address,
-          noteToken: noteToken.address,
-          tokenId: loanId2,
-          purchasePrice: principal,
-        },
-        1
-      );
-
-      /* Check state after sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal).sub(principal)
-      );
-      expect((await vault.balanceState()).totalLoanBalance).to.equal(principal.add(principal));
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
-    });
-    it("fails on invalid arguments", async function () {
-      await expect(
-        vault.connect(accountLender1).sellNoteBatch([noteToken.address, noteToken.address], [1], [1, 2])
-      ).to.be.revertedWith("Invalid parameters");
-
-      await expect(
-        vault.connect(accountLender1).sellNoteBatch([noteToken.address, noteToken.address], [1, 2], [1])
-      ).to.be.revertedWith("Invalid parameters");
-    });
-  });
-
-  describe("#sellNoteAndDepositBatch", async function () {
-    it("sells many notes and deposits proceeds", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
-      const principal = ethers.utils.parseEther("2.0");
-      const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
-
-      /* Create loans */
-      const loanId1 = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender1,
-        principal,
-        repayment,
-        duration
-      );
-      const loanId2 = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender1,
-        principal,
-        repayment,
-        duration
-      );
-
-      /* Setup loan prices with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
-
-      /* Check state before sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
-
-      /* Sell notes to vault */
-      const sellTx = await vault.connect(accountLender1).sellNoteAndDepositBatch(
-        [noteToken.address, noteToken.address],
-        [loanId1, loanId2],
-        [
-          [ethers.utils.parseEther("0.5"), ethers.utils.parseEther("1.5")],
-          [ethers.utils.parseEther("1.0"), ethers.utils.parseEther("1.0")],
-        ]
-      );
-      await expectEvent(
-        sellTx,
-        noteToken,
-        "Transfer",
-        {
-          from: accountLender1.address,
-          to: vault.address,
-          tokenId: loanId1,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        noteToken,
-        "Transfer",
-        {
-          from: accountLender1.address,
-          to: vault.address,
-          tokenId: loanId2,
-        },
-        1
-      );
-      await expectEvent(
-        sellTx,
-        vault,
-        "NotePurchased",
-        {
-          account: accountLender1.address,
-          noteToken: noteToken.address,
-          tokenId: loanId1,
-          purchasePrice: principal,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        vault,
-        "NotePurchased",
-        {
-          account: accountLender1.address,
-          noteToken: noteToken.address,
-          tokenId: loanId2,
-          purchasePrice: principal,
-        },
-        1
-      );
-      await expectEvent(
-        sellTx,
-        seniorLPToken,
-        "Transfer",
-        {
-          from: ethers.constants.Zero,
-          to: accountLender1.address,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        juniorLPToken,
-        "Transfer",
-        {
-          from: ethers.constants.Zero,
-          to: accountLender1.address,
-        },
-        0
-      );
-      await expectEvent(
-        sellTx,
-        seniorLPToken,
-        "Transfer",
-        {
-          from: ethers.constants.Zero,
-          to: accountLender1.address,
-        },
-        1
-      );
-      await expectEvent(
-        sellTx,
-        juniorLPToken,
-        "Transfer",
-        {
-          from: ethers.constants.Zero,
-          to: accountLender1.address,
-        },
-        1
-      );
-
-      /* Check state after sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalLoanBalance).to.equal(principal.add(principal));
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
-    });
-    it("fails on invalid arguments", async function () {
-      await expect(
-        vault.connect(accountLender1).sellNoteAndDepositBatch(
-          [noteToken.address, noteToken.address],
-          [1],
-          [
-            [1, 2],
-            [1, 2],
-          ]
-        )
-      ).to.be.revertedWith("Invalid parameters");
-
-      await expect(
-        vault.connect(accountLender1).sellNoteAndDepositBatch([noteToken.address, noteToken.address], [1, 2], [[1, 2]])
-      ).to.be.revertedWith("Invalid parameters");
     });
   });
 
@@ -946,127 +704,6 @@ describe("Vault", function () {
       await expect(vault.connect(accountDepositor1).redeem(0, depositAmount.sub(redemptionAmount))).to.be.revertedWith(
         "Redemption in progress"
       );
-    });
-  });
-
-  describe("#redeemMultiple", async function () {
-    [ethers.utils.parseEther("0.10"), ethers.constants.Zero].forEach((ratio) => {
-      it(`redeems from both tranches (${ethers.utils.formatEther(ratio.mul(100))}% reserve ratio)`, async function () {
-        const depositAmounts: [BigNumber, BigNumber] = [
-          ethers.utils.parseEther("1.23"),
-          ethers.utils.parseEther("2.34"),
-        ];
-        const redemptionAmounts: [BigNumber, BigNumber] = [
-          ethers.utils.parseEther("1.01"),
-          ethers.utils.parseEther("0.82"),
-        ];
-
-        /* Set reserve ratio */
-        await vault.setReserveRatio(ratio);
-
-        /* Check state before deposit and redemption */
-        const tokBalanceBefore = await tok1.balanceOf(accountDepositor1.address);
-        expect(await juniorLPToken.balanceOf(accountDepositor1.address)).to.equal(ethers.constants.Zero);
-        expect(await seniorLPToken.balanceOf(accountDepositor1.address)).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(0)).depositValue).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(0)).pendingRedemptions).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(0)).redemptionQueue).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(0)).processedRedemptionQueue).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(1)).depositValue).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(1)).pendingRedemptions).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(1)).redemptionQueue).to.equal(ethers.constants.Zero);
-        expect((await vault.trancheState(1)).processedRedemptionQueue).to.equal(ethers.constants.Zero);
-        expect((await seniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(ethers.constants.Zero);
-        expect((await seniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
-        expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
-          ethers.constants.Zero
-        );
-        expect((await juniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(ethers.constants.Zero);
-        expect((await juniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
-        expect((await juniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
-          ethers.constants.Zero
-        );
-
-        /* Deposit into vault */
-        await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
-
-        /* Redeem partial deposit */
-        const redeemTx = await vault.connect(accountDepositor1).redeemMultiple(redemptionAmounts);
-        await expectEvent(redeemTx, seniorLPToken, "Transfer", {
-          from: accountDepositor1.address,
-          to: ethers.constants.AddressZero,
-          value: redemptionAmounts[0],
-        });
-        await expectEvent(redeemTx, juniorLPToken, "Transfer", {
-          from: accountDepositor1.address,
-          to: ethers.constants.AddressZero,
-          value: redemptionAmounts[1],
-        });
-        await expectEvent(
-          redeemTx,
-          vault,
-          "Redeemed",
-          {
-            account: accountDepositor1.address,
-            trancheId: 0,
-            amount: redemptionAmounts[0],
-            shares: redemptionAmounts[0],
-          },
-          0
-        );
-        await expectEvent(
-          redeemTx,
-          vault,
-          "Redeemed",
-          {
-            account: accountDepositor1.address,
-            trancheId: 1,
-            amount: redemptionAmounts[1],
-            shares: redemptionAmounts[1],
-          },
-          1
-        );
-
-        const partialRedemptionAmount1 = ratio
-          .mul(depositAmounts[0].add(depositAmounts[1]))
-          .div(ethers.utils.parseEther("1"));
-        const partialRedemptionAmount2 = ratio
-          .mul(depositAmounts[0].add(depositAmounts[1]).sub(partialRedemptionAmount1))
-          .div(ethers.utils.parseEther("1"));
-
-        /* Check state after redemption */
-        expect(await tok1.balanceOf(accountDepositor1.address)).to.equal(
-          tokBalanceBefore.sub(depositAmounts[0]).sub(depositAmounts[1])
-        );
-        expect(await seniorLPToken.balanceOf(accountDepositor1.address)).to.equal(
-          depositAmounts[0].sub(redemptionAmounts[0])
-        );
-        expect(await juniorLPToken.balanceOf(accountDepositor1.address)).to.equal(
-          depositAmounts[1].sub(redemptionAmounts[1])
-        );
-        expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0].sub(partialRedemptionAmount1));
-        expect((await vault.trancheState(0)).pendingRedemptions).to.equal(
-          redemptionAmounts[0].sub(partialRedemptionAmount1)
-        );
-        expect((await vault.trancheState(0)).redemptionQueue).to.equal(redemptionAmounts[0]);
-        expect((await vault.trancheState(0)).processedRedemptionQueue).to.equal(partialRedemptionAmount1);
-        expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1].sub(partialRedemptionAmount2));
-        expect((await vault.trancheState(1)).pendingRedemptions).to.equal(
-          redemptionAmounts[1].sub(partialRedemptionAmount2)
-        );
-        expect((await vault.trancheState(1)).redemptionQueue).to.equal(redemptionAmounts[1]);
-        expect((await vault.trancheState(1)).processedRedemptionQueue).to.equal(partialRedemptionAmount2);
-        expect((await seniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(redemptionAmounts[0]);
-        expect((await seniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
-        expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
-          redemptionAmounts[0]
-        );
-        expect((await juniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(redemptionAmounts[1]);
-        expect((await juniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
-        expect((await juniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
-          redemptionAmounts[1]
-        );
-      });
     });
   });
 
@@ -1263,95 +900,6 @@ describe("Vault", function () {
     });
   });
 
-  describe("#withdrawMultiple", async function () {
-    it("withdraws from both tranches", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10.0"), ethers.utils.parseEther("5")];
-      const redemptionAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("3"), ethers.utils.parseEther("4")];
-      const withdrawAmounts: [BigNumber, BigNumber] = redemptionAmounts;
-
-      /* Deposit and redeem */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
-      await vault.connect(accountDepositor1).redeemMultiple(redemptionAmounts);
-
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender1,
-        ethers.utils.parseEther("10"),
-        ethers.utils.parseEther("11")
-      );
-
-      /* Save token balance before */
-      const tokBalanceBefore = await tok1.balanceOf(accountDepositor1.address);
-
-      /* Withdraw */
-      const withdrawTx = await vault.connect(accountDepositor1).withdrawMultiple(withdrawAmounts);
-      await expectEvent(
-        withdrawTx,
-        tok1,
-        "Transfer",
-        {
-          from: vault.address,
-          to: accountDepositor1.address,
-          value: withdrawAmounts[0],
-        },
-        0
-      );
-      await expectEvent(
-        withdrawTx,
-        tok1,
-        "Transfer",
-        {
-          from: vault.address,
-          to: accountDepositor1.address,
-          value: withdrawAmounts[1],
-        },
-        1
-      );
-      await expectEvent(
-        withdrawTx,
-        vault,
-        "Withdrawn",
-        {
-          account: accountDepositor1.address,
-          trancheId: 0,
-          amount: withdrawAmounts[0],
-        },
-        0
-      );
-      await expectEvent(
-        withdrawTx,
-        vault,
-        "Withdrawn",
-        {
-          account: accountDepositor1.address,
-          trancheId: 1,
-          amount: withdrawAmounts[1],
-        },
-        1
-      );
-
-      /* Check state after withdrawal */
-      expect(await tok1.balanceOf(accountDepositor1.address)).to.equal(
-        tokBalanceBefore.add(withdrawAmounts[0].add(withdrawAmounts[1]))
-      );
-      expect((await seniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(ethers.constants.Zero);
-      expect((await seniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
-      expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
-        ethers.constants.Zero
-      );
-      expect((await juniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(ethers.constants.Zero);
-      expect((await juniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
-      expect((await juniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
-        ethers.constants.Zero
-      );
-    });
-  });
-
   describe("#liquidateLoan", async function () {
     it("liquidates loan successfully", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -1360,7 +908,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1410,7 +959,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1446,7 +996,8 @@ describe("Vault", function () {
       const repayment = ethers.utils.parseEther("2.2");
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
       const [loanId, collateralTokenId] = await cycleLoanDefault(
@@ -1488,7 +1039,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1517,7 +1069,8 @@ describe("Vault", function () {
       const repayment = ethers.utils.parseEther("2.2");
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
       const [loanId] = await cycleLoanDefault(
@@ -1558,7 +1111,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1614,7 +1168,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1650,7 +1205,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1687,7 +1243,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1744,7 +1301,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1780,7 +1338,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(
@@ -1819,7 +1378,8 @@ describe("Vault", function () {
       const repayment = ethers.utils.parseEther("2.2");
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
       const [loanId] = await cycleLoanDefault(
@@ -1876,7 +1436,8 @@ describe("Vault", function () {
       const repayment = ethers.utils.parseEther("2.2");
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
       const [loanId] = await cycleLoanDefault(
@@ -1910,7 +1471,8 @@ describe("Vault", function () {
       const duration = 86400;
 
       /* Deposit cash */
-      await vault.connect(accountDepositor1).depositMultiple(depositAmounts);
+      await vault.connect(accountDepositor1).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Create loan */
       const loanId = await createLoan(

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
@@ -60,7 +61,7 @@ abstract contract VaultStorageV1 {
 
 abstract contract VaultStorage is VaultStorageV1 {}
 
-contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
+contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IVault {
     using SafeERC20 for IERC20;
 
     /**************************************************************************/
@@ -376,15 +377,6 @@ contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
         _currencyToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function depositMultiple(uint256[2] calldata amounts) public {
-        /* Deposit into tranches */
-        _deposit(TrancheId.Senior, amounts[0]);
-        _deposit(TrancheId.Junior, amounts[1]);
-
-        /* Transfer total cash from user to vault */
-        _currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
-    }
-
     function sellNote(
         IERC721 noteToken,
         uint256 tokenId,
@@ -398,19 +390,6 @@ contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
 
         /* Transfer cash from vault to user */
         _currencyToken.safeTransfer(msg.sender, purchasePrice);
-    }
-
-    function sellNoteBatch(
-        IERC721[] calldata noteToken,
-        uint256[] calldata tokenId,
-        uint256[] calldata amounts
-    ) public {
-        /* Validate arrays are all of the same length */
-        require((noteToken.length == tokenId.length) && (noteToken.length == amounts.length), "Invalid parameters");
-
-        for (uint256 i = 0; i < noteToken.length; i++) {
-            sellNote(noteToken[i], tokenId[i], amounts[i]);
-        }
     }
 
     function sellNoteAndDeposit(
@@ -432,19 +411,6 @@ contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
     }
 
-    function sellNoteAndDepositBatch(
-        IERC721[] calldata noteToken,
-        uint256[] calldata tokenId,
-        uint256[2][] calldata amounts
-    ) public {
-        /* Validate arrays are all of the same length */
-        require((noteToken.length == tokenId.length) && (noteToken.length == amounts.length), "Invalid parameters");
-
-        for (uint256 i = 0; i < noteToken.length; i++) {
-            sellNoteAndDeposit(noteToken[i], tokenId[i], amounts[i]);
-        }
-    }
-
     function redeem(TrancheId trancheId, uint256 shares) public {
         Tranche storage tranche = _trancheState(trancheId);
 
@@ -464,11 +430,6 @@ contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
 
-    function redeemMultiple(uint256[2] calldata shares) public {
-        redeem(TrancheId.Senior, shares[0]);
-        redeem(TrancheId.Junior, shares[1]);
-    }
-
     function withdraw(TrancheId trancheId, uint256 amount) public {
         Tranche storage tranche = _trancheState(trancheId);
 
@@ -482,11 +443,6 @@ contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
         _currencyToken.safeTransfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, trancheId, amount);
-    }
-
-    function withdrawMultiple(uint256[2] calldata amounts) public {
-        withdraw(TrancheId.Senior, amounts[0]);
-        withdraw(TrancheId.Junior, amounts[1]);
     }
 
     /**************************************************************************/

@@ -35,18 +35,10 @@ interface IVault is ILoanReceiver {
     /* User API */
     function deposit(TrancheId trancheId, uint256 amount) external;
 
-    function depositMultiple(uint256[2] calldata amounts) external;
-
     function sellNote(
         IERC721 noteToken,
         uint256 tokenId,
         uint256 purchasePrice
-    ) external;
-
-    function sellNoteBatch(
-        IERC721[] calldata noteToken,
-        uint256[] calldata tokenId,
-        uint256[] calldata amounts
     ) external;
 
     function sellNoteAndDeposit(
@@ -55,19 +47,9 @@ interface IVault is ILoanReceiver {
         uint256[2] calldata amounts
     ) external;
 
-    function sellNoteAndDepositBatch(
-        IERC721[] calldata noteToken,
-        uint256[] calldata tokenId,
-        uint256[2][] calldata amounts
-    ) external;
-
     function redeem(TrancheId trancheId, uint256 shares) external;
 
-    function redeemMultiple(uint256[2] calldata shares) external;
-
     function withdraw(TrancheId trancheId, uint256 amount) external;
-
-    function withdrawMultiple(uint256[2] calldata amounts) external;
 
     /* Liquidation API */
     function liquidateLoan(IERC721 noteToken, uint256 tokenId) external;
