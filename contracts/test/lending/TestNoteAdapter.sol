@@ -49,6 +49,10 @@ contract TestNoteAdapter is INoteAdapter {
         return loanInfo;
     }
 
+    function getLiquidateCalldata(uint256 tokenId) public pure returns (bytes memory) {
+        return abi.encodeWithSignature("liquidate(uint256)", tokenId);
+    }
+
     function isSupported(uint256 tokenId, address vaultCurrencyToken) public view returns (bool) {
         /* All collateral tokens supported, so just check the note exists and
          * the currency token matches */

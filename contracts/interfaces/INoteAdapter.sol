@@ -23,6 +23,8 @@ interface INoteAdapter {
 
     function getLoanInfo(uint256 tokenId) external view returns (LoanInfo memory);
 
+    function getLiquidateCalldata(uint256 tokenId) external view returns (bytes memory);
+
     function isSupported(uint256 tokenId, address vaultCurrencyToken) external view returns (bool);
 
     function isActive(uint256 tokenId) external view returns (bool);
