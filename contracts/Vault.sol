@@ -457,7 +457,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Call liquidate on lending platform */
         (bool success, ) = noteAdapter.lendingPlatform().call(noteAdapter.getLiquidateCalldata(tokenId));
@@ -500,7 +500,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         INoteAdapter noteAdapter = noteAdapters[noteToken];
 
         /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Lookup loan state */
         Loan storage loan = loans[noteToken][tokenId];
@@ -549,7 +549,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         INoteAdapter noteAdapter = noteAdapters[noteToken];
 
         /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Lookup loan metadata */
         Loan storage loan = loans[noteToken][tokenId];

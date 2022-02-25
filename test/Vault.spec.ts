@@ -1425,7 +1425,7 @@ describe("Vault", function () {
       await expect(vault.liquidateLoan(noteToken.address, 12345)).to.be.revertedWith("Liquidate failed");
     });
     it("fails on unsupported note token", async function () {
-      await expect(vault.liquidateLoan(tok1.address, 12345)).to.be.revertedWith("Unsupported note");
+      await expect(vault.liquidateLoan(tok1.address, 12345)).to.be.revertedWith("Unsupported note token");
     });
   });
 
@@ -1627,7 +1627,9 @@ describe("Vault", function () {
       await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Unknown loan");
     });
     it("fails on unsupported note", async function () {
-      await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith("Unsupported note");
+      await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith(
+        "Unsupported note token"
+      );
     });
     it("fails on processed loan", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -1751,7 +1753,9 @@ describe("Vault", function () {
       await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Unknown loan");
     });
     it("fails on unsupported note", async function () {
-      await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith("Unsupported note");
+      await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith(
+        "Unsupported note token"
+      );
     });
     it("fails on processed loan", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
