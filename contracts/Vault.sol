@@ -447,6 +447,24 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         withdraw(TrancheId.Junior, amounts[1]);
     }
 
+    /**************************************************************************/
+    /* Liquidation API */
+    /**************************************************************************/
+
+    function liquidateLoan(IERC721 noteToken, uint256 tokenId) public {
+        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+
+        /* Validate note token is supported */
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note");
+
+        /* Call liquidate on lending platform */
+        (bool success, ) = noteAdapter.lendingPlatform().call(noteAdapter.getLiquidateCalldata(tokenId));
+        require(success, "Liquidate failed");
+
+        /* Process loan liquidation */
+        onLoanLiquidated(address(noteToken), tokenId);
+    }
+
     function withdrawCollateral(IERC721 noteToken, uint256 tokenId) public {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == collateralLiquidator, "Invalid caller");

@@ -79,7 +79,9 @@ interface IVault is ILoanReceiver {
 
     function withdrawMultiple(uint256[2] calldata amounts) external;
 
-    /* Collateral Liquidator API */
+    /* Liquidation API */
+    function liquidateLoan(IERC721 noteToken, uint256 tokenId) external;
+
     function withdrawCollateral(IERC721 noteToken, uint256 tokenId) external;
 
     /* Callbacks */
