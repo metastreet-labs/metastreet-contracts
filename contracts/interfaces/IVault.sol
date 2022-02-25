@@ -28,16 +28,6 @@ interface IVault is ILoanReceiver {
 
     function noteAdapters(address noteToken) external view returns (INoteAdapter);
 
-    function trancheState(TrancheId trancheId)
-        external
-        view
-        returns (
-            uint256 depositValue,
-            uint256 pendingRedemptions,
-            uint256 redemptionQueue,
-            uint256 processedRedemptionQueue
-        );
-
     function sharePrice(TrancheId trancheId) external view returns (uint256);
 
     function redemptionSharePrice(TrancheId trancheId) external view returns (uint256);
@@ -121,8 +111,8 @@ interface IVault is ILoanReceiver {
     event LoanLiquidated(address noteToken, uint256 noteTokenId, uint256[2] trancheLosses);
     event CollateralLiquidated(address noteToken, uint256 noteTokenId, uint256 proceeds);
 
-    event SeniorTrancheRateUpdated(uint256 interestRate);
-    event ReserveRatioUpdated(uint256 reserveRatio);
+    event SeniorTrancheRateUpdated(uint256 rate);
+    event ReserveRatioUpdated(uint256 ratio);
     event LoanPriceOracleUpdated(address loanPriceOracle);
     event CollateralLiquidatorUpdated(address collateralLiquidator);
     event NoteAdapterUpdated(address noteToken, address noteAdapter);

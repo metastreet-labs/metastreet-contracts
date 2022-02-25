@@ -11,7 +11,7 @@ import "prb-math/contracts/PRBMathUD60x18.sol";
 import "./interfaces/IVault.sol";
 import "./LPToken.sol";
 
-contract VaultState {
+abstract contract VaultStorageV1 {
     /* Structures */
     struct Tranche {
         uint256 depositValue;
@@ -37,19 +37,30 @@ contract VaultState {
         uint256[2] trancheReturns;
     }
 
+    /* Properties and Linked Contracts */
+    string internal _name;
+    IERC20 internal _currencyToken;
+    ILoanPriceOracle internal _loanPriceOracle;
+    address internal _collateralLiquidator;
+    mapping(address => INoteAdapter) internal _noteAdapters;
+    LPToken internal _seniorLPToken;
+    LPToken internal _juniorLPToken;
+
     /* Parameters */
-    uint256 public seniorTrancheRate; /* UD60x18, in amount per seconds */
-    uint256 public reserveRatio; /* UD60x18 */
+    uint256 internal _seniorTrancheRate; /* UD60x18, in amount per seconds */
+    uint256 internal _reserveRatio; /* UD60x18 */
 
     /* State */
     Tranches internal _tranches;
-    uint256 public totalLoanBalance;
-    uint256 public totalCashBalance;
-    uint256 public totalWithdrawalBalance;
+    uint256 internal _totalLoanBalance;
+    uint256 internal _totalCashBalance;
+    uint256 internal _totalWithdrawalBalance;
     mapping(address => mapping(uint256 => Loan)) public loans;
 }
 
-contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
+abstract contract VaultStorage is VaultStorageV1 {}
+
+contract Vault is Ownable, VaultStorage, IERC165, IERC721Receiver, IVault {
     using SafeERC20 for IERC20;
 
     /**************************************************************************/
@@ -60,35 +71,20 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
 
     /**************************************************************************/
-    /* State */
-    /**************************************************************************/
-
-    /* Main state inherited from VaultState contract */
-
-    string public override name;
-    IERC20 public immutable override currencyToken;
-    ILoanPriceOracle public override loanPriceOracle;
-    address public override collateralLiquidator;
-    mapping(address => INoteAdapter) public override noteAdapters;
-
-    LPToken private immutable _seniorLPToken;
-    LPToken private immutable _juniorLPToken;
-
-    /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
     constructor(
-        string memory vaultName,
+        string memory name_,
         string memory lpSymbol,
         IERC20 currencyToken_,
         ILoanPriceOracle loanPriceOracle_
     ) {
-        name = vaultName;
-        currencyToken = currencyToken_;
-        loanPriceOracle = loanPriceOracle_;
+        _name = name_;
+        _currencyToken = currencyToken_;
+        _loanPriceOracle = loanPriceOracle_;
 
-        IERC20Metadata currencyTokenMetadata = IERC20Metadata(address(currencyToken));
+        IERC20Metadata currencyTokenMetadata = IERC20Metadata(address(currencyToken_));
         require(currencyTokenMetadata.decimals() == 18, "Unsupported token decimals");
 
         /* Create senior and junior tranche LP Tokens */
@@ -104,12 +100,44 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     }
 
     /**************************************************************************/
-    /* Getters */
+    /* Interface Getters (defined in IVault) */
     /**************************************************************************/
+
+    function name() public view returns (string memory) {
+        return _name;
+    }
+
+    function currencyToken() public view returns (IERC20) {
+        return _currencyToken;
+    }
 
     function lpToken(TrancheId trancheId) public view returns (IERC20) {
         return IERC20(address(_lpToken(trancheId)));
     }
+
+    function loanPriceOracle() public view returns (ILoanPriceOracle) {
+        return _loanPriceOracle;
+    }
+
+    function collateralLiquidator() public view returns (address) {
+        return _collateralLiquidator;
+    }
+
+    function noteAdapters(address noteToken) public view returns (INoteAdapter) {
+        return _noteAdapters[noteToken];
+    }
+
+    function sharePrice(TrancheId trancheId) public view returns (uint256) {
+        return _computeSharePrice(trancheId);
+    }
+
+    function redemptionSharePrice(TrancheId trancheId) public view returns (uint256) {
+        return _computeRedemptionSharePrice(trancheId);
+    }
+
+    /**************************************************************************/
+    /* Additional Getters */
+    /**************************************************************************/
 
     function trancheState(TrancheId trancheId)
         public
@@ -130,12 +158,24 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         );
     }
 
-    function sharePrice(TrancheId trancheId) public view returns (uint256) {
-        return _computeSharePrice(trancheId);
+    function balanceState()
+        public
+        view
+        returns (
+            uint256 totalCashBalance,
+            uint256 totalLoanBalance,
+            uint256 totalWithdrawalBalance
+        )
+    {
+        return (_totalCashBalance, _totalLoanBalance, _totalWithdrawalBalance);
     }
 
-    function redemptionSharePrice(TrancheId trancheId) public view returns (uint256) {
-        return _computeRedemptionSharePrice(trancheId);
+    function seniorTrancheRate() public view returns (uint256) {
+        return _seniorTrancheRate;
+    }
+
+    function reserveRatio() public view returns (uint256) {
+        return _reserveRatio;
     }
 
     function cashReservesAvailable() public view returns (uint256) {
@@ -201,12 +241,12 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     }
 
     function _computeCashReservesAvailable() internal view returns (uint256) {
-        return Math.min(totalCashBalance, PRBMathUD60x18.mul(reserveRatio, totalCashBalance + totalLoanBalance));
+        return Math.min(_totalCashBalance, PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance));
     }
 
     function _computeUtilization() internal view returns (uint256) {
-        uint256 totalBalance = totalCashBalance + totalLoanBalance;
-        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(totalLoanBalance, totalCashBalance + totalLoanBalance);
+        uint256 totalBalance = _totalCashBalance + _totalLoanBalance;
+        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(_totalLoanBalance, _totalCashBalance + _totalLoanBalance);
     }
 
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
@@ -219,8 +259,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         tranche.depositValue -= redemptionAmount;
 
         /* Move redemption from cash to withdrawal balance */
-        totalCashBalance -= redemptionAmount;
-        totalWithdrawalBalance += redemptionAmount;
+        _totalCashBalance -= redemptionAmount;
+        _totalWithdrawalBalance += redemptionAmount;
 
         /* Return amount of cash leftover (for further tranche redemptions) */
         return proceeds - redemptionAmount;
@@ -234,7 +274,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _trancheState(trancheId).depositValue += amount;
 
         /* Increase total cash balance */
-        totalCashBalance += amount;
+        _totalCashBalance += amount;
 
         /* Mint LP tokens to user */
         _lpToken(trancheId).mint(msg.sender, shares);
@@ -247,19 +287,19 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         uint256 tokenId,
         uint256 purchasePrice
     ) internal {
-        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+        INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Check if loan parameters are supported */
-        require(noteAdapter.isSupported(tokenId, address(currencyToken)), "Unsupported note parameters");
+        require(noteAdapter.isSupported(tokenId, address(_currencyToken)), "Unsupported note parameters");
 
         /* Get loan info */
         INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(tokenId);
 
         /* Get loan purchase price */
-        uint256 loanPurchasePrice = loanPriceOracle.priceLoan(
+        uint256 loanPurchasePrice = _loanPriceOracle.priceLoan(
             loanInfo.collateralToken,
             loanInfo.collateralTokenId,
             loanInfo.principal,
@@ -276,7 +316,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         require(loanInfo.repayment > purchasePrice, "Purchase price too high");
 
         /* Validate cash available */
-        require(totalCashBalance - _computeCashReservesAvailable() >= purchasePrice, "Insufficient cash in vault");
+        require(_totalCashBalance - _computeCashReservesAvailable() >= purchasePrice, "Insufficient cash in vault");
 
         /* Calculate senior tranche contribution based on deposit proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
@@ -289,7 +329,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) */
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
-            1e18 + PRBMathUD60x18.mul(seniorTrancheRate, (loanInfo.maturity - block.timestamp) * 1e18)
+            1e18 + PRBMathUD60x18.mul(_seniorTrancheRate, (loanInfo.maturity - block.timestamp) * 1e18)
         ) - seniorTrancheContribution;
 
         /* Validate senior tranche return */
@@ -307,8 +347,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _tranches.junior.pendingReturns[loanMaturityTimeBucket] += juniorTrancheReturn;
 
         /* Update global cash and loan balances */
-        totalCashBalance -= purchasePrice;
-        totalLoanBalance += purchasePrice;
+        _totalCashBalance -= purchasePrice;
+        _totalLoanBalance += purchasePrice;
 
         /* Store loan state */
         Loan storage loan = loans[address(noteToken)][tokenId];
@@ -333,7 +373,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _deposit(trancheId, amount);
 
         /* Transfer cash from user to vault */
-        currencyToken.safeTransferFrom(msg.sender, address(this), amount);
+        _currencyToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function depositMultiple(uint256[2] calldata amounts) public {
@@ -342,7 +382,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _deposit(TrancheId.Junior, amounts[1]);
 
         /* Transfer total cash from user to vault */
-        currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
+        _currencyToken.safeTransferFrom(msg.sender, address(this), amounts[0] + amounts[1]);
     }
 
     function sellNote(
@@ -357,7 +397,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
 
         /* Transfer cash from vault to user */
-        currencyToken.safeTransfer(msg.sender, purchasePrice);
+        _currencyToken.safeTransfer(msg.sender, purchasePrice);
     }
 
     function sellNoteBatch(
@@ -436,10 +476,10 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _lpToken(trancheId).withdraw(msg.sender, amount, tranche.processedRedemptionQueue);
 
         /* Decrease global withdrawal balance */
-        totalWithdrawalBalance -= amount;
+        _totalWithdrawalBalance -= amount;
 
         /* Transfer cash from vault to user */
-        currencyToken.safeTransfer(msg.sender, amount);
+        _currencyToken.safeTransfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, trancheId, amount);
     }
@@ -454,7 +494,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     /**************************************************************************/
 
     function liquidateLoan(IERC721 noteToken, uint256 tokenId) public {
-        INoteAdapter noteAdapter = noteAdapters[address(noteToken)];
+        INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
@@ -469,7 +509,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
     function withdrawCollateral(IERC721 noteToken, uint256 tokenId) public {
         /* Validate caller is collateral liquidation contract */
-        require(msg.sender == collateralLiquidator, "Invalid caller");
+        require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
         Loan storage loan = loans[address(noteToken)][tokenId];
@@ -481,14 +521,14 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         require(loan.liquidated, "Loan not liquidated");
 
         /* Transfer collateral to liquidator */
-        loan.collateralToken.safeTransferFrom(address(this), collateralLiquidator, loan.collateralTokenId);
+        loan.collateralToken.safeTransferFrom(address(this), _collateralLiquidator, loan.collateralTokenId);
 
         emit CollateralWithdrawn(
             address(noteToken),
             tokenId,
             address(loan.collateralToken),
             loan.collateralTokenId,
-            collateralLiquidator
+            _collateralLiquidator
         );
     }
 
@@ -497,7 +537,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     /**************************************************************************/
 
     function onLoanRepaid(address noteToken, uint256 tokenId) public {
-        INoteAdapter noteAdapter = noteAdapters[noteToken];
+        INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
@@ -527,8 +567,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _tranches.junior.depositValue += loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Decrease total loan and cash balances */
-        totalLoanBalance -= loan.purchasePrice;
-        totalCashBalance += loan.repayment;
+        _totalLoanBalance -= loan.purchasePrice;
+        _totalCashBalance += loan.repayment;
 
         /* Process redemptions for both tranches */
         uint256 proceeds = loan.repayment;
@@ -546,7 +586,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     }
 
     function onLoanLiquidated(address noteToken, uint256 tokenId) public {
-        INoteAdapter noteAdapter = noteAdapters[noteToken];
+        INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
@@ -583,7 +623,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _tranches.junior.depositValue -= juniorTrancheLoss;
 
         /* Decrease total loan balance */
-        totalLoanBalance -= loan.purchasePrice;
+        _totalLoanBalance -= loan.purchasePrice;
 
         /* Update tranche returns for collateral liquidation */
         loan.trancheReturns[uint256(TrancheId.Senior)] += seniorTrancheLoss;
@@ -601,7 +641,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         uint256 proceeds
     ) public {
         /* Validate caller is collateral liquidation contract */
-        require(msg.sender == collateralLiquidator, "Invalid caller");
+        require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
         Loan storage loan = loans[noteToken][tokenId];
@@ -621,7 +661,7 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
         _tranches.junior.depositValue += juniorTrancheRepayment;
 
         /* Increase total cash balance */
-        totalCashBalance += proceeds;
+        _totalCashBalance += proceeds;
 
         /* Process redemptions for both tranches */
         proceeds = _processRedemptions(_tranches.senior, proceeds);
@@ -637,28 +677,28 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
     /* Setters */
     /**************************************************************************/
 
-    function setSeniorTrancheRate(uint256 interestRate) public onlyOwner {
-        seniorTrancheRate = interestRate;
-        emit SeniorTrancheRateUpdated(interestRate);
+    function setSeniorTrancheRate(uint256 rate) public onlyOwner {
+        _seniorTrancheRate = rate;
+        emit SeniorTrancheRateUpdated(rate);
     }
 
     function setReserveRatio(uint256 ratio) public onlyOwner {
-        reserveRatio = ratio;
+        _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
     }
 
     function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {
-        loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
+        _loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
 
     function setCollateralLiquidator(address collateralLiquidator_) public onlyOwner {
-        collateralLiquidator = collateralLiquidator_;
+        _collateralLiquidator = collateralLiquidator_;
         emit CollateralLiquidatorUpdated(collateralLiquidator_);
     }
 
     function setNoteAdapter(address noteToken, address noteAdapter) public onlyOwner {
-        noteAdapters[noteToken] = INoteAdapter(noteAdapter);
+        _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
 
