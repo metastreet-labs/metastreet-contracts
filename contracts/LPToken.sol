@@ -2,37 +2,26 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract LPToken is ERC20 {
-    /**************************************************************************/
-    /* State */
-    /**************************************************************************/
-
+abstract contract LPTokenStorageV1 {
     struct Redemption {
         uint256 pending;
         uint256 withdrawn;
         uint256 redemptionQueueTarget;
     }
 
-    address private _owner;
     mapping(address => Redemption) public redemptions;
+}
 
+abstract contract LPTokenStorage is LPTokenStorageV1 {}
+
+contract LPToken is Ownable, ERC20, LPTokenStorage {
     /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-        _owner = msg.sender;
-    }
-
-    /**************************************************************************/
-    /* Modifiers */
-    /**************************************************************************/
-
-    modifier onlyOwner() {
-        require(_owner == msg.sender, "Caller is not the owner");
-        _;
-    }
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
     /**************************************************************************/
     /* Privileged API */

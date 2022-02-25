@@ -31,11 +31,11 @@ describe("LPToken", function () {
   describe("#mint", async function () {
     it("fails on invalid caller", async function () {
       await expect(seniorLPToken.mint(accounts[0].address, ethers.utils.parseEther("100"))).to.be.revertedWith(
-        "Caller is not the owner"
+        "Ownable: caller is not the owner"
       );
 
       await expect(juniorLPToken.mint(accounts[0].address, ethers.utils.parseEther("100"))).to.be.revertedWith(
-        "Caller is not the owner"
+        "Ownable: caller is not the owner"
       );
     });
   });
@@ -49,7 +49,7 @@ describe("LPToken", function () {
           ethers.utils.parseEther("1000"),
           ethers.constants.Zero
         )
-      ).to.be.revertedWith("Caller is not the owner");
+      ).to.be.revertedWith("Ownable: caller is not the owner");
 
       await expect(
         juniorLPToken.redeem(
@@ -58,7 +58,7 @@ describe("LPToken", function () {
           ethers.utils.parseEther("1000"),
           ethers.constants.Zero
         )
-      ).to.be.revertedWith("Caller is not the owner");
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 
@@ -66,11 +66,11 @@ describe("LPToken", function () {
     it("fails on invalid caller", async function () {
       await expect(
         seniorLPToken.withdraw(accounts[0].address, ethers.utils.parseEther("100"), ethers.utils.parseEther("1000"))
-      ).to.be.revertedWith("Caller is not the owner");
+      ).to.be.revertedWith("Ownable: caller is not the owner");
 
       await expect(
         juniorLPToken.withdraw(accounts[0].address, ethers.utils.parseEther("100"), ethers.utils.parseEther("1000"))
-      ).to.be.revertedWith("Caller is not the owner");
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });
