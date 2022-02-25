@@ -117,6 +117,10 @@ interface IVault is ILoanReceiver {
         address collateralLiquidator
     );
 
+    event LoanRepaid(address noteToken, uint256 noteTokenId, uint256[2] trancheReturns);
+    event LoanLiquidated(address noteToken, uint256 noteTokenId, uint256[2] trancheLosses);
+    event CollateralLiquidated(address noteToken, uint256 noteTokenId, uint256 proceeds);
+
     event SeniorTrancheRateUpdated(uint256 interestRate);
     event ReserveRatioUpdated(uint256 reserveRatio);
     event LoanPriceOracleUpdated(address loanPriceOracle);

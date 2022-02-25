@@ -535,6 +535,12 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
         /* Invalidate loan metadata */
         loan.purchasePrice = 0;
+
+        emit LoanRepaid(
+            noteToken,
+            tokenId,
+            [loan.trancheReturns[uint256(TrancheId.Senior)], loan.trancheReturns[uint256(TrancheId.Junior)]]
+        );
     }
 
     function onLoanLiquidated(address noteToken, uint256 tokenId) public {
@@ -583,6 +589,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
         /* Mark loan liquidated in loan state */
         loan.liquidated = true;
+
+        emit LoanLiquidated(noteToken, tokenId, [seniorTrancheLoss, juniorTrancheLoss]);
     }
 
     function onCollateralLiquidated(
@@ -619,6 +627,8 @@ contract Vault is Ownable, IERC165, IERC721Receiver, VaultState, IVault {
 
         /* Invalidate loan metadata */
         loan.purchasePrice = 0;
+
+        emit CollateralLiquidated(noteToken, tokenId, proceeds);
     }
 
     /**************************************************************************/

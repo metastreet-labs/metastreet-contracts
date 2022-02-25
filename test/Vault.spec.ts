@@ -1578,7 +1578,11 @@ describe("Vault", function () {
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
 
       /* Callback vault */
-      await vault.onLoanRepaid(noteToken.address, loanId);
+      const onLoanRepaidTx = await vault.onLoanRepaid(noteToken.address, loanId);
+      await expectEvent(onLoanRepaidTx, vault, "LoanRepaid", {
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+      });
 
       /* Check state after callback */
       expect(await vault.totalCashBalance()).to.equal(
@@ -1701,7 +1705,11 @@ describe("Vault", function () {
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
 
       /* Callback vault */
-      await vault.onLoanLiquidated(noteToken.address, loanId);
+      const onLoanLiquidatedTx = await vault.onLoanLiquidated(noteToken.address, loanId);
+      await expectEvent(onLoanLiquidatedTx, vault, "LoanLiquidated", {
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+      });
 
       /* Check state after callback */
       expect(await vault.totalCashBalance()).to.equal(depositAmounts[0].add(depositAmounts[1]).sub(principal));
@@ -1818,7 +1826,14 @@ describe("Vault", function () {
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1].sub(principal));
 
       /* Callback vault */
-      await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
+      const onCollateralLiquidatedTx = await vault
+        .connect(accountLiquidator)
+        .onCollateralLiquidated(noteToken.address, loanId, repayment);
+      await expectEvent(onCollateralLiquidatedTx, vault, "CollateralLiquidated", {
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+        proceeds: repayment,
+      });
 
       /* Check state after callback */
       expect(await vault.totalCashBalance()).to.equal(
