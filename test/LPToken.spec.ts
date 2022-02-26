@@ -16,12 +16,14 @@ describe("LPToken", function () {
     const lpTokenFactory = await ethers.getContractFactory("LPToken");
 
     /* Deploy Senior LP token */
-    seniorLPToken = (await lpTokenFactory.deploy("Senior LP Token", "msLP-TEST-WETH")) as LPToken;
+    seniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
     await seniorLPToken.deployed();
+    await seniorLPToken.initialize("Senior LP Token", "msLP-TEST-WETH");
 
     /* Deploy Junior LP token */
-    juniorLPToken = (await lpTokenFactory.deploy("Junior LP Token", "mjLP-TEST-WETH")) as LPToken;
+    juniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
     await juniorLPToken.deployed();
+    await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
   });
 
   describe("#mint", async function () {

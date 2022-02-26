@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 abstract contract LPTokenStorageV1 {
     struct Redemption {
@@ -16,12 +17,15 @@ abstract contract LPTokenStorageV1 {
 
 abstract contract LPTokenStorage is LPTokenStorageV1 {}
 
-contract LPToken is Ownable, ERC20, LPTokenStorage {
+contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPTokenStorage {
     /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+    function initialize(string memory name, string memory symbol) public initializer {
+        __Ownable_init();
+        __ERC20_init(name, symbol);
+    }
 
     /**************************************************************************/
     /* Privileged API */
