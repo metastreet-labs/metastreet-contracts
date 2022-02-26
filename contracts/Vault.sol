@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
@@ -61,8 +62,8 @@ abstract contract VaultStorageV1 {
 
 abstract contract VaultStorage is VaultStorageV1 {}
 
-contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IVault {
-    using SafeERC20 for IERC20;
+contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC721Receiver, IVault {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**************************************************************************/
     /* Constants */
@@ -75,14 +76,16 @@ contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IV
     /* Constructor */
     /**************************************************************************/
 
-    constructor(
+    function initialize(
         string memory name_,
         IERC20 currencyToken_,
         ILoanPriceOracle loanPriceOracle_,
         LPToken seniorLPToken_,
         LPToken juniorLPToken_
-    ) {
+    ) public initializer {
         require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
+
+        __Ownable_init();
 
         _name = name_;
         _currencyToken = currencyToken_;
@@ -365,7 +368,7 @@ contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IV
         _deposit(trancheId, amount);
 
         /* Transfer cash from user to vault */
-        _currencyToken.safeTransferFrom(msg.sender, address(this), amount);
+        IERC20Upgradeable(address(_currencyToken)).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function sellNote(
@@ -380,7 +383,7 @@ contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IV
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
 
         /* Transfer cash from vault to user */
-        _currencyToken.safeTransfer(msg.sender, purchasePrice);
+        IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, purchasePrice);
     }
 
     function sellNoteAndDeposit(
@@ -431,7 +434,7 @@ contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IV
         _totalWithdrawalBalance -= amount;
 
         /* Transfer cash from vault to user */
-        _currencyToken.safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, trancheId, amount);
     }
@@ -618,6 +621,32 @@ contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IV
         loan.active = false;
 
         emit CollateralLiquidated(noteToken, tokenId, proceeds);
+    }
+
+    /**************************************************************************/
+    /* Multicall */
+    /**************************************************************************/
+
+    /* Inlined from Address.sol */
+    function multicall(bytes[] calldata data) public returns (bytes[] memory results) {
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            /// @custom:oz-upgrades-unsafe-allow delegatecall
+            (bool success, bytes memory returndata) = address(this).delegatecall(data[i]);
+            if (success) {
+                results[i] = returndata;
+            } else {
+                if (returndata.length > 0) {
+                    assembly {
+                        let returndata_size := mload(returndata)
+                        revert(add(32, returndata), returndata_size)
+                    }
+                } else {
+                    revert("Low-level delegate call failed");
+                }
+            }
+        }
+        return results;
     }
 
     /**************************************************************************/

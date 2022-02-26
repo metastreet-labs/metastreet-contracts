@@ -84,22 +84,19 @@ describe("Vault", function () {
     await mockLoanPriceOracle.deployed();
 
     /* Deploy Senior LP token */
-    seniorLPToken = (await lpTokenFactory.deploy("Senior LP Token", "msLP-TEST-WETH")) as LPToken;
+    seniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
     await seniorLPToken.deployed();
+    await seniorLPToken.initialize("Senior LP Token", "msLP-TEST-WETH");
 
     /* Deploy Junior LP token */
-    juniorLPToken = (await lpTokenFactory.deploy("Junior LP Token", "mjLP-TEST-WETH")) as LPToken;
+    juniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
     await juniorLPToken.deployed();
+    await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
 
     /* Deploy vault */
-    vault = (await vaultFactory.deploy(
-      "Test Vault",
-      tok1.address,
-      mockLoanPriceOracle.address,
-      seniorLPToken.address,
-      juniorLPToken.address
-    )) as Vault;
+    vault = (await vaultFactory.deploy()) as Vault;
     await vault.deployed();
+    await vault.initialize("Test Vault", tok1.address, mockLoanPriceOracle.address, seniorLPToken.address, juniorLPToken.address);
 
     /* Transfer ownership of LP tokens to Vault */
     await seniorLPToken.transferOwnership(vault.address);
