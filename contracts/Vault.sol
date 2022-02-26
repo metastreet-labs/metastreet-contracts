@@ -77,27 +77,18 @@ contract Vault is Ownable, VaultStorage, Multicall, IERC165, IERC721Receiver, IV
 
     constructor(
         string memory name_,
-        string memory lpSymbol,
         IERC20 currencyToken_,
-        ILoanPriceOracle loanPriceOracle_
+        ILoanPriceOracle loanPriceOracle_,
+        LPToken seniorLPToken_,
+        LPToken juniorLPToken_
     ) {
+        require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
+
         _name = name_;
         _currencyToken = currencyToken_;
         _loanPriceOracle = loanPriceOracle_;
-
-        IERC20Metadata currencyTokenMetadata = IERC20Metadata(address(currencyToken_));
-        require(currencyTokenMetadata.decimals() == 18, "Unsupported token decimals");
-
-        /* Create senior and junior tranche LP Tokens */
-        string memory currencyTokenSymbol = currencyTokenMetadata.symbol();
-        _seniorLPToken = new LPToken(
-            "Senior LP Token",
-            string(bytes.concat("msLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol)))
-        );
-        _juniorLPToken = new LPToken(
-            "Junior LP Token",
-            string(bytes.concat("mjLP-", bytes(lpSymbol), "-", bytes(currencyTokenSymbol)))
-        );
+        _seniorLPToken = seniorLPToken_;
+        _juniorLPToken = juniorLPToken_;
     }
 
     /**************************************************************************/

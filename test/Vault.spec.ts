@@ -53,6 +53,7 @@ describe("Vault", function () {
     const testLendingPlatformFactory = await ethers.getContractFactory("TestLendingPlatform");
     const testNoteAdapterFactory = await ethers.getContractFactory("TestNoteAdapter");
     const mockLoanPriceOracleFactory = await ethers.getContractFactory("MockLoanPriceOracle");
+    const lpTokenFactory = await ethers.getContractFactory("LPToken");
     const vaultFactory = await ethers.getContractFactory("Vault");
 
     /* Deploy test token */
@@ -82,20 +83,33 @@ describe("Vault", function () {
     mockLoanPriceOracle = (await mockLoanPriceOracleFactory.deploy(tok1.address)) as MockLoanPriceOracle;
     await mockLoanPriceOracle.deployed();
 
+    /* Deploy Senior LP token */
+    seniorLPToken = (await lpTokenFactory.deploy("Senior LP Token", "msLP-TEST-WETH")) as LPToken;
+    await seniorLPToken.deployed();
+
+    /* Deploy Junior LP token */
+    juniorLPToken = (await lpTokenFactory.deploy("Junior LP Token", "mjLP-TEST-WETH")) as LPToken;
+    await juniorLPToken.deployed();
+
     /* Deploy vault */
-    vault = (await vaultFactory.deploy("Test Vault", "TEST", tok1.address, ethers.constants.AddressZero)) as Vault;
+    vault = (await vaultFactory.deploy(
+      "Test Vault",
+      tok1.address,
+      mockLoanPriceOracle.address,
+      seniorLPToken.address,
+      juniorLPToken.address
+    )) as Vault;
     await vault.deployed();
 
+    /* Transfer ownership of LP tokens to Vault */
+    await seniorLPToken.transferOwnership(vault.address);
+    await juniorLPToken.transferOwnership(vault.address);
+
     /* Setup vault */
-    await vault.setLoanPriceOracle(mockLoanPriceOracle.address);
     await vault.setNoteAdapter(noteToken.address, testNoteAdapter.address);
     await vault.setSeniorTrancheRate(ethers.utils.parseEther("0.05").div(365 * 86400));
     await vault.setReserveRatio(ethers.utils.parseEther("0.10"));
     await vault.setCollateralLiquidator(accounts[6].address);
-
-    /* Get vault LP tokens */
-    seniorLPToken = (await ethers.getContractAt("LPToken", await vault.lpToken(0))) as LPToken;
-    juniorLPToken = (await ethers.getContractAt("LPToken", await vault.lpToken(1))) as LPToken;
 
     /* Setup accounts */
     accountBorrower = accounts[1];
