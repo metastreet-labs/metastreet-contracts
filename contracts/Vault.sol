@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -62,7 +63,15 @@ abstract contract VaultStorageV1 {
 
 abstract contract VaultStorage is VaultStorageV1 {}
 
-contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC721Receiver, IVault {
+contract Vault is
+    Initializable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    VaultStorage,
+    IERC165,
+    IERC721Receiver,
+    IVault
+{
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**************************************************************************/
@@ -86,6 +95,7 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
         require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
 
         __Ownable_init();
+        __Pausable_init();
 
         _name = name_;
         _currencyToken = currencyToken_;
@@ -363,7 +373,7 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
     /* User API */
     /**************************************************************************/
 
-    function deposit(TrancheId trancheId, uint256 amount) public {
+    function deposit(TrancheId trancheId, uint256 amount) public whenNotPaused {
         /* Deposit into tranche */
         _deposit(trancheId, amount);
 
@@ -375,7 +385,7 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
         IERC721 noteToken,
         uint256 tokenId,
         uint256 purchasePrice
-    ) public {
+    ) public whenNotPaused {
         /* Purchase the note */
         _sellNote(noteToken, tokenId, purchasePrice);
 
@@ -390,7 +400,7 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
         IERC721 noteToken,
         uint256 tokenId,
         uint256[2] calldata amounts
-    ) public {
+    ) public whenNotPaused {
         /* Calculate total purchase price */
         uint256 purchasePrice = amounts[0] + amounts[1];
 
@@ -405,7 +415,7 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
     }
 
-    function redeem(TrancheId trancheId, uint256 shares) public {
+    function redeem(TrancheId trancheId, uint256 shares) public whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Compute redemption amount */
@@ -424,7 +434,7 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
 
-    function withdraw(TrancheId trancheId, uint256 amount) public {
+    function withdraw(TrancheId trancheId, uint256 amount) public whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Update user's token state with redemption */
@@ -676,6 +686,14 @@ contract Vault is Initializable, OwnableUpgradeable, VaultStorage, IERC165, IERC
     function setNoteAdapter(address noteToken, address noteAdapter) public onlyOwner {
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
+    }
+
+    function setPaused(bool paused) public onlyOwner {
+        if (paused) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /******************************************************/

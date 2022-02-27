@@ -96,7 +96,13 @@ describe("Vault", function () {
     /* Deploy vault */
     vault = (await vaultFactory.deploy()) as Vault;
     await vault.deployed();
-    await vault.initialize("Test Vault", tok1.address, mockLoanPriceOracle.address, seniorLPToken.address, juniorLPToken.address);
+    await vault.initialize(
+      "Test Vault",
+      tok1.address,
+      mockLoanPriceOracle.address,
+      seniorLPToken.address,
+      juniorLPToken.address
+    );
 
     /* Transfer ownership of LP tokens to Vault */
     await seniorLPToken.transferOwnership(vault.address);
@@ -1658,6 +1664,61 @@ describe("Vault", function () {
       await expect(vault.connect(accounts[1]).setNoteAdapter(addr1, addr2)).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+  });
+
+  describe("#setPaused", async function () {
+    it("pauses and unpauses", async function () {
+      expect(await vault.paused()).to.equal(false);
+
+      await vault.setPaused(true);
+      expect(await vault.paused()).to.equal(true);
+
+      await vault.setPaused(false);
+      expect(await vault.paused()).to.equal(false);
+    });
+    it("deposit fails when paused", async function () {
+      await vault.setPaused(true);
+
+      await expect(vault.connect(accountDepositor1).deposit(0, ethers.utils.parseEther("1.23"))).to.be.revertedWith(
+        "Pausable: paused"
+      );
+    });
+    it("sell note fails when paused", async function () {
+      await vault.setPaused(true);
+
+      await expect(
+        vault.connect(accountLender1).sellNote(noteToken.address, 12345, ethers.utils.parseEther("100"))
+      ).to.be.revertedWith("Pausable: paused");
+    });
+    it("sell note and deposit fails when paused", async function () {
+      await vault.setPaused(true);
+
+      await expect(
+        vault
+          .connect(accountLender1)
+          .sellNoteAndDeposit(noteToken.address, 12345, [
+            ethers.utils.parseEther("1.0"),
+            ethers.utils.parseEther("1.0"),
+          ])
+      ).to.be.revertedWith("Pausable: paused");
+    });
+    it("redeem fails when paused", async function () {
+      await vault.setPaused(true);
+
+      await expect(vault.connect(accountDepositor1).redeem(0, ethers.utils.parseEther("1.23"))).to.be.revertedWith(
+        "Pausable: paused"
+      );
+    });
+    it("withdraw fails when paused", async function () {
+      await vault.setPaused(true);
+
+      await expect(vault.connect(accountDepositor1).withdraw(0, ethers.utils.parseEther("1.23"))).to.be.revertedWith(
+        "Pausable: paused"
+      );
+    });
+    it("fails on invalid caller", async function () {
+      await expect(vault.connect(accounts[1]).setPaused(true)).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });
