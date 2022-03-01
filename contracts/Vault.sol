@@ -318,7 +318,7 @@ contract Vault is
         require(purchasePrice == loanPurchasePrice, "Invalid purchase price");
 
         /* Validate repayment */
-        require(loanInfo.repayment > purchasePrice, "Purchase price too high");
+        require(loanInfo.repayment > purchasePrice, "Purchase price exceeds repayment");
 
         /* Validate cash available */
         require(_totalCashBalance - _computeCashReservesAvailable() >= purchasePrice, "Insufficient cash in vault");
@@ -338,7 +338,7 @@ contract Vault is
         ) - seniorTrancheContribution;
 
         /* Validate senior tranche return */
-        require(seniorTrancheReturn < (loanInfo.repayment - purchasePrice), "Senior tranche return too low");
+        require(seniorTrancheReturn < (loanInfo.repayment - purchasePrice), "Interest rate too low");
 
         /* Calculate junior tranche return */
         /* Junior Tranche Return = Repayment - Purchase Price - Senior Tranche Return */

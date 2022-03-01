@@ -481,7 +481,7 @@ describe("Vault", function () {
       await mockLoanPriceOracle.setPrice(purchasePrice);
 
       await expect(vault.connect(accountLender1).sellNote(noteToken.address, loanId, purchasePrice)).to.be.revertedWith(
-        "Purchase price too high"
+        "Purchase price exceeds repayment"
       );
     });
     it("fails on insufficient cash", async function () {
@@ -532,7 +532,7 @@ describe("Vault", function () {
       await mockLoanPriceOracle.setPrice(principal);
 
       await expect(vault.connect(accountLender1).sellNote(noteToken.address, loanId, principal)).to.be.revertedWith(
-        "Senior tranche return too low"
+        "Interest rate too low"
       );
     });
   });
