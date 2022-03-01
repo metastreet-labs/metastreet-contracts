@@ -26,6 +26,13 @@ describe("LPToken", function () {
     await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
   });
 
+  describe("constants", async function () {
+    it("matches expected implementation", async function () {
+      expect(await seniorLPToken.IMPLEMENTATION_VERSION()).to.equal("1.0");
+      expect(await juniorLPToken.IMPLEMENTATION_VERSION()).to.equal("1.0");
+    });
+  });
+
   describe("#mint", async function () {
     it("fails on invalid caller", async function () {
       await expect(

@@ -19,6 +19,12 @@ abstract contract LPTokenStorage is LPTokenStorageV1 {}
 
 contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPTokenStorage {
     /**************************************************************************/
+    /* Constants */
+    /**************************************************************************/
+
+    string public constant IMPLEMENTATION_VERSION = "1.0";
+
+    /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
