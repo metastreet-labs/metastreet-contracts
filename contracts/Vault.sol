@@ -236,13 +236,13 @@ contract Vault is
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 estimatedValue = _computeEstimatedValue(trancheId);
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
-        return (estimatedValue == 0 || totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(estimatedValue, totalSupply);
+        return (totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(estimatedValue, totalSupply);
     }
 
     function _computeRedemptionSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 depositValue = _trancheState(trancheId).depositValue;
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
-        return (depositValue == 0 || totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(depositValue, totalSupply);
+        return (totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(depositValue, totalSupply);
     }
 
     function _computeCashReservesAvailable() internal view returns (uint256) {
@@ -272,8 +272,14 @@ contract Vault is
     }
 
     function _deposit(TrancheId trancheId, uint256 amount) internal {
+        /* Compute current share price */
+        uint256 currentSharePrice = _computeSharePrice(trancheId);
+
+        /* Check tranche is solvent */
+        require(currentSharePrice != 0, "Tranche is currently insolvent");
+
         /* Compute number of shares to mint from current tranche share price */
-        uint256 shares = PRBMathUD60x18.div(amount, _computeSharePrice(trancheId));
+        uint256 shares = PRBMathUD60x18.div(amount, currentSharePrice);
 
         /* Increase deposit value of tranche */
         _trancheState(trancheId).depositValue += amount;
@@ -418,8 +424,14 @@ contract Vault is
     function redeem(TrancheId trancheId, uint256 shares) public whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
+        /* Compute current redemption share price */
+        uint256 currentRedemptionSharePrice = _computeRedemptionSharePrice(trancheId);
+
+        /* Check tranche is solvent */
+        require(currentRedemptionSharePrice != 0, "Tranche is currently insolvent");
+
         /* Compute redemption amount */
-        uint256 redemptionAmount = PRBMathUD60x18.mul(shares, _computeRedemptionSharePrice(trancheId));
+        uint256 redemptionAmount = PRBMathUD60x18.mul(shares, currentRedemptionSharePrice);
 
         /* Schedule redemption in tranche */
         tranche.pendingRedemptions += redemptionAmount;

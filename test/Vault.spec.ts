@@ -207,7 +207,6 @@ describe("Vault", function () {
       expect((await vault.trancheState(1)).depositValue).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalCashBalance).to.equal(amount);
     });
-
     it("deposits into junior tranche", async function () {
       const amount = ethers.utils.parseEther("1.23");
 
@@ -244,7 +243,39 @@ describe("Vault", function () {
       expect((await vault.trancheState(1)).depositValue).to.equal(amount);
       expect((await vault.balanceState()).totalCashBalance).to.equal(amount);
     });
+    [1, 0].forEach((trancheId) => {
+      it(`fails on ${trancheId === 1 ? "junior" : "senior"} tranche insolvency`, async function () {
+        const depositAmount = ethers.utils.parseEther("10");
+        const principal = ethers.utils.parseEther("10.0");
+        const repayment = ethers.utils.parseEther("10.2");
 
+        /* Disable reserve ratio */
+        await vault.setReserveRatio(ethers.constants.Zero);
+
+        /* Deposit cash */
+        await vault.connect(accountDepositor1).deposit(trancheId, depositAmount);
+
+        /* Cycle a defaulted loan */
+        await cycleLoanDefault(
+          lendingPlatform,
+          mockLoanPriceOracle,
+          vault,
+          nft1,
+          accountBorrower,
+          accountLender1,
+          principal,
+          repayment
+        );
+
+        expect((await vault.trancheState(trancheId)).depositValue).to.equal(ethers.constants.Zero);
+        expect(await vault.sharePrice(trancheId)).to.equal(ethers.constants.Zero);
+        expect(await vault.redemptionSharePrice(trancheId)).to.equal(ethers.constants.Zero);
+
+        await expect(vault.connect(accountDepositor1).deposit(trancheId, depositAmount)).to.be.revertedWith(
+          "Tranche is currently insolvent"
+        );
+      });
+    });
     it("fails on insufficient funds", async function () {
       const amount = ethers.utils.parseEther("1001");
 
@@ -721,6 +752,40 @@ describe("Vault", function () {
       await expect(vault.connect(accountDepositor1).redeem(0, depositAmount.sub(redemptionAmount))).to.be.revertedWith(
         "Redemption in progress"
       );
+    });
+    [1, 0].forEach((trancheId) => {
+      it(`fails on ${trancheId === 1 ? "junior" : "senior"} tranche insolvency`, async function () {
+        const depositAmount = ethers.utils.parseEther("10");
+        const principal = ethers.utils.parseEther("10.0");
+        const repayment = ethers.utils.parseEther("10.2");
+        const redemptionAmount = ethers.utils.parseEther("1.23");
+
+        /* Disable reserve ratio */
+        await vault.setReserveRatio(ethers.constants.Zero);
+
+        /* Deposit cash */
+        await vault.connect(accountDepositor1).deposit(trancheId, depositAmount);
+
+        /* Cycle a defaulted loan */
+        await cycleLoanDefault(
+          lendingPlatform,
+          mockLoanPriceOracle,
+          vault,
+          nft1,
+          accountBorrower,
+          accountLender1,
+          principal,
+          repayment
+        );
+
+        expect((await vault.trancheState(trancheId)).depositValue).to.equal(ethers.constants.Zero);
+        expect(await vault.sharePrice(trancheId)).to.equal(ethers.constants.Zero);
+        expect(await vault.redemptionSharePrice(trancheId)).to.equal(ethers.constants.Zero);
+
+        await expect(vault.connect(accountDepositor1).redeem(trancheId, redemptionAmount)).to.be.revertedWith(
+          "Tranche is currently insolvent"
+        );
+      });
     });
   });
 
