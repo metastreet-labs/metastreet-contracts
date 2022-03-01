@@ -685,6 +685,14 @@ describe("Vault", function () {
         expect((await vault.trancheState(0)).pendingRedemptions).to.equal(ethers.constants.Zero);
         expect((await vault.trancheState(0)).redemptionQueue).to.equal(ethers.constants.Zero);
         expect((await vault.trancheState(0)).processedRedemptionQueue).to.equal(ethers.constants.Zero);
+        expect(
+          await seniorLPToken.redemptionAvailable(
+            accountDepositor1.address,
+            (
+              await vault.trancheState(0)
+            ).processedRedemptionQueue
+          )
+        ).to.equal(ethers.constants.Zero);
         expect((await seniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(ethers.constants.Zero);
         expect((await seniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
         expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
@@ -722,6 +730,14 @@ describe("Vault", function () {
         );
         expect((await vault.trancheState(0)).redemptionQueue).to.equal(redemptionAmount);
         expect((await vault.trancheState(0)).processedRedemptionQueue).to.equal(partialRedemptionAmount);
+        expect(
+          await seniorLPToken.redemptionAvailable(
+            accountDepositor1.address,
+            (
+              await vault.trancheState(0)
+            ).processedRedemptionQueue
+          )
+        ).to.equal(partialRedemptionAmount);
         expect((await seniorLPToken.redemptions(accountDepositor1.address)).pending).to.equal(redemptionAmount);
         expect((await seniorLPToken.redemptions(accountDepositor1.address)).withdrawn).to.equal(ethers.constants.Zero);
         expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
@@ -808,6 +824,14 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).redeem(0, redemptionAmount);
 
       /* Check vault balances before */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(partialRedemptionAmount);
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(partialRedemptionAmount));
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(partialRedemptionAmount);
@@ -828,6 +852,14 @@ describe("Vault", function () {
       const tokBalanceBefore = await tok1.balanceOf(accountDepositor1.address);
 
       /* Check vault balances after loan */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(redemptionAmount);
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
       );
@@ -854,6 +886,14 @@ describe("Vault", function () {
       expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
         ethers.constants.Zero
       );
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
       );
@@ -869,6 +909,14 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).redeem(0, redemptionAmount);
 
       /* Check vault balances before */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(redemptionAmount);
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(redemptionAmount));
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(redemptionAmount);
@@ -886,6 +934,14 @@ describe("Vault", function () {
       expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
         ethers.constants.Zero
       );
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(redemptionAmount));
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
@@ -902,6 +958,14 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).redeem(0, redemptionAmount);
 
       /* Check vault balances before */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(partialRedemptionAmount);
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(partialRedemptionAmount));
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(partialRedemptionAmount);
@@ -938,6 +1002,14 @@ describe("Vault", function () {
       expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
         redemptionAmount
       );
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(redemptionAmount.sub(withdrawAmount));
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
       );
@@ -954,6 +1026,14 @@ describe("Vault", function () {
       expect((await seniorLPToken.redemptions(accountDepositor1.address)).redemptionQueueTarget).to.equal(
         ethers.constants.Zero
       );
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor1.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
       );
