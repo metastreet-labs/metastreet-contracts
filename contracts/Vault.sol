@@ -78,6 +78,7 @@ contract Vault is
     /* Constants */
     /**************************************************************************/
 
+    string public constant IMPLEMENTATION_VERSION = "1.0";
     uint64 public constant TIME_BUCKET_DURATION = 14 days;
     uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
 

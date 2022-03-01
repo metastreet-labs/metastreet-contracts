@@ -136,6 +136,12 @@ describe("Vault", function () {
     );
   });
 
+  describe("constants", async function () {
+    it("matches expected implementation", async function () {
+      expect(await vault.IMPLEMENTATION_VERSION()).to.equal("1.0");
+    });
+  });
+
   describe("initial state", async function () {
     it("getters are correct", async function () {
       expect(await vault.owner()).to.equal(accounts[0].address);
