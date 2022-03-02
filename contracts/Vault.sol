@@ -297,8 +297,8 @@ contract Vault is
     function _sellNote(
         IERC721 noteToken,
         uint256 tokenId,
-        uint256 purchasePrice
-    ) internal {
+        uint256 maxPurchasePrice
+    ) internal returns (uint256) {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
@@ -311,7 +311,7 @@ contract Vault is
         INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(tokenId);
 
         /* Get loan purchase price */
-        uint256 loanPurchasePrice = _loanPriceOracle.priceLoan(
+        uint256 purchasePrice = _loanPriceOracle.priceLoan(
             loanInfo.collateralToken,
             loanInfo.collateralTokenId,
             loanInfo.principal,
@@ -322,7 +322,7 @@ contract Vault is
         );
 
         /* Validate purchase price */
-        require(purchasePrice == loanPurchasePrice, "Invalid purchase price");
+        require(purchasePrice <= maxPurchasePrice, "Purchase price exceeds max");
 
         /* Validate repayment */
         require(loanInfo.repayment > purchasePrice, "Purchase price exceeds repayment");
@@ -374,6 +374,8 @@ contract Vault is
         loan.trancheReturns = [seniorTrancheReturn, juniorTrancheReturn];
 
         emit NotePurchased(msg.sender, address(noteToken), tokenId, purchasePrice);
+
+        return purchasePrice;
     }
 
     /**************************************************************************/
@@ -391,10 +393,10 @@ contract Vault is
     function sellNote(
         IERC721 noteToken,
         uint256 tokenId,
-        uint256 purchasePrice
+        uint256 maxPurchasePrice
     ) public whenNotPaused {
         /* Purchase the note */
-        _sellNote(noteToken, tokenId, purchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, tokenId, maxPurchasePrice);
 
         /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
@@ -408,15 +410,15 @@ contract Vault is
         uint256 tokenId,
         uint256[2] calldata amounts
     ) public whenNotPaused {
-        /* Calculate total purchase price */
-        uint256 purchasePrice = amounts[0] + amounts[1];
+        /* Calculate total max purchase price */
+        uint256 maxPurchasePrice = amounts[0] + amounts[1];
 
         /* Purchase the note */
-        _sellNote(noteToken, tokenId, purchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, tokenId, maxPurchasePrice);
 
         /* Deposit sale proceeds in tranches */
         if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);
-        if (amounts[1] > 0) _deposit(TrancheId.Junior, amounts[1]);
+        if (amounts[1] > 0) _deposit(TrancheId.Junior, purchasePrice - amounts[0]);
 
         /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), tokenId);

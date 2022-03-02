@@ -474,7 +474,7 @@ describe("Vault", function () {
         vault.connect(accountLender1).sellNote(noteToken.address, 1, ethers.utils.parseEther("2"))
       ).to.be.revertedWith("Unsupported note parameters");
     });
-    it("fails on invalid purchase price", async function () {
+    it("fails on exceeding max purchase price", async function () {
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
       const duration = 86400;
@@ -491,10 +491,10 @@ describe("Vault", function () {
       );
 
       /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("1.0"));
+      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("2.1"));
 
       await expect(vault.connect(accountLender1).sellNote(noteToken.address, loanId, principal)).to.be.revertedWith(
-        "Invalid purchase price"
+        "Purchase price exceeds max"
       );
     });
     it("fails on high purchase price", async function () {
@@ -636,7 +636,7 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
     });
-    it("fails on invalid purchase price", async function () {
+    it("fails on exceeding max purchase price", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
@@ -665,10 +665,10 @@ describe("Vault", function () {
         vault
           .connect(accountLender1)
           .sellNoteAndDeposit(noteToken.address, loanId, [
-            ethers.utils.parseEther("1.0"),
+            ethers.utils.parseEther("0.5"),
             ethers.utils.parseEther("1.1"),
           ])
-      ).to.be.revertedWith("Invalid purchase price");
+      ).to.be.revertedWith("Purchase price exceeds max");
     });
   });
 
