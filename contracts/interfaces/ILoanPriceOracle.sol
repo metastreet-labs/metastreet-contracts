@@ -22,13 +22,4 @@ interface ILoanPriceOracle {
         uint256 maturity,
         uint256 utilization
     ) external returns (uint256);
-
-    /* Setters */
-    function setMinimumDiscountRate(uint256 rate) external;
-
-    function setCollateralParameters(address tokenContract, bytes calldata packedParameters) external;
-
-    /* Events */
-    event MinimumDiscountRateUpdated(uint256 rate);
-    event CollateralParametersUpdated(address tokenContract);
 }

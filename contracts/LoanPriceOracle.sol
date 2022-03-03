@@ -33,6 +33,13 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     uint256 public minimumDiscountRate; /* UD60x18, in amount per seconds */
 
     /**************************************************************************/
+    /* Events */
+    /**************************************************************************/
+
+    event MinimumDiscountRateUpdated(uint256 rate);
+    event CollateralParametersUpdated(address tokenContract);
+
+    /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
