@@ -37,13 +37,13 @@ interface IVault is ILoanReceiver {
 
     function sellNote(
         IERC721 noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256 maxPurchasePrice
     ) external;
 
     function sellNoteAndDeposit(
         IERC721 noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256[2] calldata amounts
     ) external;
 
@@ -52,16 +52,16 @@ interface IVault is ILoanReceiver {
     function withdraw(TrancheId trancheId, uint256 amount) external;
 
     /* Liquidation API */
-    function liquidateLoan(IERC721 noteToken, uint256 tokenId) external;
+    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) external;
 
-    function withdrawCollateral(IERC721 noteToken, uint256 tokenId) external;
+    function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) external;
 
     /* Callbacks */
-    function onLoanLiquidated(address noteToken, uint256 tokenId) external;
+    function onLoanLiquidated(address noteToken, uint256 noteTokenId) external;
 
     function onCollateralLiquidated(
         address noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256 proceeds
     ) external;
 
@@ -78,7 +78,7 @@ interface IVault is ILoanReceiver {
 
     /* Events */
     event Deposited(address indexed account, TrancheId indexed trancheId, uint256 amount, uint256 shares);
-    event NotePurchased(address indexed account, address noteToken, uint256 tokenId, uint256 purchasePrice);
+    event NotePurchased(address indexed account, address noteToken, uint256 noteTokenId, uint256 purchasePrice);
     event Redeemed(address indexed account, TrancheId indexed trancheId, uint256 shares, uint256 amount);
     event Withdrawn(address indexed account, TrancheId indexed trancheId, uint256 amount);
     event CollateralWithdrawn(

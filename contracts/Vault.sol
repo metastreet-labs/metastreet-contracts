@@ -296,7 +296,7 @@ contract Vault is
 
     function _sellNote(
         IERC721 noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256 maxPurchasePrice
     ) internal returns (uint256) {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
@@ -305,10 +305,10 @@ contract Vault is
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Check if loan parameters are supported */
-        require(noteAdapter.isSupported(tokenId, address(_currencyToken)), "Unsupported note parameters");
+        require(noteAdapter.isSupported(noteTokenId, address(_currencyToken)), "Unsupported note parameters");
 
         /* Get loan info */
-        INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(tokenId);
+        INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(noteTokenId);
 
         /* Get loan purchase price */
         uint256 purchasePrice = _loanPriceOracle.priceLoan(
@@ -363,7 +363,7 @@ contract Vault is
         _totalLoanBalance += purchasePrice;
 
         /* Store loan state */
-        Loan storage loan = loans[address(noteToken)][tokenId];
+        Loan storage loan = loans[address(noteToken)][noteTokenId];
         loan.active = true;
         loan.collateralToken = IERC721(loanInfo.collateralToken);
         loan.collateralTokenId = loanInfo.collateralTokenId;
@@ -373,7 +373,7 @@ contract Vault is
         loan.liquidated = false;
         loan.trancheReturns = [seniorTrancheReturn, juniorTrancheReturn];
 
-        emit NotePurchased(msg.sender, address(noteToken), tokenId, purchasePrice);
+        emit NotePurchased(msg.sender, address(noteToken), noteTokenId, purchasePrice);
 
         return purchasePrice;
     }
@@ -392,14 +392,14 @@ contract Vault is
 
     function sellNote(
         IERC721 noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256 maxPurchasePrice
     ) public whenNotPaused {
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(noteToken, tokenId, maxPurchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, maxPurchasePrice);
 
         /* Transfer promissory note from user to vault */
-        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
+        noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
 
         /* Transfer cash from vault to user */
         IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, purchasePrice);
@@ -407,21 +407,21 @@ contract Vault is
 
     function sellNoteAndDeposit(
         IERC721 noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256[2] calldata amounts
     ) public whenNotPaused {
         /* Calculate total max purchase price */
         uint256 maxPurchasePrice = amounts[0] + amounts[1];
 
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(noteToken, tokenId, maxPurchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, maxPurchasePrice);
 
         /* Deposit sale proceeds in tranches */
         if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);
         if (amounts[1] > 0) _deposit(TrancheId.Junior, purchasePrice - amounts[0]);
 
         /* Transfer promissory note from user to vault */
-        noteToken.safeTransferFrom(msg.sender, address(this), tokenId);
+        noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
     }
 
     function redeem(TrancheId trancheId, uint256 shares) public whenNotPaused {
@@ -468,26 +468,26 @@ contract Vault is
     /* Liquidation API */
     /**************************************************************************/
 
-    function liquidateLoan(IERC721 noteToken, uint256 tokenId) public {
+    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) public {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Call liquidate on lending platform */
-        (bool success, ) = noteAdapter.lendingPlatform().call(noteAdapter.getLiquidateCalldata(tokenId));
+        (bool success, ) = noteAdapter.lendingPlatform().call(noteAdapter.getLiquidateCalldata(noteTokenId));
         require(success, "Liquidate failed");
 
         /* Process loan liquidation */
-        onLoanLiquidated(address(noteToken), tokenId);
+        onLoanLiquidated(address(noteToken), noteTokenId);
     }
 
-    function withdrawCollateral(IERC721 noteToken, uint256 tokenId) public {
+    function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) public {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[address(noteToken)][tokenId];
+        Loan storage loan = loans[address(noteToken)][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -500,7 +500,7 @@ contract Vault is
 
         emit CollateralWithdrawn(
             address(noteToken),
-            tokenId,
+            noteTokenId,
             address(loan.collateralToken),
             loan.collateralTokenId,
             _collateralLiquidator
@@ -511,14 +511,14 @@ contract Vault is
     /* Callbacks */
     /**************************************************************************/
 
-    function onLoanRepaid(address noteToken, uint256 tokenId) public {
+    function onLoanRepaid(address noteToken, uint256 noteTokenId) public {
         INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Lookup loan state */
-        Loan storage loan = loans[noteToken][tokenId];
+        Loan storage loan = loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -527,7 +527,8 @@ contract Vault is
          * platform (trusted), or by checking the loan is complete and the
          * collateral is not in contract's possession (trustless) */
         bool loanRepaid = (msg.sender == noteAdapter.lendingPlatform()) ||
-            (noteAdapter.isComplete(tokenId) && loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
+            (noteAdapter.isComplete(noteTokenId) &&
+                loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
         require(loanRepaid, "Loan not repaid");
 
         /* Compute loan maturity time bucket */
@@ -555,19 +556,19 @@ contract Vault is
 
         emit LoanRepaid(
             noteToken,
-            tokenId,
+            noteTokenId,
             [loan.trancheReturns[uint256(TrancheId.Senior)], loan.trancheReturns[uint256(TrancheId.Junior)]]
         );
     }
 
-    function onLoanLiquidated(address noteToken, uint256 tokenId) public {
+    function onLoanLiquidated(address noteToken, uint256 noteTokenId) public {
         INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[noteToken][tokenId];
+        Loan storage loan = loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -576,7 +577,8 @@ contract Vault is
          * platform (trusted), or by checking the loan is complete and the
          * collateral is in the contract's possession (trustless) */
         bool loanLiquidated = (msg.sender == noteAdapter.lendingPlatform()) ||
-            (noteAdapter.isComplete(tokenId) && loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
+            (noteAdapter.isComplete(noteTokenId) &&
+                loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
         require(loanLiquidated, "Loan not liquidated");
 
         /* Validate loan liquidation wasn't already processed */
@@ -607,19 +609,19 @@ contract Vault is
         /* Mark loan liquidated in loan state */
         loan.liquidated = true;
 
-        emit LoanLiquidated(noteToken, tokenId, [seniorTrancheLoss, juniorTrancheLoss]);
+        emit LoanLiquidated(noteToken, noteTokenId, [seniorTrancheLoss, juniorTrancheLoss]);
     }
 
     function onCollateralLiquidated(
         address noteToken,
-        uint256 tokenId,
+        uint256 noteTokenId,
         uint256 proceeds
     ) public {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[noteToken][tokenId];
+        Loan storage loan = loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -645,7 +647,7 @@ contract Vault is
         /* Disable loan */
         loan.active = false;
 
-        emit CollateralLiquidated(noteToken, tokenId, proceeds);
+        emit CollateralLiquidated(noteToken, noteTokenId, proceeds);
     }
 
     /**************************************************************************/

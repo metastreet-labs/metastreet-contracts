@@ -446,7 +446,7 @@ describe("Vault", function () {
       await expectEvent(sellTx, vault, "NotePurchased", {
         account: accountLender1.address,
         noteToken: noteToken.address,
-        tokenId: loanId,
+        noteTokenId: loanId,
         purchasePrice: principal,
       });
 
@@ -619,7 +619,7 @@ describe("Vault", function () {
       await expectEvent(sellTx, vault, "NotePurchased", {
         account: accountLender1.address,
         noteToken: noteToken.address,
-        tokenId: loanId,
+        noteTokenId: loanId,
         purchasePrice: principal,
       });
       await expectEvent(sellTx, seniorLPToken, "Transfer", {
