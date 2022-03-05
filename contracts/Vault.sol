@@ -48,6 +48,7 @@ abstract contract VaultStorageV1 {
     mapping(address => INoteAdapter) internal _noteAdapters;
     LPToken internal _seniorLPToken;
     LPToken internal _juniorLPToken;
+    mapping(bytes4 => bool) internal _supportedInterfaces;
 
     /* Parameters */
     uint256 internal _seniorTrancheRate; /* UD60x18, in amount per seconds */
@@ -104,6 +105,11 @@ contract Vault is
         _loanPriceOracle = loanPriceOracle_;
         _seniorLPToken = seniorLPToken_;
         _juniorLPToken = juniorLPToken_;
+
+        /* Populate ERC165 supported interfaces */
+        _supportedInterfaces[this.supportsInterface.selector] = true;
+        _supportedInterfaces[IERC721Receiver.onERC721Received.selector] = true;
+        _supportedInterfaces[ILoanReceiver.onLoanRepaid.selector] = true;
     }
 
     /**************************************************************************/
@@ -751,10 +757,8 @@ contract Vault is
     /* ERC165 interface */
     /******************************************************/
 
-    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
-
-    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return (interfaceId == _INTERFACE_ID_ERC165) || (interfaceId == IERC721Receiver.onERC721Received.selector);
+    function supportsInterface(bytes4 interfaceId) external view override returns (bool) {
+        return _supportedInterfaces[interfaceId];
     }
 
     /******************************************************/

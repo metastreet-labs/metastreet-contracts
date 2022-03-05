@@ -1875,4 +1875,20 @@ describe("Vault", function () {
       await expect(vault.connect(accounts[1]).setPaused(true)).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
+
+  describe("#supportsInterface", async function () {
+    it("returns true on supported interfaces", async function () {
+      /* ERC165 */
+      expect(await vault.supportsInterface(vault.interface.getSighash("supportsInterface"))).to.equal(true);
+      /* ERC721 */
+      expect(await vault.supportsInterface(vault.interface.getSighash("onERC721Received"))).to.equal(true);
+      /* ILoanReceiver */
+      expect(await vault.supportsInterface(vault.interface.getSighash("onLoanRepaid"))).to.equal(true);
+    });
+    it("returns false on unsupported interfaces", async function () {
+      expect(await vault.supportsInterface("0xaabbccdd")).to.equal(false);
+      expect(await vault.supportsInterface("0x00000000")).to.equal(false);
+      expect(await vault.supportsInterface("0xffffffff")).to.equal(false);
+    });
+  });
 });
