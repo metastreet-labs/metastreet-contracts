@@ -1,9 +1,10 @@
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 
 import { BigNumberish } from "@ethersproject/bignumber";
 
 import { TestLendingPlatform } from "../typechain";
 import { extractEvent } from "../test/helpers/EventUtilities";
+import { elapseTime } from "../test/helpers/VaultHelpers";
 import {
   CollateralParameters,
   encodeCollateralParameters,
@@ -285,9 +286,7 @@ async function main() {
   console.log("                        Collateral Token ID 123\n");
 
   /* Fast-forward time by 15 days */
-  const lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
-  await network.provider.send("evm_setNextBlockTimestamp", [lastBlockTimestamp + 15 * 86400]);
-  await network.provider.send("evm_mine");
+  await elapseTime(15 * 86400);
   console.log("Fast-forwarded time by 15 days\n");
 
   loanId = await createLoan(
