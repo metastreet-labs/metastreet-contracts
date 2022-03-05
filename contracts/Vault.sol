@@ -58,7 +58,7 @@ abstract contract VaultStorageV1 {
     uint256 internal _totalLoanBalance;
     uint256 internal _totalCashBalance;
     uint256 internal _totalWithdrawalBalance;
-    mapping(address => mapping(uint256 => Loan)) public loans;
+    mapping(address => mapping(uint256 => Loan)) internal _loans;
 }
 
 abstract contract VaultStorage is VaultStorageV1 {}
@@ -174,6 +174,33 @@ contract Vault is
         )
     {
         return (_totalCashBalance, _totalLoanBalance, _totalWithdrawalBalance);
+    }
+
+    function loanState(address noteToken, uint256 noteTokenId)
+        public
+        view
+        returns (
+            bool active,
+            address collateralToken,
+            uint256 collateralTokenId,
+            uint256 purchasePrice,
+            uint256 repayment,
+            uint64 maturity,
+            bool liquidated,
+            uint256[2] memory trancheReturns
+        )
+    {
+        Loan storage loan = _loans[noteToken][noteTokenId];
+        return (
+            loan.active,
+            address(loan.collateralToken),
+            loan.collateralTokenId,
+            loan.purchasePrice,
+            loan.repayment,
+            loan.maturity,
+            loan.liquidated,
+            loan.trancheReturns
+        );
     }
 
     function seniorTrancheRate() public view returns (uint256) {
@@ -363,7 +390,7 @@ contract Vault is
         _totalLoanBalance += purchasePrice;
 
         /* Store loan state */
-        Loan storage loan = loans[address(noteToken)][noteTokenId];
+        Loan storage loan = _loans[address(noteToken)][noteTokenId];
         loan.active = true;
         loan.collateralToken = IERC721(loanInfo.collateralToken);
         loan.collateralTokenId = loanInfo.collateralTokenId;
@@ -487,7 +514,7 @@ contract Vault is
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[address(noteToken)][noteTokenId];
+        Loan storage loan = _loans[address(noteToken)][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -518,7 +545,7 @@ contract Vault is
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Lookup loan state */
-        Loan storage loan = loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -568,7 +595,7 @@ contract Vault is
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -621,7 +648,7 @@ contract Vault is
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
-        Loan storage loan = loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");

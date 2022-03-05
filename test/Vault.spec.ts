@@ -429,7 +429,7 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).purchasePrice).to.equal(ethers.constants.Zero);
+      expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(ethers.constants.Zero);
 
       /* Sell note to vault */
       const sellTx = await vault.connect(accountLender1).sellNote(noteToken.address, loanId, principal);
@@ -456,11 +456,11 @@ describe("Vault", function () {
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).collateralToken).to.equal(nft1.address);
-      expect((await vault.loans(noteToken.address, loanId)).purchasePrice).to.equal(principal);
-      expect((await vault.loans(noteToken.address, loanId)).repayment).to.equal(repayment);
-      expect((await vault.loans(noteToken.address, loanId)).maturity).to.be.gt(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).collateralToken).to.equal(nft1.address);
+      expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(principal);
+      expect((await vault.loanState(noteToken.address, loanId)).repayment).to.equal(repayment);
+      expect((await vault.loanState(noteToken.address, loanId)).maturity).to.be.gt(ethers.constants.Zero);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(false);
     });
     it("fails on unsupported note token", async function () {
       await expect(
@@ -1104,7 +1104,7 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(false);
       expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
 
@@ -1116,7 +1116,7 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
       expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1].sub(principal));
     });
@@ -1307,8 +1307,8 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
-      expect((await vault.loans(noteToken.address, loanId)).active).to.equal(true);
-      expect((await vault.loans(noteToken.address, loanId)).purchasePrice).to.equal(principal);
+      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(principal);
       expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
 
@@ -1324,7 +1324,7 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).active).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(false);
       expect((await vault.trancheState(0)).depositValue.add((await vault.trancheState(1)).depositValue)).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
@@ -1442,7 +1442,7 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(false);
       expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
 
@@ -1458,7 +1458,7 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
       expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1].sub(principal));
     });
@@ -1572,8 +1572,8 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(true);
-      expect((await vault.loans(noteToken.address, loanId)).active).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(true);
       expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1].sub(principal));
 
@@ -1592,8 +1592,8 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loans(noteToken.address, loanId)).liquidated).to.equal(true);
-      expect((await vault.loans(noteToken.address, loanId)).active).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(false);
       expect((await vault.trancheState(0)).depositValue.add((await vault.trancheState(1)).depositValue)).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
