@@ -80,7 +80,8 @@ contract Vault is
 
     string public constant IMPLEMENTATION_VERSION = "1.0";
     uint64 public constant TIME_BUCKET_DURATION = 14 days;
-    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+    uint64 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+    uint64 public constant TOTAL_SHARE_PRICE_PRORATION_DURATION = TIME_BUCKET_DURATION * SHARE_PRICE_PRORATION_BUCKETS;
 
     /**************************************************************************/
     /* Constructor */
@@ -246,14 +247,20 @@ contract Vault is
         uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
 
         /* Compute elapsed time into current time bucket and convert to UD60x18 */
-        uint256 elapsedTime = PRBMathUD60x18.fromUint(block.timestamp - _timeBucketToTimestamp(currentTimeBucket));
+        uint256 elapsedTimeIntoBucket = PRBMathUD60x18.fromUint(
+            block.timestamp - _timeBucketToTimestamp(currentTimeBucket)
+        );
 
         /* Sum the prorated returns from pending returns in each time bucket */
         uint256 proratedReturns;
-        for (uint256 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
+        for (uint64 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
             proratedReturns += PRBMathUD60x18.div(
-                PRBMathUD60x18.mul(elapsedTime, tranche.pendingReturns[currentTimeBucket + uint64(i)]),
-                PRBMathUD60x18.fromUint(TIME_BUCKET_DURATION) * (i + 1)
+                PRBMathUD60x18.mul(
+                    elapsedTimeIntoBucket +
+                        PRBMathUD60x18.fromUint(TIME_BUCKET_DURATION * (SHARE_PRICE_PRORATION_BUCKETS - 1 - i)),
+                    tranche.pendingReturns[currentTimeBucket + i]
+                ),
+                PRBMathUD60x18.fromUint(TOTAL_SHARE_PRICE_PRORATION_DURATION)
             );
         }
 
