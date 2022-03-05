@@ -180,8 +180,12 @@ export function randomAddress(): string {
   return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
 }
 
+export async function getBlockTimestamp(): Promise<number> {
+  return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+}
+
 export async function elapseTime(duration: number): Promise<void> {
-  const currentTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+  const currentTimestamp = await getBlockTimestamp();
   await network.provider.send("evm_setNextBlockTimestamp", [currentTimestamp + duration + 1]);
   await network.provider.send("evm_mine");
 }
