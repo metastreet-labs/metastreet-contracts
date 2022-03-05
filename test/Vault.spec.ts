@@ -1168,7 +1168,7 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
-      const [loanId, collateralTokenId] = await cycleLoanDefault(
+      const loanId = await cycleLoanDefault(
         lendingPlatform,
         mockLoanPriceOracle,
         vault,
@@ -1178,6 +1178,9 @@ describe("Vault", function () {
         principal,
         repayment
       );
+
+      /* Look up collateral token id */
+      const collateralTokenId = (await vault.loanState(noteToken.address, loanId)).collateralTokenId;
 
       /* Check state before withdraw */
       expect(await nft1.ownerOf(collateralTokenId)).to.equal(vault.address);
@@ -1241,7 +1244,7 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
-      const [loanId] = await cycleLoanDefault(
+      const loanId = await cycleLoanDefault(
         lendingPlatform,
         mockLoanPriceOracle,
         vault,
@@ -1550,7 +1553,7 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
-      const [loanId] = await cycleLoanDefault(
+      const loanId = await cycleLoanDefault(
         lendingPlatform,
         mockLoanPriceOracle,
         vault,
@@ -1608,7 +1611,7 @@ describe("Vault", function () {
       await vault.connect(accountDepositor1).deposit(1, depositAmounts[1]);
 
       /* Cycle a defaulted loan */
-      const [loanId] = await cycleLoanDefault(
+      const loanId = await cycleLoanDefault(
         lendingPlatform,
         mockLoanPriceOracle,
         vault,
