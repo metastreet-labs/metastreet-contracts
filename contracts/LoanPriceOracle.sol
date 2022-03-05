@@ -28,8 +28,9 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         uint8[3] sensitivityWeights; /* 0-100 */
     }
 
+    mapping(address => CollateralParameters) private _parameters;
+
     IERC20 public override currencyToken;
-    mapping(address => CollateralParameters) public parameters;
     uint256 public minimumDiscountRate; /* UD60x18, in amount per seconds */
 
     /**************************************************************************/
@@ -100,7 +101,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         }
 
         /* Look up collateral parameters */
-        CollateralParameters storage collateralParameters = parameters[collateralTokenContract];
+        CollateralParameters storage collateralParameters = _parameters[collateralTokenContract];
         if (collateralParameters.collateralValue == 0) {
             revert PriceError_Unsupported();
         }
@@ -143,6 +144,31 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     }
 
     /**************************************************************************/
+    /* Getters */
+    /**************************************************************************/
+
+    function getCollateralParameters(address collateralTokenContract)
+        public
+        view
+        returns (
+            uint256 collateralValue,
+            PiecewiseLinearModel memory aprUtilizationSensitivity,
+            PiecewiseLinearModel memory aprLoanToValueSensitivity,
+            PiecewiseLinearModel memory aprDurationSensitivity,
+            uint8[3] memory sensitivityWeights
+        )
+    {
+        CollateralParameters storage params = _parameters[collateralTokenContract];
+        return (
+            params.collateralValue,
+            params.aprUtilizationSensitivity,
+            params.aprLoanToValueSensitivity,
+            params.aprDurationSensitivity,
+            params.sensitivityWeights
+        );
+    }
+
+    /**************************************************************************/
     /* Setters */
     /**************************************************************************/
 
@@ -153,7 +179,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     }
 
     function setCollateralParameters(address tokenContract, bytes calldata packedTokenParameters) public onlyOwner {
-        parameters[tokenContract] = abi.decode(packedTokenParameters, (CollateralParameters));
+        _parameters[tokenContract] = abi.decode(packedTokenParameters, (CollateralParameters));
 
         emit CollateralParametersUpdated(tokenContract);
     }

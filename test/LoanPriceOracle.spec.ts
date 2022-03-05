@@ -228,20 +228,21 @@ describe("LoanPriceOracle", function () {
         tokenContract: nft1.address,
       });
 
-      expect((await loanPriceOracle.parameters(nft1.address)).collateralValue).to.equal(
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParameters.collateralValue
       );
-      expect((await loanPriceOracle.parameters(nft1.address)).aprUtilizationSensitivity).to.deep.equal(
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprUtilizationSensitivity).to.deep.equal(
         Object.values(collateralParameters.aprUtilizationSensitivity)
       );
-      expect((await loanPriceOracle.parameters(nft1.address)).aprLoanToValueSensitivity).to.deep.equal(
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprLoanToValueSensitivity).to.deep.equal(
         Object.values(collateralParameters.aprLoanToValueSensitivity)
       );
-      expect((await loanPriceOracle.parameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
         Object.values(collateralParameters.aprDurationSensitivity)
       );
-      /* FIXME struct decoding bug */
-      // expect((await loanPriceOracle.parameters(nft1.address)).sensitivityWeights).to.deep.equal(collateralParameters.sensitivityWeights);
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).sensitivityWeights).to.deep.equal(
+        collateralParameters.sensitivityWeights
+      );
     });
     it("replaces collateral parameters successfully", async function () {
       await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
@@ -263,10 +264,10 @@ describe("LoanPriceOracle", function () {
         encodeCollateralParameters(collateralParametersUpdate)
       );
 
-      expect((await loanPriceOracle.parameters(nft1.address)).collateralValue).to.equal(
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParametersUpdate.collateralValue
       );
-      expect((await loanPriceOracle.parameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
         Object.values(collateralParametersUpdate.aprDurationSensitivity)
       );
     });
