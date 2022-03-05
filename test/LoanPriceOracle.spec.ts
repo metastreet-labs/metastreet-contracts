@@ -7,10 +7,10 @@ import { TestERC20, TestERC721, LoanPriceOracle } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
 import { getBlockTimestamp } from "./helpers/VaultHelpers";
+import { FixedPoint } from "./helpers/FixedPointHelpers";
 import {
   CollateralParameters,
   encodeCollateralParameters,
-  normalizeRate,
   computePiecewiseLinearModel,
 } from "./helpers/LoanPriceOracleHelpers";
 
@@ -37,31 +37,31 @@ describe("LoanPriceOracle", function () {
     await loanPriceOracle.deployed();
   });
 
-  const minimumDiscountRate = normalizeRate("0.05");
+  const minimumDiscountRate = FixedPoint.normalizeRate("0.05");
   const minimumLoanDuration = 7 * 86400;
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
     aprUtilizationSensitivity: computePiecewiseLinearModel({
-      minRate: normalizeRate("0.05"),
-      targetRate: normalizeRate("0.10"),
-      maxRate: normalizeRate("2.00"),
-      target: ethers.utils.parseEther("0.90"),
-      max: ethers.utils.parseEther("1.00"),
+      minRate: FixedPoint.normalizeRate("0.05"),
+      targetRate: FixedPoint.normalizeRate("0.10"),
+      maxRate: FixedPoint.normalizeRate("2.00"),
+      target: FixedPoint.from("0.90"),
+      max: FixedPoint.from("1.00"),
     }),
     aprLoanToValueSensitivity: computePiecewiseLinearModel({
-      minRate: normalizeRate("0.05"),
-      targetRate: normalizeRate("0.10"),
-      maxRate: normalizeRate("2.00"),
-      target: ethers.utils.parseEther("0.30"),
-      max: ethers.utils.parseEther("0.60"),
+      minRate: FixedPoint.normalizeRate("0.05"),
+      targetRate: FixedPoint.normalizeRate("0.10"),
+      maxRate: FixedPoint.normalizeRate("2.00"),
+      target: FixedPoint.from("0.30"),
+      max: FixedPoint.from("0.60"),
     }),
     aprDurationSensitivity: computePiecewiseLinearModel({
-      minRate: normalizeRate("0.05"),
-      targetRate: normalizeRate("0.10"),
-      maxRate: normalizeRate("2.00"),
-      target: ethers.BigNumber.from(30 * 86400).mul(ethers.constants.WeiPerEther),
-      max: ethers.BigNumber.from(90 * 86400).mul(ethers.constants.WeiPerEther),
+      minRate: FixedPoint.normalizeRate("0.05"),
+      targetRate: FixedPoint.normalizeRate("0.10"),
+      maxRate: FixedPoint.normalizeRate("2.00"),
+      target: FixedPoint.from(30 * 86400),
+      max: FixedPoint.from(90 * 86400),
     }),
     sensitivityWeights: [50, 25, 25],
   };
@@ -78,8 +78,8 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization1 = ethers.utils.parseEther("0.25");
-      const utilization2 = ethers.utils.parseEther("0.95");
+      const utilization1 = FixedPoint.from("0.25");
+      const utilization2 = FixedPoint.from("0.95");
 
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
@@ -102,7 +102,7 @@ describe("LoanPriceOracle", function () {
       const repayment2 = ethers.utils.parseEther("44");
       const duration = 30 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("0.90");
+      const utilization = FixedPoint.from("0.90");
 
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
@@ -125,7 +125,7 @@ describe("LoanPriceOracle", function () {
       const maturity1 = (await getBlockTimestamp()) + duration1;
       const duration2 = 60 * 86400;
       const maturity2 = (await getBlockTimestamp()) + duration2;
-      const utilization = ethers.utils.parseEther("0.90");
+      const utilization = FixedPoint.from("0.90");
 
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
@@ -146,7 +146,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("22");
       const duration = 35 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("0.85");
+      const utilization = FixedPoint.from("0.85");
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -157,7 +157,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.constants.Zero;
       const duration = 35 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("0.85");
+      const utilization = FixedPoint.from("0.85");
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -168,7 +168,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = (await getBlockTimestamp()) + 5 * 86400;
-      const utilization = ethers.utils.parseEther("0.90");
+      const utilization = FixedPoint.from("0.90");
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -179,7 +179,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("0.90");
+      const utilization = FixedPoint.from("0.90");
 
       await expect(
         loanPriceOracle.priceLoan(tok1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -190,7 +190,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("1.10"); /* not actually possible */
+      const utilization = FixedPoint.from("1.10"); /* not actually possible */
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -201,7 +201,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("120");
       const duration = 60 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("0.90");
+      const utilization = FixedPoint.from("0.90");
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -212,7 +212,7 @@ describe("LoanPriceOracle", function () {
       const repayment = ethers.utils.parseEther("22");
       const duration = 120 * 86400;
       const maturity = (await getBlockTimestamp()) + duration;
-      const utilization = ethers.utils.parseEther("0.90");
+      const utilization = FixedPoint.from("0.90");
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
@@ -253,11 +253,11 @@ describe("LoanPriceOracle", function () {
         ...collateralParameters,
         collateralValue: ethers.utils.parseEther("125"),
         aprDurationSensitivity: computePiecewiseLinearModel({
-          minRate: normalizeRate("0.05"),
-          targetRate: normalizeRate("0.15"),
-          maxRate: normalizeRate("2.00"),
-          target: ethers.BigNumber.from(40 * 86400).mul(ethers.constants.WeiPerEther),
-          max: ethers.BigNumber.from(120 * 86400).mul(ethers.constants.WeiPerEther),
+          minRate: FixedPoint.normalizeRate("0.05"),
+          targetRate: FixedPoint.normalizeRate("0.15"),
+          maxRate: FixedPoint.normalizeRate("2.00"),
+          target: FixedPoint.from(40 * 86400),
+          max: FixedPoint.from(120 * 86400),
         }),
       };
 
@@ -284,14 +284,14 @@ describe("LoanPriceOracle", function () {
 
   describe("#setMinimumDiscountRate", async function () {
     it("sets minimum discount rate successfully", async function () {
-      const rate = normalizeRate("0.075");
+      const rate = FixedPoint.normalizeRate("0.075");
 
       await loanPriceOracle.setMinimumDiscountRate(rate);
       expect(await loanPriceOracle.minimumDiscountRate()).to.equal(rate);
     });
     it("fails on invalid caller", async function () {
       await expect(
-        loanPriceOracle.connect(accounts[1]).setMinimumDiscountRate(normalizeRate("0.05"))
+        loanPriceOracle.connect(accounts[1]).setMinimumDiscountRate(FixedPoint.normalizeRate("0.05"))
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });

@@ -49,10 +49,6 @@ export function encodeCollateralParameters(collateralParameters: CollateralParam
   );
 }
 
-export function normalizeRate(rate: string): BigNumber {
-  return ethers.utils.parseEther(rate).div(365 * 86400);
-}
-
 export function computePiecewiseLinearModel(parameters: {
   minRate: BigNumber;
   targetRate: BigNumber;
