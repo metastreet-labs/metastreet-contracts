@@ -98,7 +98,7 @@ export async function cycleLoan(
   lender: SignerWithAddress,
   principal: BigNumber,
   repayment: BigNumber
-): Promise<void> {
+): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
   const duration = 30 * 86400;
 
@@ -128,6 +128,8 @@ export async function cycleLoan(
 
   /* Callback vault */
   await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId);
+
+  return loanId;
 }
 
 export async function cycleLoanDefault(
