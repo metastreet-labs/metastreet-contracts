@@ -341,7 +341,7 @@ contract Vault is
         /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) */
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
-            1e18 + PRBMathUD60x18.mul(_seniorTrancheRate, (loanInfo.maturity - block.timestamp) * 1e18)
+            1e18 + PRBMathUD60x18.mul(_seniorTrancheRate, PRBMathUD60x18.fromUint(loanInfo.maturity - block.timestamp))
         ) - seniorTrancheContribution;
 
         /* Validate senior tranche return */
