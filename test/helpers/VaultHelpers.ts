@@ -11,10 +11,8 @@ let _collateralTokenId = 1;
 
 export async function initializeAccounts(
   borrower: SignerWithAddress,
-  lender1: SignerWithAddress,
-  lender2: SignerWithAddress,
-  depositor1: SignerWithAddress,
-  depositor2: SignerWithAddress,
+  lender: SignerWithAddress,
+  depositor: SignerWithAddress,
   liquidator: SignerWithAddress,
   nft: TestERC721,
   tok: TestERC20,
@@ -25,20 +23,15 @@ export async function initializeAccounts(
 
   /* Transfer 1000 WETH to borrower */
   await tok.transfer(borrower.address, initialAmount);
-  /* Transfer 1000 WETH to lender 1 */
-  await tok.transfer(lender1.address, initialAmount);
-  /* Transfer 1000 WETH to lender 2 */
-  await tok.transfer(lender2.address, initialAmount);
-  /* Transfer 1000 WETH to depositer 1 */
-  await tok.transfer(depositor1.address, initialAmount);
-  /* Transfer 1000 WETH to depositer 2 */
-  await tok.transfer(depositor2.address, initialAmount);
+  /* Transfer 1000 WETH to lender */
+  await tok.transfer(lender.address, initialAmount);
+  /* Transfer 1000 WETH to depositer */
+  await tok.transfer(depositor.address, initialAmount);
   /* Transfer 1000 WETH to liquidator */
   await tok.transfer(liquidator.address, initialAmount);
 
-  /* Approve token with lending platform for lenders (for principal) */
-  await tok.connect(lender1).approve(lendingPlatform.address, ethers.constants.MaxUint256);
-  await tok.connect(lender2).approve(lendingPlatform.address, ethers.constants.MaxUint256);
+  /* Approve token with lending platform for lender (for principal) */
+  await tok.connect(lender).approve(lendingPlatform.address, ethers.constants.MaxUint256);
 
   /* Approve NFT with lending platform for borrower (for loan) */
   await nft.connect(borrower).setApprovalForAll(lendingPlatform.address, true);
@@ -50,13 +43,11 @@ export async function initializeAccounts(
     await lendingPlatform.noteToken()
   )) as IERC721;
 
-  /* Approve note token with vault for lenders (for note sale) */
-  await noteToken.connect(lender1).setApprovalForAll(vault.address, true);
-  await noteToken.connect(lender2).setApprovalForAll(vault.address, true);
+  /* Approve note token with vault for lender (for note sale) */
+  await noteToken.connect(lender).setApprovalForAll(vault.address, true);
 
-  /* Approve token with vault for depositors (for deposits) */
-  await tok.connect(depositor1).approve(vault.address, ethers.constants.MaxUint256);
-  await tok.connect(depositor2).approve(vault.address, ethers.constants.MaxUint256);
+  /* Approve token with vault for depositor (for deposits) */
+  await tok.connect(depositor).approve(vault.address, ethers.constants.MaxUint256);
 }
 
 export async function createLoan(
