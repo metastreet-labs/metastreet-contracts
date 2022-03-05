@@ -150,6 +150,17 @@ describe("LoanPriceOracle", function () {
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
       ).to.equal(ethers.utils.parseEther("21.720873204903159480"));
     });
+    it("price loan for zero repayment", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.constants.Zero;
+      const duration = 35 * 86400;
+      const maturity = (await getBlockTimestamp()) + duration;
+      const utilization = ethers.utils.parseEther("0.85");
+
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.equal(ethers.utils.parseEther("0"));
+    });
     it("fails on insufficient time remaining", async function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
