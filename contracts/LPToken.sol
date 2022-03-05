@@ -12,7 +12,7 @@ abstract contract LPTokenStorageV1 {
         uint256 redemptionQueueTarget;
     }
 
-    mapping(address => Redemption) public redemptions;
+    mapping(address => Redemption) internal _redemptions;
 }
 
 abstract contract LPTokenStorage is LPTokenStorageV1 {}
@@ -34,6 +34,14 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     }
 
     /**************************************************************************/
+    /* Getters */
+    /**************************************************************************/
+
+    function redemptions(address account) public view returns (Redemption memory) {
+        return _redemptions[account];
+    }
+
+    /**************************************************************************/
     /* Privileged API */
     /**************************************************************************/
 
@@ -47,7 +55,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         uint256 amount,
         uint256 redemptionQueueTarget
     ) public onlyOwner {
-        Redemption storage redemption = redemptions[account];
+        Redemption storage redemption = _redemptions[account];
 
         require(balanceOf(account) >= shares, "Insufficient shares");
         require(redemption.pending == 0, "Redemption in progress");
@@ -64,7 +72,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         uint256 amount,
         uint256 processedRedemptionQueue
     ) public onlyOwner {
-        Redemption storage redemption = redemptions[account];
+        Redemption storage redemption = _redemptions[account];
 
         require(redemption.pending >= amount, "Invalid amount");
         require(
@@ -75,11 +83,13 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
 
         redemption.withdrawn += amount;
 
-        if (redemption.withdrawn == redemption.pending) delete redemptions[account];
+        if (redemption.withdrawn == redemption.pending) {
+            delete _redemptions[account];
+        }
     }
 
     function redemptionAvailable(address account, uint256 processedRedemptionQueue) public view returns (uint256) {
-        Redemption storage redemption = redemptions[account];
+        Redemption storage redemption = _redemptions[account];
 
         if (redemption.pending == 0) {
             /* No redemption pending */
