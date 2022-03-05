@@ -38,6 +38,7 @@ describe("LoanPriceOracle", function () {
   });
 
   const minimumDiscountRate = normalizeRate("0.05");
+  const minimumLoanDuration = 7 * 86400;
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
@@ -68,6 +69,7 @@ describe("LoanPriceOracle", function () {
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
       await loanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
+      await loanPriceOracle.setMinimumLoanDuration(minimumLoanDuration);
       await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
     });
 
@@ -291,6 +293,20 @@ describe("LoanPriceOracle", function () {
       await expect(
         loanPriceOracle.connect(accounts[1]).setMinimumDiscountRate(normalizeRate("0.05"))
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#setMinimumLoanDuration", async function () {
+    it("sets minimum loan duration successfully", async function () {
+      const duration = 14 * 86400;
+
+      await loanPriceOracle.setMinimumLoanDuration(duration);
+      expect(await loanPriceOracle.minimumLoanDuration()).to.equal(duration);
+    });
+    it("fails on invalid caller", async function () {
+      await expect(loanPriceOracle.connect(accounts[1]).setMinimumLoanDuration(7 * 86400)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 });

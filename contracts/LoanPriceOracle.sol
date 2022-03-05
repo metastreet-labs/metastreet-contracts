@@ -32,12 +32,14 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
     IERC20 public override currencyToken;
     uint256 public minimumDiscountRate; /* UD60x18, in amount per seconds */
+    uint256 public minimumLoanDuration;
 
     /**************************************************************************/
     /* Events */
     /**************************************************************************/
 
     event MinimumDiscountRateUpdated(uint256 rate);
+    event MinimumLoanDurationUpdated(uint256 duration);
     event CollateralParametersUpdated(address tokenContract);
 
     /**************************************************************************/
@@ -96,7 +98,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
         /* Calculate loan time remaining */
         uint256 loanTimeRemaining = maturity - block.timestamp;
-        if (loanTimeRemaining < 7 days) {
+        if (loanTimeRemaining < minimumLoanDuration) {
             revert PriceError_InsufficientTimeRemaining();
         }
 
@@ -176,6 +178,12 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         minimumDiscountRate = rate;
 
         emit MinimumDiscountRateUpdated(rate);
+    }
+
+    function setMinimumLoanDuration(uint256 duration) public onlyOwner {
+        minimumLoanDuration = duration;
+
+        emit MinimumLoanDurationUpdated(duration);
     }
 
     function setCollateralParameters(address tokenContract, bytes calldata packedTokenParameters) public onlyOwner {
