@@ -1,6 +1,6 @@
 import { ethers, network } from "hardhat";
 
-import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 import { extractEvent } from "./EventUtilities";
@@ -64,10 +64,10 @@ export async function createLoan(
   nft: TestERC721,
   borrower: SignerWithAddress,
   lender: SignerWithAddress,
-  principal: BigNumberish,
-  repayment: BigNumberish,
+  principal: BigNumber,
+  repayment: BigNumber,
   duration: number
-): Promise<BigNumberish> {
+): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
 
   /* Mint NFT to borrower */
@@ -96,8 +96,8 @@ export async function cycleLoan(
   nft: TestERC721,
   borrower: SignerWithAddress,
   lender: SignerWithAddress,
-  principal: BigNumberish,
-  repayment: BigNumberish
+  principal: BigNumber,
+  repayment: BigNumber
 ): Promise<void> {
   const collateralTokenId = _collateralTokenId++;
   const duration = 30 * 86400;
@@ -137,8 +137,8 @@ export async function cycleLoanDefault(
   nft: TestERC721,
   borrower: SignerWithAddress,
   lender: SignerWithAddress,
-  principal: BigNumberish,
-  repayment: BigNumberish
+  principal: BigNumber,
+  repayment: BigNumber
 ): Promise<[BigNumber, number]> {
   const collateralTokenId = _collateralTokenId++;
   const duration = 30 * 86400;
