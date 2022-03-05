@@ -152,22 +152,9 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     function getCollateralParameters(address collateralTokenContract)
         public
         view
-        returns (
-            uint256 collateralValue,
-            PiecewiseLinearModel memory aprUtilizationSensitivity,
-            PiecewiseLinearModel memory aprLoanToValueSensitivity,
-            PiecewiseLinearModel memory aprDurationSensitivity,
-            uint8[3] memory sensitivityWeights
-        )
+        returns (CollateralParameters memory)
     {
-        CollateralParameters storage params = _parameters[collateralTokenContract];
-        return (
-            params.collateralValue,
-            params.aprUtilizationSensitivity,
-            params.aprLoanToValueSensitivity,
-            params.aprDurationSensitivity,
-            params.sensitivityWeights
-        );
+        return _parameters[collateralTokenContract];
     }
 
     /**************************************************************************/
