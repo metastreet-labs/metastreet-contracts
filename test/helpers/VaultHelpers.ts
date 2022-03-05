@@ -80,6 +80,43 @@ export async function createLoan(
   return loanId;
 }
 
+export async function createAndSellLoan(
+  lendingPlatform: TestLendingPlatform,
+  mockLoanPriceOracle: MockLoanPriceOracle,
+  vault: Vault,
+  nft: TestERC721,
+  borrower: SignerWithAddress,
+  lender: SignerWithAddress,
+  principal: BigNumber,
+  repayment: BigNumber,
+  duration: number
+): Promise<BigNumber> {
+  const collateralTokenId = _collateralTokenId++;
+
+  /* Mint NFT to borrower */
+  await nft.mint(borrower.address, collateralTokenId);
+
+  /* Create a loan */
+  const lendTx = await lendingPlatform.lend(
+    borrower.address,
+    lender.address,
+    nft.address,
+    collateralTokenId,
+    principal,
+    repayment,
+    duration
+  );
+  const loanId = (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
+
+  /* Setup loan price with mock loan price oracle */
+  await mockLoanPriceOracle.setPrice(principal);
+
+  /* Sell note to vault */
+  await vault.connect(lender).sellNote(await lendingPlatform.noteToken(), loanId, principal);
+
+  return loanId;
+}
+
 export async function cycleLoan(
   lendingPlatform: TestLendingPlatform,
   mockLoanPriceOracle: MockLoanPriceOracle,
