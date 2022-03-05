@@ -6,6 +6,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { TestERC20, TestERC721, LoanPriceOracle } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
+import { getBlockTimestamp } from "./helpers/VaultHelpers";
 import {
   CollateralParameters,
   encodeCollateralParameters,
@@ -18,7 +19,6 @@ describe("LoanPriceOracle", function () {
   let tok1: TestERC20;
   let nft1: TestERC721;
   let loanPriceOracle: LoanPriceOracle;
-  let lastBlockTimestamp: number;
 
   beforeEach("deploy fixture", async () => {
     accounts = await ethers.getSigners();
@@ -35,8 +35,6 @@ describe("LoanPriceOracle", function () {
 
     loanPriceOracle = (await loanPriceOracleFactory.deploy(tok1.address)) as LoanPriceOracle;
     await loanPriceOracle.deployed();
-
-    lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
   });
 
   const minimumDiscountRate = normalizeRate("0.05");
@@ -77,7 +75,7 @@ describe("LoanPriceOracle", function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization1 = ethers.utils.parseEther("0.25");
       const utilization2 = ethers.utils.parseEther("0.95");
 
@@ -89,11 +87,11 @@ describe("LoanPriceOracle", function () {
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization1)
-      ).to.equal(ethers.utils.parseEther("21.885078487968299640"));
+      ).to.equal(ethers.utils.parseEther("21.885078399757398560"));
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization2)
-      ).to.equal(ethers.utils.parseEther("20.252208671780253302"));
+      ).to.equal(ethers.utils.parseEther("20.252207430314432161"));
     });
     it("price loan on loan-to-value component", async function () {
       const principal1 = ethers.utils.parseEther("20");
@@ -101,7 +99,7 @@ describe("LoanPriceOracle", function () {
       const principal2 = ethers.utils.parseEther("40");
       const repayment2 = ethers.utils.parseEther("44");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization = ethers.utils.parseEther("0.90");
 
       /* Override weights */
@@ -112,19 +110,19 @@ describe("LoanPriceOracle", function () {
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal1, repayment1, duration, maturity, utilization)
-      ).to.equal(ethers.utils.parseEther("21.850340308111155077"));
+      ).to.equal(ethers.utils.parseEther("21.850340193418430404"));
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal2, repayment2, duration, maturity, utilization)
-      ).to.equal(ethers.utils.parseEther("41.498710740852714115"));
+      ).to.equal(ethers.utils.parseEther("41.498708920559591380"));
     });
     it("price loan on duration component", async function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration1 = 20 * 86400;
-      const maturity1 = lastBlockTimestamp + duration1;
+      const maturity1 = (await getBlockTimestamp()) + duration1;
       const duration2 = 60 * 86400;
-      const maturity2 = lastBlockTimestamp + duration2;
+      const maturity2 = (await getBlockTimestamp()) + duration2;
       const utilization = ethers.utils.parseEther("0.90");
 
       /* Override weights */
@@ -135,28 +133,28 @@ describe("LoanPriceOracle", function () {
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration1, maturity1, utilization)
-      ).to.equal(ethers.utils.parseEther("21.900044884740500216"));
+      ).to.equal(ethers.utils.parseEther("21.900044723542782084"));
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration2, maturity2, utilization)
-      ).to.equal(ethers.utils.parseEther("18.761840677394126555"));
+      ).to.equal(ethers.utils.parseEther("18.761837683999453611"));
     });
     it("price loan on all components", async function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration = 35 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization = ethers.utils.parseEther("0.85");
 
       expect(
         await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.equal(ethers.utils.parseEther("21.720873764014917270"));
+      ).to.equal(ethers.utils.parseEther("21.720873204903159480"));
     });
     it("fails on insufficient time remaining", async function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + 5 * 86400;
+      const maturity = (await getBlockTimestamp()) + 5 * 86400;
       const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
@@ -167,7 +165,7 @@ describe("LoanPriceOracle", function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
@@ -178,7 +176,7 @@ describe("LoanPriceOracle", function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization = ethers.utils.parseEther("1.10"); /* not actually possible */
 
       await expect(
@@ -189,7 +187,7 @@ describe("LoanPriceOracle", function () {
       const principal = ethers.utils.parseEther("100");
       const repayment = ethers.utils.parseEther("120");
       const duration = 60 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
@@ -200,7 +198,7 @@ describe("LoanPriceOracle", function () {
       const principal = ethers.utils.parseEther("20");
       const repayment = ethers.utils.parseEther("22");
       const duration = 120 * 86400;
-      const maturity = lastBlockTimestamp + duration;
+      const maturity = (await getBlockTimestamp()) + duration;
       const utilization = ethers.utils.parseEther("0.90");
 
       await expect(
