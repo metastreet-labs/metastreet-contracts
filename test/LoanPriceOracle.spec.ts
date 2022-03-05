@@ -66,6 +66,12 @@ describe("LoanPriceOracle", function () {
     sensitivityWeights: [50, 25, 25],
   };
 
+  describe("constants", async function () {
+    it("matches implementation version", async function () {
+      expect(await loanPriceOracle.IMPLEMENTATION_VERSION()).to.equal("1.0");
+    });
+  });
+
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
       await loanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
