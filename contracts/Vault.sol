@@ -183,31 +183,8 @@ contract Vault is
         return (_totalCashBalance, _totalLoanBalance, _totalWithdrawalBalance);
     }
 
-    function loanState(address noteToken, uint256 noteTokenId)
-        public
-        view
-        returns (
-            bool active,
-            address collateralToken,
-            uint256 collateralTokenId,
-            uint256 purchasePrice,
-            uint256 repayment,
-            uint64 maturity,
-            bool liquidated,
-            uint256[2] memory trancheReturns
-        )
-    {
-        Loan storage loan = _loans[noteToken][noteTokenId];
-        return (
-            loan.active,
-            address(loan.collateralToken),
-            loan.collateralTokenId,
-            loan.purchasePrice,
-            loan.repayment,
-            loan.maturity,
-            loan.liquidated,
-            loan.trancheReturns
-        );
+    function loanState(address noteToken, uint256 noteTokenId) public view returns (Loan memory) {
+        return _loans[noteToken][noteTokenId];
     }
 
     function seniorTrancheRate() public view returns (uint256) {
