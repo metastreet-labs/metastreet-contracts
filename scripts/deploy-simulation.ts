@@ -5,10 +5,10 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { TestLendingPlatform } from "../typechain";
 import { extractEvent } from "../test/helpers/EventUtilities";
 import { elapseTime } from "../test/helpers/VaultHelpers";
+import { FixedPoint } from "../test/helpers/FixedPointHelpers";
 import {
   CollateralParameters,
   encodeCollateralParameters,
-  normalizeRate,
   computePiecewiseLinearModel,
 } from "../test/helpers/LoanPriceOracleHelpers";
 
@@ -149,10 +149,10 @@ async function main() {
   console.log("  Junior LP Token Address: ", wethBlueChipVaultJuniorLPToken.address);
   console.log("");
 
-  await daiBlueChipVault.setReserveRatio(ethers.utils.parseEther("0.10"));
+  await daiBlueChipVault.setReserveRatio(FixedPoint.from("0.10"));
   console.log("Set 10% Reserve Ratio on Blue Chip DAI Vault");
 
-  await wethBlueChipVault.setReserveRatio(ethers.utils.parseEther("0.15"));
+  await wethBlueChipVault.setReserveRatio(FixedPoint.from("0.15"));
   console.log("Set 15% Reserve Ratio on Blue Chip WETH Vault");
   console.log("");
 
@@ -207,28 +207,28 @@ async function main() {
   console.log("");
 
   /* Setup collateral parameters for loan price oracles */
-  const minimumDiscountRate = normalizeRate("0.05");
+  const minimumDiscountRate = FixedPoint.normalizeRate("0.05");
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
     aprUtilizationSensitivity: computePiecewiseLinearModel({
-      minRate: normalizeRate("0.05"),
-      targetRate: normalizeRate("0.10"),
-      maxRate: normalizeRate("2.00"),
-      target: ethers.utils.parseEther("0.90"),
-      max: ethers.utils.parseEther("1.00"),
+      minRate: FixedPoint.normalizeRate("0.05"),
+      targetRate: FixedPoint.normalizeRate("0.10"),
+      maxRate: FixedPoint.normalizeRate("2.00"),
+      target: FixedPoint.from("0.90"),
+      max: FixedPoint.from("1.00"),
     }),
     aprLoanToValueSensitivity: computePiecewiseLinearModel({
-      minRate: normalizeRate("0.05"),
-      targetRate: normalizeRate("0.10"),
-      maxRate: normalizeRate("2.00"),
-      target: ethers.utils.parseEther("0.30"),
-      max: ethers.utils.parseEther("0.60"),
+      minRate: FixedPoint.normalizeRate("0.05"),
+      targetRate: FixedPoint.normalizeRate("0.10"),
+      maxRate: FixedPoint.normalizeRate("2.00"),
+      target: FixedPoint.from("0.30"),
+      max: FixedPoint.from("0.60"),
     }),
     aprDurationSensitivity: computePiecewiseLinearModel({
-      minRate: normalizeRate("0.05"),
-      targetRate: normalizeRate("0.10"),
-      maxRate: normalizeRate("2.00"),
+      minRate: FixedPoint.normalizeRate("0.05"),
+      targetRate: FixedPoint.normalizeRate("0.10"),
+      maxRate: FixedPoint.normalizeRate("2.00"),
       target: ethers.BigNumber.from(30 * 86400).mul(ethers.constants.WeiPerEther),
       max: ethers.BigNumber.from(90 * 86400).mul(ethers.constants.WeiPerEther),
     }),
