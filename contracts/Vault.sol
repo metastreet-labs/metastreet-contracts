@@ -251,6 +251,7 @@ contract Vault is
         /* Sum the prorated returns from pending returns in each time bucket */
         uint256 proratedReturns;
         for (uint64 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
+            /* Prorated Returns[i] = ((Elapsed Time + W * (N - 1 - i)) / (W * N)) * Pending Returns[i]  */
             proratedReturns += PRBMathUD60x18.div(
                 PRBMathUD60x18.mul(
                     elapsedTimeIntoBucket +
