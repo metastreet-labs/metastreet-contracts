@@ -41,6 +41,23 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         return _redemptions[account];
     }
 
+    function redemptionAvailable(address account, uint256 processedRedemptionQueue) public view returns (uint256) {
+        Redemption storage redemption = _redemptions[account];
+
+        if (redemption.pending == 0) {
+            /* No redemption pending */
+            return 0;
+        } else if (processedRedemptionQueue >= redemption.redemptionQueueTarget) {
+            /* Full redemption available for withdraw */
+            return redemption.pending - redemption.withdrawn;
+        } else {
+            /* Partial redemption available for withdraw */
+            return
+                processedRedemptionQueue -
+                (redemption.redemptionQueueTarget - redemption.pending + redemption.withdrawn);
+        }
+    }
+
     /**************************************************************************/
     /* Privileged API */
     /**************************************************************************/
@@ -85,23 +102,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
 
         if (redemption.withdrawn == redemption.pending) {
             delete _redemptions[account];
-        }
-    }
-
-    function redemptionAvailable(address account, uint256 processedRedemptionQueue) public view returns (uint256) {
-        Redemption storage redemption = _redemptions[account];
-
-        if (redemption.pending == 0) {
-            /* No redemption pending */
-            return 0;
-        } else if (processedRedemptionQueue >= redemption.redemptionQueueTarget) {
-            /* Full redemption available for withdraw */
-            return redemption.pending - redemption.withdrawn;
-        } else {
-            /* Partial redemption available for withdraw */
-            return
-                processedRedemptionQueue -
-                (redemption.redemptionQueueTarget - redemption.pending + redemption.withdrawn);
         }
     }
 }
