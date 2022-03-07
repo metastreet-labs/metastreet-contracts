@@ -85,6 +85,16 @@ contract Vault is
     uint64 public constant TOTAL_SHARE_PRICE_PRORATION_DURATION = TIME_BUCKET_DURATION * SHARE_PRICE_PRORATION_BUCKETS;
 
     /**************************************************************************/
+    /* Events */
+    /**************************************************************************/
+
+    event SeniorTrancheRateUpdated(uint256 rate);
+    event ReserveRatioUpdated(uint256 ratio);
+    event LoanPriceOracleUpdated(address loanPriceOracle);
+    event CollateralLiquidatorUpdated(address collateralLiquidator);
+    event NoteAdapterUpdated(address noteToken, address noteAdapter);
+
+    /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 

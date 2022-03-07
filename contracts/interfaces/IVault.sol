@@ -67,17 +67,6 @@ interface IVault is ILoanReceiver {
         uint256 proceeds
     ) external;
 
-    /* Setters */
-    function setSeniorTrancheRate(uint256 interestRate) external;
-
-    function setReserveRatio(uint256 ratio) external;
-
-    function setLoanPriceOracle(address loanPriceOracle_) external;
-
-    function setCollateralLiquidator(address collateralLiquidator_) external;
-
-    function setNoteAdapter(address noteToken, address noteAdapter) external;
-
     /* Events */
     event Deposited(address indexed account, TrancheId indexed trancheId, uint256 amount, uint256 shares);
     event NotePurchased(address indexed account, address noteToken, uint256 noteTokenId, uint256 purchasePrice);
@@ -95,9 +84,4 @@ interface IVault is ILoanReceiver {
     event LoanLiquidated(address noteToken, uint256 noteTokenId, uint256[2] trancheLosses);
     event CollateralLiquidated(address noteToken, uint256 noteTokenId, uint256 proceeds);
 
-    event SeniorTrancheRateUpdated(uint256 rate);
-    event ReserveRatioUpdated(uint256 ratio);
-    event LoanPriceOracleUpdated(address loanPriceOracle);
-    event CollateralLiquidatorUpdated(address collateralLiquidator);
-    event NoteAdapterUpdated(address noteToken, address noteAdapter);
 }
