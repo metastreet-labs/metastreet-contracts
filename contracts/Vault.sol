@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -68,6 +69,7 @@ contract Vault is
     Initializable,
     OwnableUpgradeable,
     PausableUpgradeable,
+    ReentrancyGuardUpgradeable,
     VaultStorage,
     IERC165,
     IERC721Receiver,
@@ -109,6 +111,7 @@ contract Vault is
 
         __Ownable_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
 
         _name = name_;
         _currencyToken = currencyToken_;
@@ -496,7 +499,7 @@ contract Vault is
     /* Liquidation API */
     /**************************************************************************/
 
-    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) public {
+    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) public nonReentrant {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
