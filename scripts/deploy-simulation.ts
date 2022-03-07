@@ -100,6 +100,11 @@ async function main() {
     daiBlueChipVaultJuniorLPToken.address
   );
   await daiBlueChipVault.deployed();
+
+  /* Transfer ownership of LP tokens to DAI Vault */
+  await daiBlueChipVaultSeniorLPToken.transferOwnership(daiBlueChipVault.address);
+  await daiBlueChipVaultJuniorLPToken.transferOwnership(daiBlueChipVault.address);
+
   console.log("Blue Chip DAI Vault:    ", daiBlueChipVault.address);
   console.log("               Vault Name: ", await daiBlueChipVault.name());
   console.log(
@@ -135,6 +140,11 @@ async function main() {
     wethBlueChipVaultJuniorLPToken.address
   );
   await wethBlueChipVault.deployed();
+
+  /* Transfer ownership of LP tokens to WETH Vault */
+  await wethBlueChipVaultSeniorLPToken.transferOwnership(wethBlueChipVault.address);
+  await wethBlueChipVaultJuniorLPToken.transferOwnership(wethBlueChipVault.address);
+
   console.log("Blue Chip WETH Vault:    ", wethBlueChipVault.address);
   console.log("               Vault Name: ", await wethBlueChipVault.name());
   console.log(
