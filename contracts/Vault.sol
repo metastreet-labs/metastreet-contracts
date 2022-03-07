@@ -148,6 +148,10 @@ contract Vault is
         return _computeRedemptionSharePrice(trancheId);
     }
 
+    function utilization() public view returns (uint256) {
+        return _computeUtilization();
+    }
+
     /**************************************************************************/
     /* Additional Getters */
     /**************************************************************************/
@@ -197,10 +201,6 @@ contract Vault is
 
     function reservesAvailable() public view returns (uint256) {
         return _computeCashReservesAvailable();
-    }
-
-    function utilization() public view returns (uint256) {
-        return _computeUtilization();
     }
 
     /**************************************************************************/
