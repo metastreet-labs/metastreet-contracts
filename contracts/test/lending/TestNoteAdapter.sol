@@ -20,7 +20,7 @@ contract TestNoteAdapter is INoteAdapter {
         return address(_lendingPlatform);
     }
 
-    function getLoanInfo(uint256 tokenId) public view returns (LoanInfo memory) {
+    function getLoanInfo(uint256 noteTokenId) public view returns (LoanInfo memory) {
         /* Get loan from lending platform */
         (
             address borrower,
@@ -30,7 +30,7 @@ contract TestNoteAdapter is INoteAdapter {
             uint32 duration,
             address collateralToken,
             uint256 collateralTokenId
-        ) = _lendingPlatform.loans(tokenId);
+        ) = _lendingPlatform.loans(noteTokenId);
 
         /* Check loan exists */
         require(borrower != address(0x0), "Unknown loan");
@@ -49,23 +49,23 @@ contract TestNoteAdapter is INoteAdapter {
         return loanInfo;
     }
 
-    function getLiquidateCalldata(uint256 tokenId) public pure returns (bytes memory) {
-        return abi.encodeWithSignature("liquidate(uint256)", tokenId);
+    function getLiquidateCalldata(uint256 noteTokenId) public pure returns (bytes memory) {
+        return abi.encodeWithSignature("liquidate(uint256)", noteTokenId);
     }
 
-    function isSupported(uint256 tokenId, address vaultCurrencyToken) public view returns (bool) {
+    function isSupported(uint256 noteTokenId, address currencyToken) public view returns (bool) {
         /* All collateral tokens supported, so just check the note exists and
          * the currency token matches */
         return
-            _lendingPlatform.noteToken().exists(tokenId) &&
-            address(_lendingPlatform.currencyToken()) == vaultCurrencyToken;
+            _lendingPlatform.noteToken().exists(noteTokenId) &&
+            address(_lendingPlatform.currencyToken()) == currencyToken;
     }
 
-    function isActive(uint256 tokenId) public view returns (bool) {
-        return _lendingPlatform.noteToken().exists(tokenId);
+    function isActive(uint256 noteTokenId) public view returns (bool) {
+        return _lendingPlatform.noteToken().exists(noteTokenId);
     }
 
-    function isComplete(uint256 tokenId) public view returns (bool) {
-        return _lendingPlatform.loansComplete(tokenId);
+    function isComplete(uint256 noteTokenId) public view returns (bool) {
+        return _lendingPlatform.loansComplete(noteTokenId);
     }
 }

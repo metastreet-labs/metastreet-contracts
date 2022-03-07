@@ -21,13 +21,13 @@ interface INoteAdapter {
 
     function lendingPlatform() external view returns (address);
 
-    function getLoanInfo(uint256 tokenId) external view returns (LoanInfo memory);
+    function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory);
 
-    function getLiquidateCalldata(uint256 tokenId) external view returns (bytes memory);
+    function getLiquidateCalldata(uint256 noteTokenId) external view returns (bytes memory);
 
-    function isSupported(uint256 tokenId, address vaultCurrencyToken) external view returns (bool);
+    function isSupported(uint256 noteTokenId, address currencyToken) external view returns (bool);
 
-    function isActive(uint256 tokenId) external view returns (bool);
+    function isActive(uint256 noteTokenId) external view returns (bool);
 
-    function isComplete(uint256 tokenId) external view returns (bool);
+    function isComplete(uint256 noteTokenId) external view returns (bool);
 }
