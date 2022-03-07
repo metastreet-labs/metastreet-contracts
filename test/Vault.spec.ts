@@ -1712,6 +1712,22 @@ describe("Vault", function () {
     });
   });
 
+  describe("#reservesAvailable", async function () {
+    [ethers.constants.Zero, ethers.utils.parseEther("0.05"), ethers.utils.parseEther("0.15")].forEach((ratio) => {
+      it(`reserves available for ${ethers.utils.formatEther(ratio.mul(100))}% ratio`, async function () {
+        const depositAmount = ethers.utils.parseEther("10");
+
+        /* Set reserve ratio */
+        await vault.setReserveRatio(ratio);
+
+        /* Deposit cash */
+        await vault.connect(accountDepositor).deposit(0, depositAmount);
+
+        expect(await vault.reservesAvailable()).to.equal(ratio.mul(depositAmount).div(ethers.constants.WeiPerEther));
+      });
+    });
+  });
+
   describe("#setSeniorTrancheRate", async function () {
     it("sets senior tranche rate successfully", async function () {
       const rate = ethers.utils.parseEther("0.025").div(365 * 86400);
