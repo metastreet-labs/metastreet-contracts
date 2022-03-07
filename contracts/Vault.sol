@@ -15,8 +15,22 @@ import "prb-math/contracts/PRBMathUD60x18.sol";
 import "./interfaces/IVault.sol";
 import "./LPToken.sol";
 
+/**
+ * @title Storage for Vault, V1
+ */
 abstract contract VaultStorageV1 {
+    /**************************************************************************/
     /* Structures */
+    /**************************************************************************/
+
+    /**
+     * @notice Tranche state
+     * @param depositValue Deposit value
+     * @param pendingRedemptions Pending redemptions
+     * @param redemptionQueue Current redemption queue
+     * @param processedRedemptionQueue Processed redemption queue
+     * @param pendingReturns Mapping of time bucket to pending returns
+     */
     struct Tranche {
         uint256 depositValue;
         uint256 pendingRedemptions;
@@ -25,11 +39,27 @@ abstract contract VaultStorageV1 {
         mapping(uint64 => uint256) pendingReturns;
     }
 
+    /**
+     * @notice Tranches
+     * @param senior Senior tranche
+     * @param junior Junior tranche
+     */
     struct Tranches {
         Tranche senior;
         Tranche junior;
     }
 
+    /**
+     * @notice Loan state
+     * @param active Loan is active
+     * @param collateralToken Collateral token contract
+     * @param collateralTokenId Collateral token ID
+     * @param purchasePrice Purchase price in currency tokens
+     * @param repayment Repayment in currency tokens
+     * @param maturity Maturity in seconds since Unix epoch
+     * @param liquidated Loan is liquidated
+     * @param trancheReturns Tranche returns in currency tokens
+     */
     struct Loan {
         bool active;
         IERC721 collateralToken;
@@ -41,7 +71,10 @@ abstract contract VaultStorageV1 {
         uint256[2] trancheReturns;
     }
 
+    /**************************************************************************/
     /* Properties and Linked Contracts */
+    /**************************************************************************/
+
     string internal _name;
     IERC20 internal _currencyToken;
     ILoanPriceOracle internal _loanPriceOracle;
@@ -51,20 +84,45 @@ abstract contract VaultStorageV1 {
     LPToken internal _juniorLPToken;
     mapping(bytes4 => bool) internal _supportedInterfaces;
 
+    /**************************************************************************/
     /* Parameters */
-    uint256 internal _seniorTrancheRate; /* UD60x18, in amount per seconds */
-    uint256 internal _reserveRatio; /* UD60x18 */
+    /**************************************************************************/
 
+    /**
+     * @dev Senior tranche rate in UD60x18 amount per seconds
+     */
+    uint256 internal _seniorTrancheRate;
+
+    /**
+     * @dev Reserve ration in UD60x18
+     */
+    uint256 internal _reserveRatio;
+
+    /**************************************************************************/
     /* State */
+    /**************************************************************************/
+
     Tranches internal _tranches;
     uint256 internal _totalLoanBalance;
     uint256 internal _totalCashBalance;
     uint256 internal _totalWithdrawalBalance;
+
+    /**
+     * @dev Mapping of note token contract to note token ID to loan
+     */
     mapping(address => mapping(uint256 => Loan)) internal _loans;
 }
 
-abstract contract VaultStorage is VaultStorageV1 {}
+/**
+ * @title Storage for Vault, aggregated
+ */
+abstract contract VaultStorage is VaultStorageV1 {
 
+}
+
+/**
+ * @title Vault
+ */
 contract Vault is
     Initializable,
     OwnableUpgradeable,
@@ -81,25 +139,73 @@ contract Vault is
     /* Constants */
     /**************************************************************************/
 
+    /**
+     * @notice Implementation version
+     */
     string public constant IMPLEMENTATION_VERSION = "1.0";
+
+    /**
+     * @notice Time bucket duration in seconds
+     */
     uint64 public constant TIME_BUCKET_DURATION = 14 days;
+
+    /**
+     * @notice Number of share price proration buckets
+     */
     uint64 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+
+    /**
+     * @notice Total share price proration window in seconds
+     */
     uint64 public constant TOTAL_SHARE_PRICE_PRORATION_DURATION = TIME_BUCKET_DURATION * SHARE_PRICE_PRORATION_BUCKETS;
 
     /**************************************************************************/
     /* Events */
     /**************************************************************************/
 
+    /**
+     * @notice Emitted when senior tranche rate is updated
+     * @param rate New senior tranche rate in UD60x18 amount per second
+     */
     event SeniorTrancheRateUpdated(uint256 rate);
+
+    /**
+     * @notice Emitted when cash reserve ratio is updated
+     * @param ratio New cash reserve ratio in UD60x18
+     */
     event ReserveRatioUpdated(uint256 ratio);
+
+    /**
+     * @notice Emitted when loan price oracle contract is updated
+     * @param loanPriceOracle New loan price oracle contract
+     */
     event LoanPriceOracleUpdated(address loanPriceOracle);
+
+    /**
+     * @notice Emitted when collateral liquidator contract is updated
+     * @param collateralLiquidator New collateral liquidator contract
+     */
     event CollateralLiquidatorUpdated(address collateralLiquidator);
+
+    /**
+     * @notice Emitted when note adapter is updated
+     * @param noteToken Note token contract
+     * @param noteAdapter Note adapter contract
+     */
     event NoteAdapterUpdated(address noteToken, address noteAdapter);
 
     /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
+    /**
+     * @notice Vault constructor (for proxy)
+     * @param name_ Vault name
+     * @param currencyToken_ Currency token contract
+     * @param loanPriceOracle_ Loan price oracle contract
+     * @param seniorLPToken_ Senior LP token contract
+     * @param juniorLPToken_ Junior LP token contract
+     */
     function initialize(
         string memory name_,
         IERC20 currencyToken_,
@@ -130,38 +236,65 @@ contract Vault is
     /* Interface Getters (defined in IVault) */
     /**************************************************************************/
 
+    /**
+     * @inheritdoc IVault
+     */
     function name() external view returns (string memory) {
         return _name;
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function currencyToken() external view returns (IERC20) {
         return _currencyToken;
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function lpToken(TrancheId trancheId) external view returns (IERC20) {
         return IERC20(address(_lpToken(trancheId)));
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function loanPriceOracle() external view returns (ILoanPriceOracle) {
         return _loanPriceOracle;
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function collateralLiquidator() external view returns (address) {
         return _collateralLiquidator;
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function noteAdapters(address noteToken) external view returns (INoteAdapter) {
         return _noteAdapters[noteToken];
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function sharePrice(TrancheId trancheId) external view returns (uint256) {
         return _computeSharePrice(trancheId);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function redemptionSharePrice(TrancheId trancheId) external view returns (uint256) {
         return _computeRedemptionSharePrice(trancheId);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function utilization() external view returns (uint256) {
         return _computeUtilization();
     }
@@ -170,6 +303,14 @@ contract Vault is
     /* Additional Getters */
     /**************************************************************************/
 
+    /**
+     * @notice Get tranche state
+     * @param trancheId Tranche
+     * @return depositValue Deposit value
+     * @return pendingRedemptions Pending redemptions
+     * @return redemptionQueue Current redemption queue
+     * @return processedRedemptionQueue Processed redemption queue
+     */
     function trancheState(TrancheId trancheId)
         external
         view
@@ -189,6 +330,12 @@ contract Vault is
         );
     }
 
+    /**
+     * @notice Get vault balance state
+     * @return totalCashBalance Total cash balance
+     * @return totalLoanBalance Total loan balance
+     * @return totalWithdrawalBalance Total withdrawal balance
+     */
     function balanceState()
         external
         view
@@ -201,18 +348,36 @@ contract Vault is
         return (_totalCashBalance, _totalLoanBalance, _totalWithdrawalBalance);
     }
 
+    /**
+     * @notice Get Loan state
+     * @param noteToken Note token contract
+     * @param noteTokenId Note token ID
+     * @return Loan state
+     */
     function loanState(address noteToken, uint256 noteTokenId) external view returns (Loan memory) {
         return _loans[noteToken][noteTokenId];
     }
 
+    /**
+     * @notice Get senior tranche rate
+     * @return Senior tranche rate in UD60x18 amount per second
+     */
     function seniorTrancheRate() external view returns (uint256) {
         return _seniorTrancheRate;
     }
 
+    /**
+     * @notice Get cash reserve ratio
+     * @return Cash reserve ratio in UD60x18 amount per second
+     */
     function reserveRatio() external view returns (uint256) {
         return _reserveRatio;
     }
 
+    /**
+     * @notice Get cash reserves available
+     * @return Cash reserves available in currency tokens
+     */
     function reservesAvailable() external view returns (uint256) {
         return _computeCashReservesAvailable();
     }
@@ -221,22 +386,40 @@ contract Vault is
     /* Internal Helper Functions */
     /**************************************************************************/
 
+    /**
+     * @dev Get LP token contract
+     */
     function _lpToken(TrancheId trancheId) internal view returns (LPToken) {
         return (trancheId == TrancheId.Senior) ? _seniorLPToken : _juniorLPToken;
     }
 
+    /**
+     * @dev Get tranche state
+     */
     function _trancheState(TrancheId trancheId) internal view returns (Tranche storage) {
         return (trancheId == TrancheId.Senior) ? _tranches.senior : _tranches.junior;
     }
 
+    /**
+     * @dev Convert Unix timestamp to time bucket
+     */
     function _timestampToTimeBucket(uint64 timestamp) internal pure returns (uint64) {
         return timestamp / TIME_BUCKET_DURATION;
     }
 
+    /**
+     * @dev Convert time bucket to Unix timestamp
+     */
     function _timeBucketToTimestamp(uint64 timeBucket) internal pure returns (uint64) {
         return timeBucket * TIME_BUCKET_DURATION;
     }
 
+    /**
+     * @dev Compute estimated value of the tranche, including prorated pending
+     * returns
+     * @param trancheId tranche
+     * @return Estimated value in currency tokens
+     */
     function _computeEstimatedValue(TrancheId trancheId) internal view returns (uint256) {
         Tranche storage tranche = _trancheState(trancheId);
 
@@ -266,27 +449,50 @@ contract Vault is
         return tranche.depositValue + proratedReturns;
     }
 
+    /**
+     * @dev Compute share price of tranche including prorated pending returns
+     * @param trancheId tranche
+     * @return Share price in UD60x18
+     */
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 estimatedValue = _computeEstimatedValue(trancheId);
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
         return (totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(estimatedValue, totalSupply);
     }
 
+    /**
+     * @dev Compute redemption share price of tranche
+     * @param trancheId tranche
+     * @return Redemption share price in UD60x18
+     */
     function _computeRedemptionSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 depositValue = _trancheState(trancheId).depositValue;
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
         return (totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(depositValue, totalSupply);
     }
 
+    /**
+     * @dev Compute cash reserves available
+     * @return Cash reserves in currency tokens
+     */
     function _computeCashReservesAvailable() internal view returns (uint256) {
         return Math.min(_totalCashBalance, PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance));
     }
 
+    /**
+     * @dev Compute utilization
+     * @return Utilization in UD60x18, between 0 and 1
+     */
     function _computeUtilization() internal view returns (uint256) {
         uint256 totalBalance = _totalCashBalance + _totalLoanBalance;
         return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(_totalLoanBalance, _totalCashBalance + _totalLoanBalance);
     }
 
+    /**
+     * @dev Process redemptions for tranche
+     * @param tranche Tranche
+     * @param proceeds Proceeds in currency tokens
+     */
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
         /* Compute maximum redemption possible */
         uint256 redemptionAmount = Math.min(tranche.pendingRedemptions, proceeds);
@@ -304,6 +510,12 @@ contract Vault is
         return proceeds - redemptionAmount;
     }
 
+    /**
+     * @dev Update tranche state with currency deposit and mint LP tokens to
+     * depositer
+     * @param trancheId tranche
+     * @param amount Amount of currency tokens
+     */
     function _deposit(TrancheId trancheId, uint256 amount) internal {
         /* Compute current share price */
         uint256 currentSharePrice = _computeSharePrice(trancheId);
@@ -326,6 +538,13 @@ contract Vault is
         emit Deposited(msg.sender, trancheId, amount, shares);
     }
 
+    /**
+     * @dev Calculate purchase price of note and update tranche state with note
+     * purchase
+     * @param noteToken Note token contract
+     * @param noteTokenId Note token ID
+     * @param minPurchasePrice Minimum purchase price in currency tokens
+     */
     function _sellNote(
         IERC721 noteToken,
         uint256 noteTokenId,
@@ -414,6 +633,9 @@ contract Vault is
     /* User API */
     /**************************************************************************/
 
+    /**
+     * @inheritdoc IVault
+     */
     function deposit(TrancheId trancheId, uint256 amount) external whenNotPaused {
         /* Deposit into tranche */
         _deposit(trancheId, amount);
@@ -422,6 +644,9 @@ contract Vault is
         IERC20Upgradeable(address(_currencyToken)).safeTransferFrom(msg.sender, address(this), amount);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function sellNote(
         IERC721 noteToken,
         uint256 noteTokenId,
@@ -437,6 +662,9 @@ contract Vault is
         IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, purchasePrice);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function sellNoteAndDeposit(
         IERC721 noteToken,
         uint256 noteTokenId,
@@ -456,6 +684,9 @@ contract Vault is
         noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function redeem(TrancheId trancheId, uint256 shares) external whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
@@ -481,6 +712,9 @@ contract Vault is
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function withdraw(TrancheId trancheId, uint256 amount) external whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
@@ -500,6 +734,9 @@ contract Vault is
     /* Liquidation API */
     /**************************************************************************/
 
+    /**
+     * @inheritdoc IVault
+     */
     function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) external nonReentrant {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
@@ -514,6 +751,9 @@ contract Vault is
         onLoanLiquidated(address(noteToken), noteTokenId);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) external {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == _collateralLiquidator, "Invalid caller");
@@ -543,6 +783,9 @@ contract Vault is
     /* Callbacks */
     /**************************************************************************/
 
+    /**
+     * @inheritdoc ILoanReceiver
+     */
     function onLoanRepaid(address noteToken, uint256 noteTokenId) external {
         INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
@@ -593,6 +836,9 @@ contract Vault is
         );
     }
 
+    /**
+     * @inheritdoc ILoanReceiver
+     */
     function onLoanLiquidated(address noteToken, uint256 noteTokenId) public {
         INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
@@ -644,6 +890,9 @@ contract Vault is
         emit LoanLiquidated(noteToken, noteTokenId, [seniorTrancheLoss, juniorTrancheLoss]);
     }
 
+    /**
+     * @inheritdoc IVault
+     */
     function onCollateralLiquidated(
         address noteToken,
         uint256 noteTokenId,
@@ -686,7 +935,12 @@ contract Vault is
     /* Multicall */
     /**************************************************************************/
 
-    /* Inlined from Address.sol */
+    /**
+     * @notice Execute a batch of function calls on this contract.
+     * Inlined from openzeppelin/contracts/utils/Multicall.sol.
+     * @param data Calldatas
+     * @return results Call results
+     */
     function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
@@ -712,31 +966,71 @@ contract Vault is
     /* Setters */
     /**************************************************************************/
 
+    /**
+     * @notice Set the senior tranche rate
+     *
+     * Emits a {SeniorTrancheRateUpdated} event.
+     *
+     * @param rate Rate in UD60x18 amount per second
+     */
     function setSeniorTrancheRate(uint256 rate) external onlyOwner {
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
     }
 
+    /**
+     * @notice Set the cash reserve ratio
+     *
+     * Emits a {SeniorTrancheRateUpdated} event.
+     *
+     * @param ratio Reserve ratio in UD60x18
+     */
     function setReserveRatio(uint256 ratio) external onlyOwner {
         _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
     }
 
+    /**
+     * @notice Set the loan price oracle contract
+     *
+     * Emits a {LoanPriceOracleUpdated} event.
+     *
+     * @param loanPriceOracle_ Loan price oracle contract
+     */
     function setLoanPriceOracle(address loanPriceOracle_) external onlyOwner {
         _loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
 
+    /**
+     * @notice Set the collateral liquidator contract
+     *
+     * Emits a {CollateralLiquidatorUpdated} event.
+     *
+     * @param collateralLiquidator_ Collateral liquidator contract
+     */
     function setCollateralLiquidator(address collateralLiquidator_) external onlyOwner {
         _collateralLiquidator = collateralLiquidator_;
         emit CollateralLiquidatorUpdated(collateralLiquidator_);
     }
 
+    /**
+     * @notice Set note adapter contract
+     *
+     * Emits a {NoteAdapterUpdated} event.
+     *
+     * @param noteToken Note token contract
+     * @param noteAdapter Note adapter contract
+     */
     function setNoteAdapter(address noteToken, address noteAdapter) external onlyOwner {
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
 
+    /**
+     * @notice Set paused state of contract.
+     * @param paused Paused
+     */
     function setPaused(bool paused) external onlyOwner {
         if (paused) {
             _pause();
@@ -749,6 +1043,9 @@ contract Vault is
     /* ERC165 interface */
     /******************************************************/
 
+    /**
+     * @inheritdoc IERC165
+     */
     function supportsInterface(bytes4 interfaceId) external view override returns (bool) {
         return _supportedInterfaces[interfaceId];
     }
@@ -757,6 +1054,9 @@ contract Vault is
     /* Receiver Hooks */
     /******************************************************/
 
+    /**
+     * @inheritdoc IERC721Receiver
+     */
     function onERC721Received(
         address, /* operator */
         address, /* from */

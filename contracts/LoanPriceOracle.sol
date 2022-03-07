@@ -7,25 +7,45 @@ import "prb-math/contracts/PRBMathUD60x18.sol";
 
 import "./interfaces/ILoanPriceOracle.sol";
 
+/**
+ * @title Loan Price Oracle
+ */
 contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /**************************************************************************/
     /* Constants */
     /**************************************************************************/
 
+    /**
+     * @notice Implementation version
+     */
     string public constant IMPLEMENTATION_VERSION = "1.0";
 
     /**************************************************************************/
     /* State */
     /**************************************************************************/
 
+    /**
+     * @notice Piecewise linear model parameters
+     * @param slope1 Slope before kink in UD60x18
+     * @param slope2 Slope after kink in UD60x18
+     * @param target Value of kink in UD60x18
+     * @param max Max input value in UD60x18
+     */
     struct PiecewiseLinearModel {
-        /* All parameters are UD60x18 */
         uint256 slope1;
         uint256 slope2;
         uint256 target;
         uint256 max;
     }
 
+    /**
+     * @notice Collateral parameters
+     * @param collateralValue Collateral value in UD60x18
+     * @param rateUtilizationSensitivity Model for rate vs utilization
+     * @param rateLoanToValueSensitivity Model for rate vs loan to value
+     * @param rateDurationSensitivity Model for rate vs duration
+     * @param sensitivityWeights Weights for linear models, each 0 to 100
+     */
     struct CollateralParameters {
         uint256 collateralValue; /* UD60x18 */
         PiecewiseLinearModel rateUtilizationSensitivity;
@@ -34,24 +54,56 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         uint8[3] sensitivityWeights; /* 0-100 */
     }
 
+    /**
+     * @dev Mapping of collateral token contract to collateral parameters
+     */
     mapping(address => CollateralParameters) private _parameters;
 
+    /**
+     * @inheritdoc ILoanPriceOracle
+     */
     IERC20 public override currencyToken;
-    uint256 public minimumDiscountRate; /* UD60x18, in amount per seconds */
+
+    /**
+     * @notice Minimum discount rate in UD60x18 amount per second
+     */
+    uint256 public minimumDiscountRate;
+
+    /**
+     * @notice Minimum loan duration in seconds
+     */
     uint256 public minimumLoanDuration;
 
     /**************************************************************************/
     /* Events */
     /**************************************************************************/
 
+    /**
+     * @notice Emitted when minimum discount rate is updated
+     * @param rate New minimum discount rate in UD60x18 amount per second
+     */
     event MinimumDiscountRateUpdated(uint256 rate);
+
+    /**
+     * @notice Emitted when minimum loan duration is updated
+     * @param duration New minimum loan duration in seconds
+     */
     event MinimumLoanDurationUpdated(uint256 duration);
+
+    /**
+     * @notice Emitted when collateral parameters are updated
+     * @param collateralToken Address of collateral token
+     */
     event CollateralParametersUpdated(address collateralToken);
 
     /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
+    /**
+     * @notice LoanPriceOracle constructor
+     * @param currencyToken_ Currency token used for pricing
+     */
     constructor(IERC20 currencyToken_) {
         require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
 
@@ -62,6 +114,13 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Internal Helper Functions */
     /**************************************************************************/
 
+    /**
+     * @dev Compute the output of the specified piecewise linear model with
+     * input x
+     * @param model Piecewise linear model to compute
+     * @param x Input value in UD60x18
+     * @return Result in UD60x18
+     */
     function _computeRateComponent(PiecewiseLinearModel storage model, uint256 x) internal view returns (uint256) {
         uint256 y = (x <= model.target)
             ? minimumDiscountRate + PRBMathUD60x18.mul(x, model.slope1)
@@ -71,6 +130,12 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         return (x < model.max) ? y : type(uint256).max;
     }
 
+    /**
+     * @dev Compute the weighted rate
+     * @param weights Weights to apply, each 0 to 100
+     * @param components Components to weight, each UD60x18
+     * @return Weighted rate in UD60x18
+     */
     function _computeWeightedRate(uint8[3] storage weights, uint256[3] memory components)
         internal
         view
@@ -89,6 +154,9 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Primary API */
     /**************************************************************************/
 
+    /**
+     * @inheritdoc ILoanPriceOracle
+     */
     function priceLoan(
         address collateralToken,
         uint256 collateralTokenId,
@@ -155,6 +223,11 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Getters */
     /**************************************************************************/
 
+    /**
+     * @notice Get collateral parameters for token contract
+     * @param collateralToken Collateral token contract
+     * @return Collateral parameters
+     */
     function getCollateralParameters(address collateralToken) external view returns (CollateralParameters memory) {
         return _parameters[collateralToken];
     }
@@ -163,18 +236,40 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Setters */
     /**************************************************************************/
 
+    /**
+     * @notice Set minimum discount rate
+     *
+     * Emits a {MinimumDiscountRateUpdated} event.
+     *
+     * @param rate Minimum discount rate in UD60x18 amount per second
+     */
     function setMinimumDiscountRate(uint256 rate) external onlyOwner {
         minimumDiscountRate = rate;
 
         emit MinimumDiscountRateUpdated(rate);
     }
 
+    /**
+     * @notice Set minimum loan duration
+     *
+     * Emits a {MinimumLoanDurationUpdated} event.
+     *
+     * @param duration Minimum loan duration in seconds
+     */
     function setMinimumLoanDuration(uint256 duration) external onlyOwner {
         minimumLoanDuration = duration;
 
         emit MinimumLoanDurationUpdated(duration);
     }
 
+    /**
+     * @notice Set collateral parameters
+     *
+     * Emits a {CollateralParametersUpdated} event.
+     *
+     * @param collateralToken Collateral token contract
+     * @param packedCollateralParameters Collateral parameters, ABI-encoded
+     */
     function setCollateralParameters(address collateralToken, bytes calldata packedCollateralParameters)
         external
         onlyOwner
