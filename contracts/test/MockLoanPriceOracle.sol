@@ -47,15 +47,6 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         return _price;
     }
 
-    function setMinimumDiscountRate(uint256 rate) public pure {
-        rate;
-    }
-
-    function setCollateralParameters(address tokenContract, bytes calldata packedParameters) public pure {
-        tokenContract;
-        packedParameters;
-    }
-
     function setError(MockError error) public {
         _error = error;
     }
