@@ -97,7 +97,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         uint256 duration,
         uint256 maturity,
         uint256 utilization
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         /* Unused variables */
         collateralTokenId;
         duration;
@@ -155,7 +155,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Getters */
     /**************************************************************************/
 
-    function getCollateralParameters(address collateralToken) public view returns (CollateralParameters memory) {
+    function getCollateralParameters(address collateralToken) external view returns (CollateralParameters memory) {
         return _parameters[collateralToken];
     }
 
@@ -163,20 +163,20 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Setters */
     /**************************************************************************/
 
-    function setMinimumDiscountRate(uint256 rate) public onlyOwner {
+    function setMinimumDiscountRate(uint256 rate) external onlyOwner {
         minimumDiscountRate = rate;
 
         emit MinimumDiscountRateUpdated(rate);
     }
 
-    function setMinimumLoanDuration(uint256 duration) public onlyOwner {
+    function setMinimumLoanDuration(uint256 duration) external onlyOwner {
         minimumLoanDuration = duration;
 
         emit MinimumLoanDurationUpdated(duration);
     }
 
     function setCollateralParameters(address collateralToken, bytes calldata packedCollateralParameters)
-        public
+        external
         onlyOwner
     {
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
