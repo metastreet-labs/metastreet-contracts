@@ -46,7 +46,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
     event MinimumDiscountRateUpdated(uint256 rate);
     event MinimumLoanDurationUpdated(uint256 duration);
-    event CollateralParametersUpdated(address tokenContract);
+    event CollateralParametersUpdated(address collateralToken);
 
     /**************************************************************************/
     /* Constructor */
@@ -155,12 +155,8 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /* Getters */
     /**************************************************************************/
 
-    function getCollateralParameters(address collateralTokenContract)
-        public
-        view
-        returns (CollateralParameters memory)
-    {
-        return _parameters[collateralTokenContract];
+    function getCollateralParameters(address collateralToken) public view returns (CollateralParameters memory) {
+        return _parameters[collateralToken];
     }
 
     /**************************************************************************/
@@ -179,9 +175,12 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         emit MinimumLoanDurationUpdated(duration);
     }
 
-    function setCollateralParameters(address tokenContract, bytes calldata packedTokenParameters) public onlyOwner {
-        _parameters[tokenContract] = abi.decode(packedTokenParameters, (CollateralParameters));
+    function setCollateralParameters(address collateralToken, bytes calldata packedCollateralParameters)
+        public
+        onlyOwner
+    {
+        _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
 
-        emit CollateralParametersUpdated(tokenContract);
+        emit CollateralParametersUpdated(collateralToken);
     }
 }
