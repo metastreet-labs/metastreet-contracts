@@ -106,7 +106,7 @@ contract Vault is
         ILoanPriceOracle loanPriceOracle_,
         LPToken seniorLPToken_,
         LPToken juniorLPToken_
-    ) public initializer {
+    ) external initializer {
         require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
 
         __Ownable_init();
@@ -130,39 +130,39 @@ contract Vault is
     /* Interface Getters (defined in IVault) */
     /**************************************************************************/
 
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return _name;
     }
 
-    function currencyToken() public view returns (IERC20) {
+    function currencyToken() external view returns (IERC20) {
         return _currencyToken;
     }
 
-    function lpToken(TrancheId trancheId) public view returns (IERC20) {
+    function lpToken(TrancheId trancheId) external view returns (IERC20) {
         return IERC20(address(_lpToken(trancheId)));
     }
 
-    function loanPriceOracle() public view returns (ILoanPriceOracle) {
+    function loanPriceOracle() external view returns (ILoanPriceOracle) {
         return _loanPriceOracle;
     }
 
-    function collateralLiquidator() public view returns (address) {
+    function collateralLiquidator() external view returns (address) {
         return _collateralLiquidator;
     }
 
-    function noteAdapters(address noteToken) public view returns (INoteAdapter) {
+    function noteAdapters(address noteToken) external view returns (INoteAdapter) {
         return _noteAdapters[noteToken];
     }
 
-    function sharePrice(TrancheId trancheId) public view returns (uint256) {
+    function sharePrice(TrancheId trancheId) external view returns (uint256) {
         return _computeSharePrice(trancheId);
     }
 
-    function redemptionSharePrice(TrancheId trancheId) public view returns (uint256) {
+    function redemptionSharePrice(TrancheId trancheId) external view returns (uint256) {
         return _computeRedemptionSharePrice(trancheId);
     }
 
-    function utilization() public view returns (uint256) {
+    function utilization() external view returns (uint256) {
         return _computeUtilization();
     }
 
@@ -171,7 +171,7 @@ contract Vault is
     /**************************************************************************/
 
     function trancheState(TrancheId trancheId)
-        public
+        external
         view
         returns (
             uint256 depositValue,
@@ -190,7 +190,7 @@ contract Vault is
     }
 
     function balanceState()
-        public
+        external
         view
         returns (
             uint256 totalCashBalance,
@@ -201,19 +201,19 @@ contract Vault is
         return (_totalCashBalance, _totalLoanBalance, _totalWithdrawalBalance);
     }
 
-    function loanState(address noteToken, uint256 noteTokenId) public view returns (Loan memory) {
+    function loanState(address noteToken, uint256 noteTokenId) external view returns (Loan memory) {
         return _loans[noteToken][noteTokenId];
     }
 
-    function seniorTrancheRate() public view returns (uint256) {
+    function seniorTrancheRate() external view returns (uint256) {
         return _seniorTrancheRate;
     }
 
-    function reserveRatio() public view returns (uint256) {
+    function reserveRatio() external view returns (uint256) {
         return _reserveRatio;
     }
 
-    function reservesAvailable() public view returns (uint256) {
+    function reservesAvailable() external view returns (uint256) {
         return _computeCashReservesAvailable();
     }
 
@@ -414,7 +414,7 @@ contract Vault is
     /* User API */
     /**************************************************************************/
 
-    function deposit(TrancheId trancheId, uint256 amount) public whenNotPaused {
+    function deposit(TrancheId trancheId, uint256 amount) external whenNotPaused {
         /* Deposit into tranche */
         _deposit(trancheId, amount);
 
@@ -426,7 +426,7 @@ contract Vault is
         IERC721 noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
-    ) public whenNotPaused {
+    ) external whenNotPaused {
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
@@ -441,7 +441,7 @@ contract Vault is
         IERC721 noteToken,
         uint256 noteTokenId,
         uint256[2] calldata amounts
-    ) public whenNotPaused {
+    ) external whenNotPaused {
         /* Calculate total min purchase price */
         uint256 minPurchasePrice = amounts[0] + amounts[1];
 
@@ -456,7 +456,7 @@ contract Vault is
         noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
     }
 
-    function redeem(TrancheId trancheId, uint256 shares) public whenNotPaused {
+    function redeem(TrancheId trancheId, uint256 shares) external whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Compute current redemption share price */
@@ -481,7 +481,7 @@ contract Vault is
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
 
-    function withdraw(TrancheId trancheId, uint256 amount) public whenNotPaused {
+    function withdraw(TrancheId trancheId, uint256 amount) external whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Update user's token state with redemption */
@@ -500,7 +500,7 @@ contract Vault is
     /* Liquidation API */
     /**************************************************************************/
 
-    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) public nonReentrant {
+    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) external nonReentrant {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
         /* Validate note token is supported */
@@ -514,7 +514,7 @@ contract Vault is
         onLoanLiquidated(address(noteToken), noteTokenId);
     }
 
-    function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) public {
+    function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) external {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
@@ -543,7 +543,7 @@ contract Vault is
     /* Callbacks */
     /**************************************************************************/
 
-    function onLoanRepaid(address noteToken, uint256 noteTokenId) public {
+    function onLoanRepaid(address noteToken, uint256 noteTokenId) external {
         INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
@@ -648,7 +648,7 @@ contract Vault is
         address noteToken,
         uint256 noteTokenId,
         uint256 proceeds
-    ) public {
+    ) external {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
@@ -687,7 +687,7 @@ contract Vault is
     /**************************************************************************/
 
     /* Inlined from Address.sol */
-    function multicall(bytes[] calldata data) public returns (bytes[] memory results) {
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
             /// @custom:oz-upgrades-unsafe-allow delegatecall
@@ -712,32 +712,32 @@ contract Vault is
     /* Setters */
     /**************************************************************************/
 
-    function setSeniorTrancheRate(uint256 rate) public onlyOwner {
+    function setSeniorTrancheRate(uint256 rate) external onlyOwner {
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
     }
 
-    function setReserveRatio(uint256 ratio) public onlyOwner {
+    function setReserveRatio(uint256 ratio) external onlyOwner {
         _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
     }
 
-    function setLoanPriceOracle(address loanPriceOracle_) public onlyOwner {
+    function setLoanPriceOracle(address loanPriceOracle_) external onlyOwner {
         _loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
 
-    function setCollateralLiquidator(address collateralLiquidator_) public onlyOwner {
+    function setCollateralLiquidator(address collateralLiquidator_) external onlyOwner {
         _collateralLiquidator = collateralLiquidator_;
         emit CollateralLiquidatorUpdated(collateralLiquidator_);
     }
 
-    function setNoteAdapter(address noteToken, address noteAdapter) public onlyOwner {
+    function setNoteAdapter(address noteToken, address noteAdapter) external onlyOwner {
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
 
-    function setPaused(bool paused) public onlyOwner {
+    function setPaused(bool paused) external onlyOwner {
         if (paused) {
             _pause();
         } else {
