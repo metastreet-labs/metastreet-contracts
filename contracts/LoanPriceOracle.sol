@@ -90,7 +90,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /**************************************************************************/
 
     function priceLoan(
-        address collateralTokenContract,
+        address collateralToken,
         uint256 collateralTokenId,
         uint256 principal,
         uint256 repayment,
@@ -109,7 +109,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         }
 
         /* Look up collateral parameters */
-        CollateralParameters storage collateralParameters = _parameters[collateralTokenContract];
+        CollateralParameters storage collateralParameters = _parameters[collateralToken];
         if (collateralParameters.collateralValue == 0) {
             revert PriceError_UnsupportedCollateral();
         }

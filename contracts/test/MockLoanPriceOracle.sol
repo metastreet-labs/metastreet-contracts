@@ -20,7 +20,7 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
     }
 
     function priceLoan(
-        address collateralTokenContract,
+        address collateralToken,
         uint256 collateralTokenId,
         uint256 principal,
         uint256 repayment,
@@ -28,7 +28,7 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         uint256 maturity,
         uint256 utilization
     ) public view returns (uint256) {
-        collateralTokenContract;
+        collateralToken;
         collateralTokenId;
         principal;
         repayment;

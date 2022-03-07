@@ -14,7 +14,7 @@ interface ILoanPriceOracle {
 
     /* Primary API */
     function priceLoan(
-        address collateralTokenContract,
+        address collateralToken,
         uint256 collateralTokenId,
         uint256 principal,
         uint256 repayment,
