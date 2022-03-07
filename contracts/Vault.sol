@@ -485,7 +485,7 @@ contract Vault is
      */
     function _computeUtilization() internal view returns (uint256) {
         uint256 totalBalance = _totalCashBalance + _totalLoanBalance;
-        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(_totalLoanBalance, _totalCashBalance + _totalLoanBalance);
+        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(_totalLoanBalance, totalBalance);
     }
 
     /**
