@@ -120,6 +120,7 @@ contract Vault is
         _supportedInterfaces[this.supportsInterface.selector] = true;
         _supportedInterfaces[IERC721Receiver.onERC721Received.selector] = true;
         _supportedInterfaces[ILoanReceiver.onLoanRepaid.selector] = true;
+        _supportedInterfaces[ILoanReceiver.onLoanLiquidated.selector] = true;
     }
 
     /**************************************************************************/

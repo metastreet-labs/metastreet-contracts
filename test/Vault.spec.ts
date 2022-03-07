@@ -1878,6 +1878,7 @@ describe("Vault", function () {
       expect(await vault.supportsInterface(vault.interface.getSighash("onERC721Received"))).to.equal(true);
       /* ILoanReceiver */
       expect(await vault.supportsInterface(vault.interface.getSighash("onLoanRepaid"))).to.equal(true);
+      expect(await vault.supportsInterface(vault.interface.getSighash("onLoanLiquidated"))).to.equal(true);
     });
     it("returns false on unsupported interfaces", async function () {
       expect(await vault.supportsInterface("0xaabbccdd")).to.equal(false);

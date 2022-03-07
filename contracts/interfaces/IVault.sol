@@ -59,7 +59,6 @@ interface IVault is ILoanReceiver {
     function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) external;
 
     /* Callbacks */
-    function onLoanLiquidated(address noteToken, uint256 noteTokenId) external;
 
     function onCollateralLiquidated(
         address noteToken,
