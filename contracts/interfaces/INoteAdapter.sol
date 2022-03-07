@@ -27,7 +27,5 @@ interface INoteAdapter {
 
     function isSupported(uint256 noteTokenId, address currencyToken) external view returns (bool);
 
-    function isActive(uint256 noteTokenId) external view returns (bool);
-
     function isComplete(uint256 noteTokenId) external view returns (bool);
 }

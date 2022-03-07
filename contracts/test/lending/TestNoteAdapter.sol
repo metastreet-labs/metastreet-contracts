@@ -61,10 +61,6 @@ contract TestNoteAdapter is INoteAdapter {
             address(_lendingPlatform.currencyToken()) == currencyToken;
     }
 
-    function isActive(uint256 noteTokenId) public view returns (bool) {
-        return _lendingPlatform.noteToken().exists(noteTokenId);
-    }
-
     function isComplete(uint256 noteTokenId) public view returns (bool) {
         return _lendingPlatform.loansComplete(noteTokenId);
     }
