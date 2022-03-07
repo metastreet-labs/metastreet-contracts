@@ -195,7 +195,7 @@ contract Vault is
         return _reserveRatio;
     }
 
-    function cashReservesAvailable() public view returns (uint256) {
+    function reservesAvailable() public view returns (uint256) {
         return _computeCashReservesAvailable();
     }
 

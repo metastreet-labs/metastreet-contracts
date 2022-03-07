@@ -475,7 +475,7 @@ describe("Integration", function () {
       while (numLoansProcessed < numTotalLoans || activeLoans.length > 0) {
         /* Get current vault utilization and cash availble */
         const utilization = await vault.utilization();
-        const cashAvailable = (await vault.balanceState()).totalCashBalance.sub(await vault.cashReservesAvailable());
+        const cashAvailable = (await vault.balanceState()).totalCashBalance.sub(await vault.reservesAvailable());
 
         if (
           numLoansProcessed < numTotalLoans &&

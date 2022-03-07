@@ -165,7 +165,7 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalWithdrawalBalance).to.be.equal(ethers.constants.Zero);
       expect(await vault.seniorTrancheRate()).to.be.gt(ethers.constants.Zero);
       expect(await vault.reserveRatio()).to.be.gt(ethers.constants.Zero);
-      expect(await vault.cashReservesAvailable()).to.equal(ethers.constants.Zero);
+      expect(await vault.reservesAvailable()).to.equal(ethers.constants.Zero);
       expect(await vault.utilization()).to.equal(ethers.constants.Zero);
     });
   });
