@@ -10,7 +10,7 @@ interface INoteAdapter {
         uint256 principal;
         uint256 repayment;
         uint64 maturity;
-        uint32 duration;
+        uint64 duration;
         address currencyToken;
         address collateralToken;
         uint256 collateralTokenId;
