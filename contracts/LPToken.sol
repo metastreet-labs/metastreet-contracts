@@ -28,7 +28,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /* Constructor */
     /**************************************************************************/
 
-    function initialize(string memory name, string memory symbol) public initializer {
+    function initialize(string memory name, string memory symbol) external initializer {
         __Ownable_init();
         __ERC20_init(name, symbol);
     }
@@ -37,11 +37,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /* Getters */
     /**************************************************************************/
 
-    function redemptions(address account) public view returns (Redemption memory) {
+    function redemptions(address account) external view returns (Redemption memory) {
         return _redemptions[account];
     }
 
-    function redemptionAvailable(address account, uint256 processedRedemptionQueue) public view returns (uint256) {
+    function redemptionAvailable(address account, uint256 processedRedemptionQueue) external view returns (uint256) {
         Redemption storage redemption = _redemptions[account];
 
         if (redemption.pending == 0) {
@@ -62,7 +62,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /* Privileged API */
     /**************************************************************************/
 
-    function mint(address to, uint256 amount) public virtual onlyOwner {
+    function mint(address to, uint256 amount) external virtual onlyOwner {
         _mint(to, amount);
     }
 
@@ -71,7 +71,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         uint256 shares,
         uint256 amount,
         uint256 redemptionQueueTarget
-    ) public onlyOwner {
+    ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
         require(balanceOf(account) >= shares, "Insufficient shares");
@@ -88,7 +88,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         address account,
         uint256 amount,
         uint256 processedRedemptionQueue
-    ) public onlyOwner {
+    ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
         require(redemption.pending >= amount, "Invalid amount");
