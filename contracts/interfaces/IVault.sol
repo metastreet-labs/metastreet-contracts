@@ -167,7 +167,7 @@ interface IVault is ILoanReceiver {
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
      */
-    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) external;
+    function liquidateLoan(address noteToken, uint256 noteTokenId) external;
 
     /**
      * @notice Withdraw the collateral of a liquidated loan
@@ -177,7 +177,7 @@ interface IVault is ILoanReceiver {
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
      */
-    function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) external;
+    function withdrawCollateral(address noteToken, uint256 noteTokenId) external;
 
     /**************************************************************************/
     /* Callbacks */

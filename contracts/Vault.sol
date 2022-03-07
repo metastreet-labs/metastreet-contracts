@@ -737,8 +737,8 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function liquidateLoan(IERC721 noteToken, uint256 noteTokenId) external nonReentrant {
-        INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
+    function liquidateLoan(address noteToken, uint256 noteTokenId) external nonReentrant {
+        INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
@@ -748,18 +748,18 @@ contract Vault is
         require(success, "Liquidate failed");
 
         /* Process loan liquidation */
-        onLoanLiquidated(address(noteToken), noteTokenId);
+        onLoanLiquidated(noteToken, noteTokenId);
     }
 
     /**
      * @inheritdoc IVault
      */
-    function withdrawCollateral(IERC721 noteToken, uint256 noteTokenId) external {
+    function withdrawCollateral(address noteToken, uint256 noteTokenId) external {
         /* Validate caller is collateral liquidation contract */
         require(msg.sender == _collateralLiquidator, "Invalid caller");
 
         /* Lookup loan metadata */
-        Loan storage loan = _loans[address(noteToken)][noteTokenId];
+        Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
@@ -771,7 +771,7 @@ contract Vault is
         loan.collateralToken.safeTransferFrom(address(this), _collateralLiquidator, loan.collateralTokenId);
 
         emit CollateralWithdrawn(
-            address(noteToken),
+            noteToken,
             noteTokenId,
             address(loan.collateralToken),
             loan.collateralTokenId,
