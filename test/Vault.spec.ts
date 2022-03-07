@@ -16,6 +16,7 @@ import {
 } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
+import { FixedPoint } from "./helpers/FixedPointHelpers";
 import {
   initializeAccounts,
   createLoan,
@@ -108,8 +109,8 @@ describe("Vault", function () {
 
     /* Setup vault */
     await vault.setNoteAdapter(noteToken.address, testNoteAdapter.address);
-    await vault.setSeniorTrancheRate(ethers.utils.parseEther("0.05").div(365 * 86400));
-    await vault.setReserveRatio(ethers.utils.parseEther("0.10"));
+    await vault.setSeniorTrancheRate(FixedPoint.normalizeRate("0.05"));
+    await vault.setReserveRatio(FixedPoint.from("0.10"));
     await vault.setCollateralLiquidator(accounts[6].address);
 
     /* Setup accounts */
@@ -156,8 +157,8 @@ describe("Vault", function () {
         expect(trancheState.redemptionQueue).to.equal(0);
         expect(trancheState.processedRedemptionQueue).to.equal(0);
 
-        expect(await vault.sharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
-        expect(await vault.redemptionSharePrice(trancheId)).to.equal(ethers.utils.parseEther("1"));
+        expect(await vault.sharePrice(trancheId)).to.equal(FixedPoint.from("1"));
+        expect(await vault.redemptionSharePrice(trancheId)).to.equal(FixedPoint.from("1"));
       }
 
       expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.constants.Zero);
@@ -667,7 +668,7 @@ describe("Vault", function () {
   });
 
   describe("#redeem", async function () {
-    [ethers.utils.parseEther("0.10"), ethers.constants.Zero].forEach((ratio) => {
+    [FixedPoint.from("0.10"), FixedPoint.from("0.0")].forEach((ratio) => {
       it(`redeems (${ethers.utils.formatEther(ratio.mul(100))}% reserve ratio)`, async function () {
         const depositAmount = ethers.utils.parseEther("1.23");
         const redemptionAmount = ethers.utils.parseEther("1.01");
@@ -713,7 +714,7 @@ describe("Vault", function () {
           shares: redemptionAmount,
         });
 
-        const partialRedemptionAmount = ratio.mul(depositAmount).div(ethers.utils.parseEther("1"));
+        const partialRedemptionAmount = FixedPoint.mul(ratio, depositAmount);
 
         /* Check state after redemption */
         expect(await tok1.balanceOf(accountDepositor.address)).to.equal(tokBalanceBefore.sub(depositAmount));
@@ -811,7 +812,7 @@ describe("Vault", function () {
       const redemptionAmount = ethers.utils.parseEther("7.5");
       const withdrawAmount = redemptionAmount;
 
-      const partialRedemptionAmount = (await vault.reserveRatio()).mul(depositAmount).div(ethers.utils.parseEther("1"));
+      const partialRedemptionAmount = FixedPoint.mul(await vault.reserveRatio(), depositAmount);
 
       /* Deposit and redeem */
       await vault.connect(accountDepositor).deposit(0, depositAmount);
@@ -945,7 +946,7 @@ describe("Vault", function () {
       const redemptionAmount = ethers.utils.parseEther("7.5");
       const withdrawAmount = ethers.utils.parseEther("3.0");
 
-      const partialRedemptionAmount = (await vault.reserveRatio()).mul(depositAmount).div(ethers.utils.parseEther("1"));
+      const partialRedemptionAmount = FixedPoint.mul(await vault.reserveRatio(), depositAmount);
 
       /* Deposit and redeem */
       await vault.connect(accountDepositor).deposit(0, depositAmount);
@@ -1705,15 +1706,13 @@ describe("Vault", function () {
         /* Sell note to vault */
         await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
 
-        expect(await vault.utilization()).to.equal(
-          ethers.BigNumber.from(utilization).mul(ethers.constants.WeiPerEther).div(100)
-        );
+        expect(await vault.utilization()).to.equal(FixedPoint.from(utilization).div(100));
       });
     });
   });
 
   describe("#reservesAvailable", async function () {
-    [ethers.constants.Zero, ethers.utils.parseEther("0.05"), ethers.utils.parseEther("0.15")].forEach((ratio) => {
+    [FixedPoint.from("0.00"), FixedPoint.from("0.05"), FixedPoint.from("0.15")].forEach((ratio) => {
       it(`reserves available for ${ethers.utils.formatEther(ratio.mul(100))}% ratio`, async function () {
         const depositAmount = ethers.utils.parseEther("10");
 
@@ -1723,14 +1722,14 @@ describe("Vault", function () {
         /* Deposit cash */
         await vault.connect(accountDepositor).deposit(0, depositAmount);
 
-        expect(await vault.reservesAvailable()).to.equal(ratio.mul(depositAmount).div(ethers.constants.WeiPerEther));
+        expect(await vault.reservesAvailable()).to.equal(FixedPoint.mul(ratio, depositAmount));
       });
     });
   });
 
   describe("#setSeniorTrancheRate", async function () {
     it("sets senior tranche rate successfully", async function () {
-      const rate = ethers.utils.parseEther("0.025").div(365 * 86400);
+      const rate = FixedPoint.normalizeRate("0.025");
 
       const tx = await vault.setSeniorTrancheRate(rate);
 
@@ -1740,7 +1739,7 @@ describe("Vault", function () {
       expect(await vault.seniorTrancheRate()).to.equal(rate);
     });
     it("fails on invalid caller", async function () {
-      const rate = ethers.utils.parseEther("0.025").div(365 * 86400);
+      const rate = FixedPoint.normalizeRate("0.025");
 
       await expect(vault.connect(accounts[1]).setSeniorTrancheRate(rate)).to.be.revertedWith(
         "Ownable: caller is not the owner"
@@ -1750,7 +1749,7 @@ describe("Vault", function () {
 
   describe("#setReserveRatio", async function () {
     it("sets reserve ratio successfully", async function () {
-      const ratio = ethers.utils.parseEther("0.15");
+      const ratio = FixedPoint.from("0.15");
 
       const tx = await vault.setReserveRatio(ratio);
 
@@ -1760,7 +1759,7 @@ describe("Vault", function () {
       expect(await vault.reserveRatio()).to.equal(ratio);
     });
     it("fails on invalid caller", async function () {
-      const ratio = ethers.utils.parseEther("0.15");
+      const ratio = FixedPoint.from("0.15");
 
       await expect(vault.connect(accounts[1]).setReserveRatio(ratio)).to.be.revertedWith(
         "Ownable: caller is not the owner"
