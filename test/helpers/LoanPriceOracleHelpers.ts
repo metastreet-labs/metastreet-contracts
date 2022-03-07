@@ -11,9 +11,9 @@ export type PiecewiseLinearModel = {
 
 export type CollateralParameters = {
   collateralValue: BigNumber;
-  aprUtilizationSensitivity: PiecewiseLinearModel;
-  aprLoanToValueSensitivity: PiecewiseLinearModel;
-  aprDurationSensitivity: PiecewiseLinearModel;
+  rateUtilizationSensitivity: PiecewiseLinearModel;
+  rateLoanToValueSensitivity: PiecewiseLinearModel;
+  rateDurationSensitivity: PiecewiseLinearModel;
   sensitivityWeights: [number, number, number];
 };
 
@@ -26,22 +26,22 @@ export function encodeCollateralParameters(collateralParameters: CollateralParam
       [
         collateralParameters.collateralValue,
         [
-          collateralParameters.aprUtilizationSensitivity.slope1,
-          collateralParameters.aprUtilizationSensitivity.slope2,
-          collateralParameters.aprUtilizationSensitivity.target,
-          collateralParameters.aprUtilizationSensitivity.max,
+          collateralParameters.rateUtilizationSensitivity.slope1,
+          collateralParameters.rateUtilizationSensitivity.slope2,
+          collateralParameters.rateUtilizationSensitivity.target,
+          collateralParameters.rateUtilizationSensitivity.max,
         ],
         [
-          collateralParameters.aprLoanToValueSensitivity.slope1,
-          collateralParameters.aprLoanToValueSensitivity.slope2,
-          collateralParameters.aprLoanToValueSensitivity.target,
-          collateralParameters.aprLoanToValueSensitivity.max,
+          collateralParameters.rateLoanToValueSensitivity.slope1,
+          collateralParameters.rateLoanToValueSensitivity.slope2,
+          collateralParameters.rateLoanToValueSensitivity.target,
+          collateralParameters.rateLoanToValueSensitivity.max,
         ],
         [
-          collateralParameters.aprDurationSensitivity.slope1,
-          collateralParameters.aprDurationSensitivity.slope2,
-          collateralParameters.aprDurationSensitivity.target,
-          collateralParameters.aprDurationSensitivity.max,
+          collateralParameters.rateDurationSensitivity.slope1,
+          collateralParameters.rateDurationSensitivity.slope2,
+          collateralParameters.rateDurationSensitivity.target,
+          collateralParameters.rateDurationSensitivity.max,
         ],
         collateralParameters.sensitivityWeights,
       ],

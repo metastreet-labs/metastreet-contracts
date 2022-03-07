@@ -211,21 +211,21 @@ async function main() {
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    aprUtilizationSensitivity: computePiecewiseLinearModel({
+    rateUtilizationSensitivity: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.90"),
       max: FixedPoint.from("1.00"),
     }),
-    aprLoanToValueSensitivity: computePiecewiseLinearModel({
+    rateLoanToValueSensitivity: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.30"),
       max: FixedPoint.from("0.60"),
     }),
-    aprDurationSensitivity: computePiecewiseLinearModel({
+    rateDurationSensitivity: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),

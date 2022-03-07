@@ -28,9 +28,9 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
     struct CollateralParameters {
         uint256 collateralValue; /* UD60x18 */
-        PiecewiseLinearModel aprUtilizationSensitivity;
-        PiecewiseLinearModel aprLoanToValueSensitivity;
-        PiecewiseLinearModel aprDurationSensitivity;
+        PiecewiseLinearModel rateUtilizationSensitivity;
+        PiecewiseLinearModel rateLoanToValueSensitivity;
+        PiecewiseLinearModel rateDurationSensitivity;
         uint8[3] sensitivityWeights; /* 0-100 */
     }
 
@@ -122,9 +122,9 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
         /* Compute discount rate components for utilization, loan-to-value, and duration */
         uint256[3] memory rateComponents = [
-            _computeRateComponent(collateralParameters.aprUtilizationSensitivity, utilization),
-            _computeRateComponent(collateralParameters.aprLoanToValueSensitivity, loanToValue),
-            _computeRateComponent(collateralParameters.aprDurationSensitivity, loanTimeRemaining)
+            _computeRateComponent(collateralParameters.rateUtilizationSensitivity, utilization),
+            _computeRateComponent(collateralParameters.rateLoanToValueSensitivity, loanToValue),
+            _computeRateComponent(collateralParameters.rateDurationSensitivity, loanTimeRemaining)
         ];
 
         /* Check component validities */

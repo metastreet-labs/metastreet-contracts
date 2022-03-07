@@ -42,21 +42,21 @@ describe("LoanPriceOracle", function () {
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    aprUtilizationSensitivity: computePiecewiseLinearModel({
+    rateUtilizationSensitivity: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.90"),
       max: FixedPoint.from("1.00"),
     }),
-    aprLoanToValueSensitivity: computePiecewiseLinearModel({
+    rateLoanToValueSensitivity: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.30"),
       max: FixedPoint.from("0.60"),
     }),
-    aprDurationSensitivity: computePiecewiseLinearModel({
+    rateDurationSensitivity: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
@@ -233,20 +233,20 @@ describe("LoanPriceOracle", function () {
         encodeCollateralParameters(collateralParameters)
       );
       await expectEvent(setTx, loanPriceOracle, "CollateralParametersUpdated", {
-        tokenContract: nft1.address,
+        collateralToken: nft1.address,
       });
 
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParameters.collateralValue
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprUtilizationSensitivity).to.deep.equal(
-        Object.values(collateralParameters.aprUtilizationSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateUtilizationSensitivity).to.deep.equal(
+        Object.values(collateralParameters.rateUtilizationSensitivity)
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprLoanToValueSensitivity).to.deep.equal(
-        Object.values(collateralParameters.aprLoanToValueSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateLoanToValueSensitivity).to.deep.equal(
+        Object.values(collateralParameters.rateLoanToValueSensitivity)
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
-        Object.values(collateralParameters.aprDurationSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateDurationSensitivity).to.deep.equal(
+        Object.values(collateralParameters.rateDurationSensitivity)
       );
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).sensitivityWeights).to.deep.equal(
         collateralParameters.sensitivityWeights
@@ -258,7 +258,7 @@ describe("LoanPriceOracle", function () {
       const collateralParametersUpdate: CollateralParameters = {
         ...collateralParameters,
         collateralValue: ethers.utils.parseEther("125"),
-        aprDurationSensitivity: computePiecewiseLinearModel({
+        rateDurationSensitivity: computePiecewiseLinearModel({
           minRate: FixedPoint.normalizeRate("0.05"),
           targetRate: FixedPoint.normalizeRate("0.15"),
           maxRate: FixedPoint.normalizeRate("2.00"),
@@ -275,8 +275,8 @@ describe("LoanPriceOracle", function () {
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParametersUpdate.collateralValue
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).aprDurationSensitivity).to.deep.equal(
-        Object.values(collateralParametersUpdate.aprDurationSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateDurationSensitivity).to.deep.equal(
+        Object.values(collateralParametersUpdate.rateDurationSensitivity)
       );
     });
     it("fails on invalid caller", async function () {
