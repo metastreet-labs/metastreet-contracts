@@ -8,7 +8,7 @@
     "lint:ts": "eslint '{test,scripts}/**'",
     "format": "prettier --write 'contracts/**/*.sol'",
     "format:ts": "prettier --write '{test,scripts}/**/*.ts'",
-    "analyze": "slither --filter-paths 'node_modules|contracts/test/thirdparty' .",
+    "analyze": "slither --filter-paths 'node_modules|contracts/test' .",
     "node": "hardhat node"
   },
   "devDependencies": {
