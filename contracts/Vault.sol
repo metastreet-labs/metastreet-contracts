@@ -314,7 +314,7 @@ contract Vault is
     function _sellNote(
         IERC721 noteToken,
         uint256 noteTokenId,
-        uint256 maxPurchasePrice
+        uint256 minPurchasePrice
     ) internal returns (uint256) {
         INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
 
@@ -339,7 +339,7 @@ contract Vault is
         );
 
         /* Validate purchase price */
-        require(purchasePrice <= maxPurchasePrice, "Purchase price exceeds max");
+        require(purchasePrice >= minPurchasePrice, "Purchase price less than min");
 
         /* Validate repayment */
         require(loanInfo.repayment > purchasePrice, "Purchase price exceeds repayment");
@@ -410,10 +410,10 @@ contract Vault is
     function sellNote(
         IERC721 noteToken,
         uint256 noteTokenId,
-        uint256 maxPurchasePrice
+        uint256 minPurchasePrice
     ) public whenNotPaused {
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, maxPurchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
         /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
@@ -427,11 +427,11 @@ contract Vault is
         uint256 noteTokenId,
         uint256[2] calldata amounts
     ) public whenNotPaused {
-        /* Calculate total max purchase price */
-        uint256 maxPurchasePrice = amounts[0] + amounts[1];
+        /* Calculate total min purchase price */
+        uint256 minPurchasePrice = amounts[0] + amounts[1];
 
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, maxPurchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
         /* Deposit sale proceeds in tranches */
         if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);

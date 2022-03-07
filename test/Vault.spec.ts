@@ -468,7 +468,7 @@ describe("Vault", function () {
         vault.connect(accountLender).sellNote(noteToken.address, 1, ethers.utils.parseEther("2"))
       ).to.be.revertedWith("Unsupported note parameters");
     });
-    it("fails on exceeding max purchase price", async function () {
+    it("fails on low purchase price", async function () {
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
       const duration = 86400;
@@ -485,10 +485,10 @@ describe("Vault", function () {
       );
 
       /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("2.1"));
+      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("1.9"));
 
       await expect(vault.connect(accountLender).sellNote(noteToken.address, loanId, principal)).to.be.revertedWith(
-        "Purchase price exceeds max"
+        "Purchase price less than min"
       );
     });
     it("fails on high purchase price", async function () {
@@ -630,7 +630,7 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
     });
-    it("fails on exceeding max purchase price", async function () {
+    it("fails on low purchase price", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
@@ -659,10 +659,10 @@ describe("Vault", function () {
         vault
           .connect(accountLender)
           .sellNoteAndDeposit(noteToken.address, loanId, [
-            ethers.utils.parseEther("0.5"),
+            ethers.utils.parseEther("1.0"),
             ethers.utils.parseEther("1.1"),
           ])
-      ).to.be.revertedWith("Purchase price exceeds max");
+      ).to.be.revertedWith("Purchase price less than min");
     });
   });
 

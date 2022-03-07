@@ -38,7 +38,7 @@ interface IVault is ILoanReceiver {
     function sellNote(
         IERC721 noteToken,
         uint256 noteTokenId,
-        uint256 maxPurchasePrice
+        uint256 minPurchasePrice
     ) external;
 
     function sellNoteAndDeposit(

@@ -208,13 +208,13 @@ describe("Integration", function () {
         await vault.utilization()
       );
 
-      /* Add margin for max purchase price */
-      const maxPurchasePrice = purchasePrice.add(ethers.utils.parseEther("0.01"));
+      /* Add margin for min purchase price */
+      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, maxPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault deposit value and share price after sale */
@@ -287,13 +287,13 @@ describe("Integration", function () {
         await vault.utilization()
       );
 
-      /* Add margin for max purchase price */
-      const maxPurchasePrice = purchasePrice.add(ethers.utils.parseEther("0.01"));
+      /* Add margin for min purchase price */
+      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, maxPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault deposit value and share price after sale */
@@ -372,13 +372,13 @@ describe("Integration", function () {
         await vault.utilization()
       );
 
-      /* Add margin for max purchase price */
-      const maxPurchasePrice = purchasePrice.add(ethers.utils.parseEther("0.01"));
+      /* Add margin for min purchase price */
+      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, maxPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault deposit value and share price after sale */
@@ -503,7 +503,7 @@ describe("Integration", function () {
             .sellNote(
               await lendingPlatform.noteToken(),
               loan.loanId,
-              purchasePrice.add(ethers.utils.parseEther("0.01"))
+              purchasePrice.sub(ethers.utils.parseEther("0.01"))
             );
           const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
