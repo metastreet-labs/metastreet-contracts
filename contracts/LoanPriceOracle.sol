@@ -111,7 +111,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         /* Look up collateral parameters */
         CollateralParameters storage collateralParameters = _parameters[collateralTokenContract];
         if (collateralParameters.collateralValue == 0) {
-            revert PriceError_Unsupported();
+            revert PriceError_UnsupportedCollateral();
         }
 
         /* Convert loan time remaining */

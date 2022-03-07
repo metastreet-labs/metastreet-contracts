@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ILoanPriceOracle {
     /* Loan pricing error codes */
-    error PriceError_Unsupported();
+    error PriceError_UnsupportedCollateral();
     error PriceError_InsufficientTimeRemaining();
     error PriceError_ParameterOutOfBounds(uint256 index);
 

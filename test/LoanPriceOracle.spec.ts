@@ -189,7 +189,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(tok1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("PriceError_Unsupported()");
+      ).to.be.revertedWith("PriceError_UnsupportedCollateral()");
     });
     it("fails on parameter out of bounds (utilization)", async function () {
       const principal = ethers.utils.parseEther("20");

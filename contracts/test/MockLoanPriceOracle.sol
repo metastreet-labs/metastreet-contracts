@@ -6,7 +6,7 @@ import "contracts/interfaces/ILoanPriceOracle.sol";
 contract MockLoanPriceOracle is ILoanPriceOracle {
     enum MockError {
         None,
-        Unsupported,
+        UnsupportedCollateral,
         InsufficientTimeRemaining,
         ParameterOutOfBounds
     }
@@ -36,8 +36,8 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         maturity;
         utilization;
 
-        if (_error == MockError.Unsupported) {
-            revert PriceError_Unsupported();
+        if (_error == MockError.UnsupportedCollateral) {
+            revert PriceError_UnsupportedCollateral();
         } else if (_error == MockError.InsufficientTimeRemaining) {
             revert PriceError_InsufficientTimeRemaining();
         } else if (_error == MockError.ParameterOutOfBounds) {
