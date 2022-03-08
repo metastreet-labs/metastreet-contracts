@@ -546,11 +546,11 @@ contract Vault is
      * @param minPurchasePrice Minimum purchase price in currency tokens
      */
     function _sellNote(
-        IERC721 noteToken,
+        address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
     ) internal returns (uint256) {
-        INoteAdapter noteAdapter = _noteAdapters[address(noteToken)];
+        INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
         require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
@@ -614,7 +614,7 @@ contract Vault is
         _totalLoanBalance += purchasePrice;
 
         /* Store loan state */
-        Loan storage loan = _loans[address(noteToken)][noteTokenId];
+        Loan storage loan = _loans[noteToken][noteTokenId];
         loan.active = true;
         loan.collateralToken = IERC721(loanInfo.collateralToken);
         loan.collateralTokenId = loanInfo.collateralTokenId;
@@ -624,7 +624,7 @@ contract Vault is
         loan.liquidated = false;
         loan.trancheReturns = [seniorTrancheReturn, juniorTrancheReturn];
 
-        emit NotePurchased(msg.sender, address(noteToken), noteTokenId, purchasePrice);
+        emit NotePurchased(msg.sender, noteToken, noteTokenId, purchasePrice);
 
         return purchasePrice;
     }
@@ -653,7 +653,7 @@ contract Vault is
         uint256 minPurchasePrice
     ) external whenNotPaused {
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
+        uint256 purchasePrice = _sellNote(address(noteToken), noteTokenId, minPurchasePrice);
 
         /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
@@ -674,7 +674,7 @@ contract Vault is
         uint256 minPurchasePrice = amounts[0] + amounts[1];
 
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
+        uint256 purchasePrice = _sellNote(address(noteToken), noteTokenId, minPurchasePrice);
 
         /* Deposit sale proceeds in tranches */
         if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);
