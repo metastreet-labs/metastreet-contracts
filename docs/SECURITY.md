@@ -62,7 +62,7 @@ LoanPriceOracle.priceLoan(address,uint256,uint256,uint256,uint256,uint256,uint25
 	- rateComponents[1] == type()(uint256).max (contracts/LoanPriceOracle.sol#202)
 	- rateComponents[2] == type()(uint256).max (contracts/LoanPriceOracle.sol#205)
 ```
-These struct equalities are used to check for the error returned by
+These strict equalities are used to check for the error returned by
 `_computeRateComponent()`, when the input value exceeds the model max.
 
 --------------------------------------------------------------------------------
