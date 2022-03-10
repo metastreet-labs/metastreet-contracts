@@ -807,6 +807,9 @@ contract Vault is
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
 
+        /* Validate loan wasn't liquidated */
+        require(!loan.liquidated, "Loan liquidated");
+
         /* Validate loan was repaid, either because caller is the lending
          * platform (trusted), or by checking the loan is complete and the
          * collateral is not in contract's possession (trustless) */
