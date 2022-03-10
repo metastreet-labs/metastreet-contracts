@@ -860,6 +860,9 @@ contract Vault is
         /* Validate loan exists with contract */
         require(loan.active, "Unknown loan");
 
+        /* Validate loan liquidation wasn't already processed */
+        require(!loan.liquidated, "Loan liquidation processed");
+
         /* Validate loan was liquidated, either because caller is the lending
          * platform (trusted), or by checking the loan is complete and the
          * collateral is in the contract's possession (trustless) */
@@ -867,9 +870,6 @@ contract Vault is
             (noteAdapter.isComplete(noteTokenId) &&
                 loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
         require(loanLiquidated, "Loan not liquidated");
-
-        /* Validate loan liquidation wasn't already processed */
-        require(!loan.liquidated, "Loan liquidation processed");
 
         /* Compute loan maturity time bucket */
         uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loan.maturity);
