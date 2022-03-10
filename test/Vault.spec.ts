@@ -2084,7 +2084,6 @@ describe("Vault", function () {
       await expectEvent(onCollateralLiquidatedTx, vault, "CollateralLiquidated", {
         noteToken: noteToken.address,
         noteTokenId: loanId,
-        proceeds: repayment,
       });
 
       /* Check state after callback */

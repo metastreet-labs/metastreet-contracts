@@ -951,7 +951,7 @@ contract Vault is
         /* Disable loan */
         loan.active = false;
 
-        emit CollateralLiquidated(noteToken, noteTokenId, proceeds);
+        emit CollateralLiquidated(noteToken, noteTokenId, [seniorTrancheRepayment, juniorTrancheRepayment]);
     }
 
     /**************************************************************************/

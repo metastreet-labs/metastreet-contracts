@@ -275,7 +275,7 @@ interface IVault is ILoanReceiver {
      * @notice Emitted when collateral is liquidated
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
-     * @param proceeds Proceeds from collateral liquidation in currency tokens
+     * @param trancheReturns Tranches returns in currency tokens
      */
-    event CollateralLiquidated(address noteToken, uint256 noteTokenId, uint256 proceeds);
+    event CollateralLiquidated(address noteToken, uint256 noteTokenId, uint256[2] trancheReturns);
 }
