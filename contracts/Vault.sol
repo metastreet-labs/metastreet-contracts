@@ -105,6 +105,7 @@ abstract contract VaultStorageV1 {
     Tranches internal _tranches;
     uint256 internal _totalLoanBalance;
     uint256 internal _totalCashBalance;
+    uint256 internal _totalReservesBalance;
     uint256 internal _totalWithdrawalBalance;
 
     /**
@@ -333,6 +334,7 @@ contract Vault is
     /**
      * @notice Get vault balance state
      * @return totalCashBalance Total cash balance
+     * @return totalReservesBalance Total reserves balance (part of total cash balance)
      * @return totalLoanBalance Total loan balance
      * @return totalWithdrawalBalance Total withdrawal balance
      */
@@ -341,11 +343,12 @@ contract Vault is
         view
         returns (
             uint256 totalCashBalance,
+            uint256 totalReservesBalance,
             uint256 totalLoanBalance,
             uint256 totalWithdrawalBalance
         )
     {
-        return (_totalCashBalance, _totalLoanBalance, _totalWithdrawalBalance);
+        return (_totalCashBalance, _totalReservesBalance, _totalLoanBalance, _totalWithdrawalBalance);
     }
 
     /**
@@ -372,14 +375,6 @@ contract Vault is
      */
     function reserveRatio() external view returns (uint256) {
         return _reserveRatio;
-    }
-
-    /**
-     * @notice Get cash reserves available
-     * @return Cash reserves available in currency tokens
-     */
-    function reservesAvailable() external view returns (uint256) {
-        return _computeCashReservesAvailable();
     }
 
     /**************************************************************************/
@@ -472,14 +467,6 @@ contract Vault is
     }
 
     /**
-     * @dev Compute cash reserves available
-     * @return Cash reserves in currency tokens
-     */
-    function _computeCashReservesAvailable() internal view returns (uint256) {
-        return Math.min(_totalCashBalance, PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance));
-    }
-
-    /**
      * @dev Compute utilization
      * @return Utilization in UD60x18, between 0 and 1
      */
@@ -511,6 +498,19 @@ contract Vault is
     }
 
     /**
+     * @dev Update cash reserves balance
+     * @param proceeds Proceeds in currency tokens
+     */
+    function _updateReservesBalance(uint256 proceeds) internal {
+        /* Update cash reserves balance */
+        uint256 targetReservesBalance = PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance);
+        _totalReservesBalance += Math.min(
+            targetReservesBalance > _totalReservesBalance ? targetReservesBalance - _totalReservesBalance : 0,
+            proceeds
+        );
+    }
+
+    /**
      * @dev Update tranche state with currency deposit and mint LP tokens to
      * depositer
      * @param trancheId tranche
@@ -531,6 +531,9 @@ contract Vault is
 
         /* Increase total cash balance */
         _totalCashBalance += amount;
+
+        /* Increase reserves balance */
+        _updateReservesBalance(amount);
 
         /* Mint LP tokens to user */
         _lpToken(trancheId).mint(msg.sender, shares);
@@ -579,7 +582,7 @@ contract Vault is
         require(loanInfo.repayment > purchasePrice, "Purchase price exceeds repayment");
 
         /* Validate cash available */
-        require(_totalCashBalance - _computeCashReservesAvailable() >= purchasePrice, "Insufficient cash in vault");
+        require(_totalCashBalance - _totalReservesBalance >= purchasePrice, "Insufficient cash in vault");
 
         /* Calculate senior tranche contribution based on deposit proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
@@ -716,7 +719,9 @@ contract Vault is
         _lpToken(trancheId).redeem(msg.sender, shares, redemptionAmount, tranche.redemptionQueue);
 
         /* Process redemption from cash reserves */
-        _processRedemptions(tranche, _computeCashReservesAvailable());
+        uint256 immediateRedemptionAmount = Math.min(redemptionAmount, _totalReservesBalance);
+        _totalReservesBalance -= immediateRedemptionAmount;
+        _processRedemptions(tranche, immediateRedemptionAmount);
 
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
@@ -836,7 +841,10 @@ contract Vault is
         /* Process redemptions for both tranches */
         uint256 proceeds = loan.repayment;
         proceeds = _processRedemptions(_tranches.senior, proceeds);
-        _processRedemptions(_tranches.junior, proceeds);
+        proceeds = _processRedemptions(_tranches.junior, proceeds);
+
+        /* Update reserve balance with leftover proceeds */
+        _updateReservesBalance(proceeds);
 
         /* Disable loan */
         loan.active = false;
@@ -935,7 +943,10 @@ contract Vault is
 
         /* Process redemptions for both tranches */
         proceeds = _processRedemptions(_tranches.senior, proceeds);
-        _processRedemptions(_tranches.junior, proceeds);
+        proceeds = _processRedemptions(_tranches.junior, proceeds);
+
+        /* Update reserve balance with leftover proceeds */
+        _updateReservesBalance(proceeds);
 
         /* Disable loan */
         loan.active = false;

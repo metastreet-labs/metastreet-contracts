@@ -238,6 +238,10 @@ describe("Integration", function () {
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(actualPurchasePrice))
       );
+      expect((await vault.balanceState()).totalReservesBalance).to.closeTo(
+        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio()),
+        100
+      );
       expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
       expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("5.027508882314796534"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.002752045694294585"));
@@ -322,6 +326,10 @@ describe("Integration", function () {
       /* Check vault deposit value and share price after repayment */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(liquidation.sub(actualPurchasePrice))
+      );
+      expect((await vault.balanceState()).totalReservesBalance).to.closeTo(
+        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio()),
+        100
       );
       expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
       expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("14.927508882314796534"));
@@ -408,6 +416,10 @@ describe("Integration", function () {
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).sub(actualPurchasePrice.sub(liquidation))
       );
+      expect((await vault.balanceState()).totalReservesBalance).to.closeTo(
+        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio()),
+        100
+      );
       expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
       expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("1.927508882314796534"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.002752045694294585"));
@@ -475,7 +487,8 @@ describe("Integration", function () {
       while (numLoansProcessed < numTotalLoans || activeLoans.length > 0) {
         /* Get current vault utilization and cash availble */
         const utilization = await vault.utilization();
-        const cashAvailable = (await vault.balanceState()).totalCashBalance.sub(await vault.reservesAvailable());
+        const balanceState = await vault.balanceState();
+        const cashAvailable = balanceState.totalCashBalance.sub(balanceState.totalReservesBalance);
 
         if (
           numLoansProcessed < numTotalLoans &&
