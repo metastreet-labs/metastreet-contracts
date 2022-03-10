@@ -671,26 +671,22 @@ contract Vault is
     function sellNoteAndDeposit(
         IERC721 noteToken,
         uint256 noteTokenId,
-        uint256[2] calldata amounts
+        uint256 minPurchasePrice,
+        uint256[2] calldata allocation
     ) external whenNotPaused {
-        /* Calculate total min purchase price */
-        uint256 minPurchasePrice = amounts[0] + amounts[1];
+        /* Check allocations sum to one */
+        require(allocation[0] + allocation[1] == 1e18, "Invalid allocation");
 
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(address(noteToken), noteTokenId, minPurchasePrice);
 
+        /* Calculate split of sale proceeds */
+        uint256 seniorTrancheAmount = PRBMathUD60x18.mul(allocation[0], purchasePrice);
+        uint256 juniorTrancheAmount = purchasePrice - seniorTrancheAmount;
+
         /* Deposit sale proceeds in tranches */
-        if (amounts[0] != 0 && amounts[1] != 0) {
-            /* Both senior and junior (excess goes to junior) */
-            _deposit(TrancheId.Senior, amounts[0]);
-            _deposit(TrancheId.Junior, purchasePrice - amounts[0]);
-        } else if (amounts[0] != 0) {
-            /* Only senior */
-            _deposit(TrancheId.Senior, purchasePrice);
-        } else {
-            /* Only junior */
-            _deposit(TrancheId.Junior, purchasePrice);
-        }
+        if (seniorTrancheAmount > 0) _deposit(TrancheId.Senior, seniorTrancheAmount);
+        if (juniorTrancheAmount > 0) _deposit(TrancheId.Junior, juniorTrancheAmount);
 
         /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);

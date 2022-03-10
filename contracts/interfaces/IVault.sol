@@ -125,12 +125,14 @@ interface IVault is ILoanReceiver {
      *
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
-     * @param amounts Amount of currency tokens for each tranche
+     * @param minPurchasePrice Minimum purchase price in currency tokens
+     * @param allocation Allocation for each tranche as a percentage in UD60x18
      */
     function sellNoteAndDeposit(
         IERC721 noteToken,
         uint256 noteTokenId,
-        uint256[2] calldata amounts
+        uint256 minPurchasePrice,
+        uint256[2] calldata allocation
     ) external;
 
     /**

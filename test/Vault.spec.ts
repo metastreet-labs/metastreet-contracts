@@ -624,10 +624,7 @@ describe("Vault", function () {
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [
-          ethers.utils.parseEther("1.0"),
-          ethers.utils.parseEther("1.0"),
-        ]);
+        .sellNoteAndDeposit(noteToken.address, loanId, principal, [FixedPoint.from("0.75"), FixedPoint.from("0.25")]);
       await expectEvent(sellTx, noteToken, "Transfer", {
         from: accountLender.address,
         to: vault.address,
@@ -642,12 +639,12 @@ describe("Vault", function () {
       await expectEvent(sellTx, seniorLPToken, "Transfer", {
         from: ethers.constants.AddressZero,
         to: accountLender.address,
-        value: ethers.utils.parseEther("1.0"),
+        value: ethers.utils.parseEther("1.575"),
       });
       await expectEvent(sellTx, juniorLPToken, "Transfer", {
         from: ethers.constants.AddressZero,
         to: accountLender.address,
-        value: ethers.utils.parseEther("1.1"),
+        value: ethers.utils.parseEther("0.525"),
       });
 
       /* Check state after sale */
@@ -686,7 +683,7 @@ describe("Vault", function () {
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [principal, ethers.constants.Zero]);
+        .sellNoteAndDeposit(noteToken.address, loanId, principal, [FixedPoint.from(1), ethers.constants.Zero]);
       await expectEvent(sellTx, noteToken, "Transfer", {
         from: accountLender.address,
         to: vault.address,
@@ -732,53 +729,7 @@ describe("Vault", function () {
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [ethers.constants.Zero, principal]);
-      await expectEvent(sellTx, noteToken, "Transfer", {
-        from: accountLender.address,
-        to: vault.address,
-        tokenId: loanId,
-      });
-      await expectEvent(sellTx, vault, "NotePurchased", {
-        account: accountLender.address,
-        noteToken: noteToken.address,
-        noteTokenId: loanId,
-        purchasePrice,
-      });
-      await expectEvent(sellTx, juniorLPToken, "Transfer", {
-        from: ethers.constants.AddressZero,
-        to: accountLender.address,
-        value: purchasePrice,
-      });
-    });
-    it("sells note and deposits with zero amounts", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("10")];
-      const principal = ethers.utils.parseEther("2.0");
-      const purchasePrice = ethers.utils.parseEther("2.1");
-      const repayment = ethers.utils.parseEther("2.2");
-      const duration = 120 * 86400;
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
-      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
-
-      /* Create loan */
-      const loanId = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment,
-        duration
-      );
-
-      /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(purchasePrice);
-
-      /* Sell note to vault */
-      const sellTx = await vault
-        .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [ethers.constants.Zero, ethers.constants.Zero]);
+        .sellNoteAndDeposit(noteToken.address, loanId, principal, [ethers.constants.Zero, FixedPoint.from(1)]);
       await expectEvent(sellTx, noteToken, "Transfer", {
         from: accountLender.address,
         to: vault.address,
@@ -824,11 +775,30 @@ describe("Vault", function () {
       await expect(
         vault
           .connect(accountLender)
-          .sellNoteAndDeposit(noteToken.address, loanId, [
-            ethers.utils.parseEther("1.0"),
-            ethers.utils.parseEther("1.1"),
+          .sellNoteAndDeposit(noteToken.address, loanId, ethers.utils.parseEther("2.1"), [
+            FixedPoint.from("0.50"),
+            FixedPoint.from("0.50"),
           ])
       ).to.be.revertedWith("Purchase price less than min");
+    });
+    it("fails on invalid allocation", async function () {
+      await expect(
+        vault
+          .connect(accountLender)
+          .sellNoteAndDeposit(noteToken.address, 1234, ethers.utils.parseEther("2.0"), [
+            ethers.constants.Zero,
+            ethers.constants.Zero,
+          ])
+      ).to.be.revertedWith("Invalid allocation");
+
+      await expect(
+        vault
+          .connect(accountLender)
+          .sellNoteAndDeposit(noteToken.address, 1234, ethers.utils.parseEther("2.0"), [
+            FixedPoint.from("0.50"),
+            FixedPoint.from("0.51"),
+          ])
+      ).to.be.revertedWith("Invalid allocation");
     });
   });
 
@@ -2400,9 +2370,9 @@ describe("Vault", function () {
       await expect(
         vault
           .connect(accountLender)
-          .sellNoteAndDeposit(noteToken.address, 12345, [
-            ethers.utils.parseEther("1.0"),
-            ethers.utils.parseEther("1.0"),
+          .sellNoteAndDeposit(noteToken.address, 12345, ethers.utils.parseEther("2.0"), [
+            FixedPoint.from("0.50"),
+            FixedPoint.from("0.50"),
           ])
       ).to.be.revertedWith("Pausable: paused");
     });
