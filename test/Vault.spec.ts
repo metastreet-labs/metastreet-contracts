@@ -662,10 +662,7 @@ describe("Vault", function () {
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [
-          principal,
-          ethers.constants.Zero,
-        ]);
+        .sellNoteAndDeposit(noteToken.address, loanId, [principal, ethers.constants.Zero]);
       await expectEvent(sellTx, noteToken, "Transfer", {
         from: accountLender.address,
         to: vault.address,
@@ -711,10 +708,7 @@ describe("Vault", function () {
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [
-          ethers.constants.Zero,
-          principal,
-        ]);
+        .sellNoteAndDeposit(noteToken.address, loanId, [ethers.constants.Zero, principal]);
       await expectEvent(sellTx, noteToken, "Transfer", {
         from: accountLender.address,
         to: vault.address,
@@ -760,10 +754,7 @@ describe("Vault", function () {
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNoteAndDeposit(noteToken.address, loanId, [
-          ethers.constants.Zero,
-          ethers.constants.Zero,
-        ]);
+        .sellNoteAndDeposit(noteToken.address, loanId, [ethers.constants.Zero, ethers.constants.Zero]);
       await expectEvent(sellTx, noteToken, "Transfer", {
         from: accountLender.address,
         to: vault.address,
