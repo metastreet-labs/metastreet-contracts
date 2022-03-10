@@ -125,7 +125,8 @@ export async function cycleLoan(
   borrower: SignerWithAddress,
   lender: SignerWithAddress,
   principal: BigNumber,
-  repayment: BigNumber
+  repayment: BigNumber,
+  callback: boolean = true
 ): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
   const duration = 30 * 86400;
@@ -155,7 +156,7 @@ export async function cycleLoan(
   await lendingPlatform.connect(borrower).repay(loanId, false);
 
   /* Callback vault */
-  await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId);
+  if (callback) await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId);
 
   return loanId;
 }
@@ -168,7 +169,8 @@ export async function cycleLoanDefault(
   borrower: SignerWithAddress,
   lender: SignerWithAddress,
   principal: BigNumber,
-  repayment: BigNumber
+  repayment: BigNumber,
+  callback: boolean = true
 ): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
   const duration = 30 * 86400;
@@ -201,7 +203,7 @@ export async function cycleLoanDefault(
   await lendingPlatform.liquidate(loanId);
 
   /* Callback vault */
-  await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loanId);
+  if (callback) await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loanId);
 
   return loanId;
 }

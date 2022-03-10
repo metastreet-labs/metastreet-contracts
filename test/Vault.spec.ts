@@ -1572,6 +1572,135 @@ describe("Vault", function () {
 
       await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Loan not repaid");
     });
+    it("fails on repaid loan with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+    });
+    it("fails on liquidated loan", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        false
+      );
+
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Loan not repaid");
+    });
+    it("fails on liquidated loan with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Loan liquidated");
+    });
+    it("fails on liquidated loan with callback processed and collateral withdrawn", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Loan liquidated");
+    });
+    it("fails on liquidated collateral with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Callback vault */
+      await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
+
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+    });
     it("fails on unknown loan", async function () {
       await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Unknown loan");
     });
@@ -1579,41 +1708,6 @@ describe("Vault", function () {
       await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith(
         "Unsupported note token"
       );
-    });
-    it("fails on processed loan", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
-      const principal = ethers.utils.parseEther("2.0");
-      const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
-      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
-
-      /* Create loan */
-      const loanId = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment,
-        duration
-      );
-
-      /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
-
-      /* Sell note to vault */
-      await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
-
-      /* Repay loan */
-      await lendingPlatform.connect(accountBorrower).repay(loanId, false);
-
-      /* Callback vault */
-      await vault.onLoanRepaid(noteToken.address, loanId);
-
-      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
     });
   });
 
@@ -1705,6 +1799,135 @@ describe("Vault", function () {
 
       await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan not liquidated");
     });
+    it("fails on repaid loan", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        false
+      );
+
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan not liquidated");
+    });
+    it("fails on repaid loan with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+    });
+    it("fails on liquidated loan with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan liquidation processed");
+    });
+    it("fails on liquidated loan with callback processed and collateral withdrawn", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan liquidation processed");
+    });
+    it("fails on liquidated collateral with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Callback vault */
+      await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
+
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+    });
     it("fails on unknown loan", async function () {
       await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Unknown loan");
     });
@@ -1713,48 +1936,10 @@ describe("Vault", function () {
         "Unsupported note token"
       );
     });
-    it("fails on processed loan", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
-      const principal = ethers.utils.parseEther("2.0");
-      const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
-      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
-
-      /* Create loan */
-      const loanId = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment,
-        duration
-      );
-
-      /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
-
-      /* Sell note to vault */
-      await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
-
-      /* Elapse time */
-      await elapseTime(duration);
-
-      /* Liquidate loan */
-      await lendingPlatform.liquidate(loanId);
-
-      /* Callback vault */
-      await vault.onLoanLiquidated(noteToken.address, loanId);
-
-      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan liquidation processed");
-    });
   });
 
   describe("#onCollateralLiquidated", async function () {
-    it("succeeds on liquidated collateral", async function () {
+    it("succeeds on liquidated loan", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
@@ -1812,7 +1997,90 @@ describe("Vault", function () {
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
     });
-    it("fails on already liquidated loan and collateral", async function () {
+    it("fails on unliquidated loan", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(principal);
+
+      /* Sell note to vault */
+      await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
+
+      await expect(
+        vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
+      ).to.be.revertedWith("Loan not liquidated");
+    });
+    it("fails on repaid loan", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        false
+      );
+
+      await expect(
+        vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
+      ).to.be.revertedWith("Loan not liquidated");
+    });
+    it("fails on repaid loan with callback processed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        true
+      );
+
+      await expect(
+        vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
+      ).to.be.revertedWith("Unknown loan");
+    });
+    it("fails on liquidated collateral with callback processed", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
@@ -1845,37 +2113,6 @@ describe("Vault", function () {
       await expect(
         vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
       ).to.be.revertedWith("Unknown loan");
-    });
-    it("fails on unliquidated loan", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
-      const principal = ethers.utils.parseEther("2.0");
-      const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
-      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
-
-      /* Create loan */
-      const loanId = await createLoan(
-        lendingPlatform,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment,
-        duration
-      );
-
-      /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
-
-      /* Sell note to vault */
-      await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
-
-      await expect(
-        vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
-      ).to.be.revertedWith("Loan not liquidated");
     });
     it("fails on unknown loan", async function () {
       await expect(
