@@ -571,10 +571,11 @@ describe("Vault", function () {
 
   describe("#sellNoteAndDeposit", async function () {
     it("sells note and deposits", async function () {
-      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("10")];
       const principal = ethers.utils.parseEther("2.0");
+      const purchasePrice = ethers.utils.parseEther("2.1");
       const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
+      const duration = 120 * 86400;
 
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
@@ -592,7 +593,7 @@ describe("Vault", function () {
       );
 
       /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
+      await mockLoanPriceOracle.setPrice(purchasePrice);
 
       /* Check state before sale */
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
@@ -615,21 +616,170 @@ describe("Vault", function () {
         account: accountLender.address,
         noteToken: noteToken.address,
         noteTokenId: loanId,
-        purchasePrice: principal,
+        purchasePrice,
       });
       await expectEvent(sellTx, seniorLPToken, "Transfer", {
         from: ethers.constants.AddressZero,
         to: accountLender.address,
+        value: ethers.utils.parseEther("1.0"),
       });
       await expectEvent(sellTx, juniorLPToken, "Transfer", {
         from: ethers.constants.AddressZero,
         to: accountLender.address,
+        value: ethers.utils.parseEther("1.1"),
       });
 
       /* Check state after sale */
       expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
+      expect((await vault.balanceState()).totalLoanBalance).to.equal(purchasePrice);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
+    });
+    it("sells note and deposits to only senior", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("10")];
+      const principal = ethers.utils.parseEther("2.0");
+      const purchasePrice = ethers.utils.parseEther("2.1");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 120 * 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(purchasePrice);
+
+      /* Sell note to vault */
+      const sellTx = await vault
+        .connect(accountLender)
+        .sellNoteAndDeposit(noteToken.address, loanId, [
+          principal,
+          ethers.constants.Zero,
+        ]);
+      await expectEvent(sellTx, noteToken, "Transfer", {
+        from: accountLender.address,
+        to: vault.address,
+        tokenId: loanId,
+      });
+      await expectEvent(sellTx, vault, "NotePurchased", {
+        account: accountLender.address,
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+        purchasePrice,
+      });
+      await expectEvent(sellTx, seniorLPToken, "Transfer", {
+        from: ethers.constants.AddressZero,
+        to: accountLender.address,
+        value: purchasePrice,
+      });
+    });
+    it("sells note and deposits to only junior", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("10")];
+      const principal = ethers.utils.parseEther("2.0");
+      const purchasePrice = ethers.utils.parseEther("2.1");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 120 * 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(purchasePrice);
+
+      /* Sell note to vault */
+      const sellTx = await vault
+        .connect(accountLender)
+        .sellNoteAndDeposit(noteToken.address, loanId, [
+          ethers.constants.Zero,
+          principal,
+        ]);
+      await expectEvent(sellTx, noteToken, "Transfer", {
+        from: accountLender.address,
+        to: vault.address,
+        tokenId: loanId,
+      });
+      await expectEvent(sellTx, vault, "NotePurchased", {
+        account: accountLender.address,
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+        purchasePrice,
+      });
+      await expectEvent(sellTx, juniorLPToken, "Transfer", {
+        from: ethers.constants.AddressZero,
+        to: accountLender.address,
+        value: purchasePrice,
+      });
+    });
+    it("sells note and deposits with zero amounts", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("10")];
+      const principal = ethers.utils.parseEther("2.0");
+      const purchasePrice = ethers.utils.parseEther("2.1");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 120 * 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(purchasePrice);
+
+      /* Sell note to vault */
+      const sellTx = await vault
+        .connect(accountLender)
+        .sellNoteAndDeposit(noteToken.address, loanId, [
+          ethers.constants.Zero,
+          ethers.constants.Zero,
+        ]);
+      await expectEvent(sellTx, noteToken, "Transfer", {
+        from: accountLender.address,
+        to: vault.address,
+        tokenId: loanId,
+      });
+      await expectEvent(sellTx, vault, "NotePurchased", {
+        account: accountLender.address,
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+        purchasePrice,
+      });
+      await expectEvent(sellTx, juniorLPToken, "Transfer", {
+        from: ethers.constants.AddressZero,
+        to: accountLender.address,
+        value: purchasePrice,
+      });
     });
     it("fails on low purchase price", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];

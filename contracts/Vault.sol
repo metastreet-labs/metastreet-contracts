@@ -677,8 +677,17 @@ contract Vault is
         uint256 purchasePrice = _sellNote(address(noteToken), noteTokenId, minPurchasePrice);
 
         /* Deposit sale proceeds in tranches */
-        if (amounts[0] > 0) _deposit(TrancheId.Senior, amounts[0]);
-        if (amounts[1] > 0) _deposit(TrancheId.Junior, purchasePrice - amounts[0]);
+        if (amounts[0] != 0 && amounts[1] != 0) {
+            /* Both senior and junior (excess goes to junior) */
+            _deposit(TrancheId.Senior, amounts[0]);
+            _deposit(TrancheId.Junior, purchasePrice - amounts[0]);
+        } else if (amounts[0] != 0) {
+            /* Only senior */
+            _deposit(TrancheId.Senior, purchasePrice);
+        } else {
+            /* Only junior */
+            _deposit(TrancheId.Junior, purchasePrice);
+        }
 
         /* Transfer promissory note from user to vault */
         noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
