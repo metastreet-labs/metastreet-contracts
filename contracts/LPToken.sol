@@ -81,7 +81,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
      * redemption queue
      * @return Amount available for withdraw
      */
-    function redemptionAvailable(address account, uint256 processedRedemptionQueue) external view returns (uint256) {
+    function redemptionAvailable(address account, uint256 processedRedemptionQueue) public view returns (uint256) {
         Redemption storage redemption = _redemptions[account];
 
         if (redemption.pending == 0) {
@@ -90,11 +90,14 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         } else if (processedRedemptionQueue >= redemption.redemptionQueueTarget) {
             /* Full redemption available for withdraw */
             return redemption.pending - redemption.withdrawn;
-        } else {
+        } else if (processedRedemptionQueue > redemption.redemptionQueueTarget - redemption.pending) {
             /* Partial redemption available for withdraw */
             return
                 processedRedemptionQueue -
                 (redemption.redemptionQueueTarget - redemption.pending + redemption.withdrawn);
+        } else {
+            /* No redemption available for withdraw */
+            return 0;
         }
     }
 
@@ -150,12 +153,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
-        require(redemption.pending >= amount, "Invalid amount");
-        require(
-            (processedRedemptionQueue -
-                (redemption.redemptionQueueTarget - redemption.pending + redemption.withdrawn)) >= amount,
-            "Redemption not ready"
-        );
+        require(redemptionAvailable(account, processedRedemptionQueue) >= amount, "Invalid amount");
 
         redemption.withdrawn += amount;
 

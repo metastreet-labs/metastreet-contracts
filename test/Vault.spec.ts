@@ -1176,7 +1176,7 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
     });
-    it("fails on invalid amount", async function () {
+    it("fails on excess withdrawal", async function () {
       const depositAmount = ethers.utils.parseEther("15.0");
       const redemptionAmount = ethers.utils.parseEther("7.5");
       const withdrawAmount = ethers.utils.parseEther("8.0");
@@ -1185,10 +1185,87 @@ describe("Vault", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmount);
       await vault.connect(accountDepositor).redeem(0, redemptionAmount);
 
+      /* Cycle a loan to make entire redemption available */
+      await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("10"),
+        ethers.utils.parseEther("11")
+      );
+
       /* Try to withdraw too much */
       await expect(vault.connect(accountDepositor).withdraw(0, withdrawAmount)).to.be.revertedWith("Invalid amount");
     });
-    it("fails on redemption not ready", async function () {
+    it("fails after excess withdrawals", async function () {
+      const depositAmount = ethers.utils.parseEther("15.0");
+      const redemptionAmount = ethers.utils.parseEther("6.0");
+
+      /* Deposit and redeem */
+      await vault.connect(accountDepositor).deposit(0, depositAmount);
+      await vault.connect(accountDepositor).redeem(0, redemptionAmount);
+
+      /* Cycle a loan to make entire redemption available */
+      await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("10"),
+        ethers.utils.parseEther("11")
+      );
+
+      /* Withdraw multiple times */
+      await vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("2.0"));
+      await vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("2.0"));
+      await vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("1.5"));
+
+      /* Final withdrawal exceeds available */
+      await expect(vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("2.0"))).to.be.revertedWith(
+        "Invalid amount"
+      );
+    });
+    it("fails after excess withdrawals during concurrent redemptions", async function () {
+      const depositAmount = ethers.utils.parseEther("15.0");
+      const redemptionAmount = ethers.utils.parseEther("6.0");
+
+      /* Deposit and redeem */
+      await vault.connect(accountDepositor).deposit(0, depositAmount);
+      await vault.connect(accountDepositor).redeem(0, redemptionAmount);
+
+      /* Deposit and redeem from second account */
+      await tok1.connect(accountLender).approve(vault.address, ethers.constants.MaxUint256);
+      await vault.connect(accountLender).deposit(0, depositAmount);
+      await vault.connect(accountLender).redeem(0, redemptionAmount);
+
+      /* Cycle a loan to make entire redemption available */
+      await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("12"),
+        ethers.utils.parseEther("13")
+      );
+
+      /* Withdraw multiple times */
+      await vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("2.0"));
+      await vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("2.0"));
+      await vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("1.5"));
+
+      /* Final withdrawal exceeds available */
+      await expect(vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("2.0"))).to.be.revertedWith(
+        "Invalid amount"
+      );
+    });
+    it("fails when redemption is not ready", async function () {
       const depositAmount = ethers.utils.parseEther("15.0");
       const redemptionAmount = ethers.utils.parseEther("7.5");
       const withdrawAmount = ethers.utils.parseEther("2.0");
@@ -1198,9 +1275,7 @@ describe("Vault", function () {
       await vault.connect(accountDepositor).redeem(0, redemptionAmount);
 
       /* Try to withdraw early */
-      await expect(vault.connect(accountDepositor).withdraw(0, withdrawAmount)).to.be.revertedWith(
-        "Redemption not ready"
-      );
+      await expect(vault.connect(accountDepositor).withdraw(0, withdrawAmount)).to.be.revertedWith("Invalid amount");
     });
   });
 
