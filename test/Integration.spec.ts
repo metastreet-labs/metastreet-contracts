@@ -535,43 +535,45 @@ describe("Integration", function () {
 
         /* Check for expired loans */
         const currentTimestamp = await getBlockTimestamp();
-        activeLoans.forEach(async (loan) => {
-          if (loan.maturity > currentTimestamp) return;
+        await Promise.all(
+          activeLoans.map(async (loan) => {
+            if (loan.maturity > currentTimestamp) return;
 
-          if ((await DeterministicRandom.randomNumber()) < defaultProbability) {
-            /* Handle default */
+            if ((await DeterministicRandom.randomNumber()) < defaultProbability) {
+              /* Handle default */
 
-            /* Liquidate the loan */
-            await lendingPlatform.liquidate(loan.loanId);
+              /* Liquidate the loan */
+              await lendingPlatform.liquidate(loan.loanId);
 
-            /* Callback vault */
-            await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loan.loanId);
+              /* Callback vault */
+              await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loan.loanId);
 
-            /* Withdraw the collateral */
-            await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loan.loanId);
+              /* Withdraw the collateral */
+              await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loan.loanId);
 
-            /* Callback vault */
-            await vault
-              .connect(accountLiquidator)
-              .onCollateralLiquidated(noteToken.address, loan.loanId, loan.liquidation);
+              /* Callback vault */
+              await vault
+                .connect(accountLiquidator)
+                .onCollateralLiquidated(noteToken.address, loan.loanId, loan.liquidation);
 
-            /* Update balance */
-            expectedCashBalance = expectedCashBalance.add(loan.liquidation);
-          } else {
-            /* Handle repayment */
+              /* Update balance */
+              expectedCashBalance = expectedCashBalance.add(loan.liquidation);
+            } else {
+              /* Handle repayment */
 
-            /* Repay loan */
-            await lendingPlatform.connect(accountBorrower).repay(loan.loanId, false);
+              /* Repay loan */
+              await lendingPlatform.connect(accountBorrower).repay(loan.loanId, false);
 
-            /* Callback vault */
-            await vault.onLoanRepaid(await lendingPlatform.noteToken(), loan.loanId);
+              /* Callback vault */
+              await vault.onLoanRepaid(await lendingPlatform.noteToken(), loan.loanId);
 
-            /* Update balance */
-            expectedCashBalance = expectedCashBalance.add(loan.repayment);
-          }
+              /* Update balance */
+              expectedCashBalance = expectedCashBalance.add(loan.repayment);
+            }
 
-          numLoansProcessed += 1;
-        });
+            numLoansProcessed += 1;
+          })
+        );
 
         /* Remove expired loans */
         activeLoans = activeLoans.filter((loan) => loan.maturity > currentTimestamp);
