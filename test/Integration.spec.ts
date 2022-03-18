@@ -579,8 +579,12 @@ describe("Integration", function () {
         activeLoans = activeLoans.filter((loan) => loan.maturity > currentTimestamp);
       }
 
-      /* Check final cash balance matches expected */
+      /* Check final balances match expected */
       expect((await vault.balanceState()).totalCashBalance).to.equal(expectedCashBalance);
+      expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).depositValue.add((await vault.trancheState(1)).depositValue)).to.equal(
+        expectedCashBalance
+      );
     });
   });
 });
