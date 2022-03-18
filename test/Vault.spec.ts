@@ -2331,6 +2331,9 @@ describe("Vault", function () {
       });
       expect(await vault.loanPriceOracle()).to.equal(addr);
     });
+    it("fails on invalid address", async function () {
+      await expect(vault.setLoanPriceOracle(ethers.constants.AddressZero)).to.be.revertedWith("Invalid address");
+    });
     it("fails on invalid caller", async function () {
       const addr = randomAddress();
 
@@ -2350,6 +2353,9 @@ describe("Vault", function () {
         collateralLiquidator: addr,
       });
       expect(await vault.collateralLiquidator()).to.equal(addr);
+    });
+    it("fails on invalid address", async function () {
+      await expect(vault.setCollateralLiquidator(ethers.constants.AddressZero)).to.be.revertedWith("Invalid address");
     });
     it("fails on invalid caller", async function () {
       const addr = randomAddress();
@@ -2372,6 +2378,11 @@ describe("Vault", function () {
         noteAdapter: addr2,
       });
       expect(await vault.noteAdapters(addr1)).to.equal(addr2);
+    });
+    it("fails on invalid address", async function () {
+      await expect(vault.setNoteAdapter(ethers.constants.AddressZero, randomAddress())).to.be.revertedWith(
+        "Invalid address"
+      );
     });
     it("fails on invalid caller", async function () {
       const addr1 = randomAddress();

@@ -1040,6 +1040,7 @@ contract Vault is
      * @param loanPriceOracle_ Loan price oracle contract
      */
     function setLoanPriceOracle(address loanPriceOracle_) external onlyOwner {
+        require(loanPriceOracle_ != address(0), "Invalid address");
         _loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
@@ -1052,6 +1053,7 @@ contract Vault is
      * @param collateralLiquidator_ Collateral liquidator contract
      */
     function setCollateralLiquidator(address collateralLiquidator_) external onlyOwner {
+        require(collateralLiquidator_ != address(0), "Invalid address");
         _collateralLiquidator = collateralLiquidator_;
         emit CollateralLiquidatorUpdated(collateralLiquidator_);
     }
@@ -1065,6 +1067,7 @@ contract Vault is
      * @param noteAdapter Note adapter contract
      */
     function setNoteAdapter(address noteToken, address noteAdapter) external onlyOwner {
+        require(noteToken != address(0), "Invalid address");
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
