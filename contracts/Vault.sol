@@ -445,6 +445,15 @@ contract Vault is
     }
 
     /**
+     * @dev Check if a tranche is solvent
+     * @param trancheId tranche
+     * @return Tranche is solvent
+     */
+    function _isSolvent(TrancheId trancheId) internal view returns (bool) {
+        return _trancheState(trancheId).depositValue != 0 || _lpToken(trancheId).totalSupply() == 0;
+    }
+
+    /**
      * @dev Compute share price of tranche including prorated pending returns
      * @param trancheId tranche
      * @return Share price in UD60x18
@@ -517,11 +526,11 @@ contract Vault is
      * @param amount Amount of currency tokens
      */
     function _deposit(TrancheId trancheId, uint256 amount) internal {
+        /* Check tranche is solvent */
+        require(_isSolvent(trancheId), "Tranche is currently insolvent");
+
         /* Compute current share price */
         uint256 currentSharePrice = _computeSharePrice(trancheId);
-
-        /* Check tranche is solvent */
-        require(currentSharePrice != 0, "Tranche is currently insolvent");
 
         /* Compute number of shares to mint from current tranche share price */
         uint256 shares = PRBMathUD60x18.div(amount, currentSharePrice);
@@ -698,11 +707,11 @@ contract Vault is
     function redeem(TrancheId trancheId, uint256 shares) external whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
 
+        /* Check tranche is solvent */
+        require(_isSolvent(trancheId), "Tranche is currently insolvent");
+
         /* Compute current redemption share price */
         uint256 currentRedemptionSharePrice = _computeRedemptionSharePrice(trancheId);
-
-        /* Check tranche is solvent */
-        require(currentRedemptionSharePrice != 0, "Tranche is currently insolvent");
 
         /* Compute redemption amount */
         uint256 redemptionAmount = PRBMathUD60x18.mul(shares, currentRedemptionSharePrice);
