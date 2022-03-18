@@ -48,6 +48,9 @@ export async function initializeAccounts(
 
   /* Approve token with vault for depositor (for deposits) */
   await tok.connect(depositor).approve(vault.address, ethers.constants.MaxUint256);
+
+  /* Approve token with vault for liquidator (for collateral liquidations) */
+  await tok.connect(liquidator).approve(vault.address, ethers.constants.MaxUint256);
 }
 
 export async function createLoan(

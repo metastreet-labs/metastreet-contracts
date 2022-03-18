@@ -962,6 +962,9 @@ contract Vault is
         /* Disable loan */
         loan.active = false;
 
+        /* Transfer cash from liquidator to vault */
+        IERC20Upgradeable(address(_currencyToken)).safeTransferFrom(msg.sender, address(this), proceeds);
+
         emit CollateralLiquidated(noteToken, noteTokenId, [seniorTrancheRepayment, juniorTrancheRepayment]);
     }
 

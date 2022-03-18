@@ -550,9 +550,6 @@ describe("Integration", function () {
             /* Withdraw the collateral */
             await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loan.loanId);
 
-            /* Deposit proceeds in vault */
-            await tok1.connect(accountLiquidator).transfer(vault.address, loan.liquidation);
-
             /* Callback vault */
             await vault
               .connect(accountLiquidator)

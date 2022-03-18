@@ -2066,9 +2066,6 @@ describe("Vault", function () {
       /* Withdraw the collateral */
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
 
-      /* Deposit proceeds in vault */
-      await tok1.connect(accountLiquidator).transfer(vault.address, repayment);
-
       /* Check state before callback */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).sub(principal)
@@ -2086,6 +2083,11 @@ describe("Vault", function () {
       const onCollateralLiquidatedTx = await vault
         .connect(accountLiquidator)
         .onCollateralLiquidated(noteToken.address, loanId, repayment);
+      await expectEvent(onCollateralLiquidatedTx, tok1, "Transfer", {
+        to: vault.address,
+        from: accountLiquidator.address,
+        value: repayment,
+      });
       await expectEvent(onCollateralLiquidatedTx, vault, "CollateralLiquidated", {
         noteToken: noteToken.address,
         noteTokenId: loanId,
@@ -2211,9 +2213,6 @@ describe("Vault", function () {
 
       /* Withdraw the collateral */
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
-
-      /* Deposit proceeds in vault */
-      await tok1.connect(accountLiquidator).transfer(vault.address, repayment);
 
       /* Callback vault */
       await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
