@@ -491,7 +491,7 @@ contract Vault is
      */
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
         /* Compute maximum redemption possible */
-        uint256 redemptionAmount = Math.min(tranche.pendingRedemptions, proceeds);
+        uint256 redemptionAmount = Math.min(tranche.depositValue, Math.min(tranche.pendingRedemptions, proceeds));
 
         /* Update tranche redemption state */
         tranche.pendingRedemptions -= redemptionAmount;

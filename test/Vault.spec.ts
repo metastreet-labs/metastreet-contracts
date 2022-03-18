@@ -912,6 +912,51 @@ describe("Vault", function () {
         )
       ).to.equal(ethers.constants.Zero);
     });
+    it("redemption on insolvent tranche is delayed", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("10");
+      const repayment = ethers.utils.parseEther("11");
+
+      /* Disable reserve ratio */
+      await vault.setReserveRatio(ethers.constants.Zero);
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Redeem from junior tranche */
+      await vault.connect(accountDepositor).redeem(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan, wiping out junior tranche and part of senior tranche */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Callback vault */
+      await vault
+        .connect(accountLiquidator)
+        .onCollateralLiquidated(noteToken.address, loanId, ethers.utils.parseEther("5"));
+
+      /* Redemption should not be ready yet */
+      expect(
+        await juniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(1)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.constants.Zero);
+    });
     it("fails on invalid shares", async function () {
       const depositAmount = ethers.utils.parseEther("1.23");
       const redemptionAmount = ethers.utils.parseEther("2.34");
