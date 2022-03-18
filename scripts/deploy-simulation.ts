@@ -287,8 +287,8 @@ async function main() {
     daiTestLendingPlatform,
     baycTokenContract.address,
     123,
-    ethers.utils.parseEther("100"),
-    ethers.utils.parseEther("120"),
+    ethers.utils.parseEther("30"),
+    ethers.utils.parseEther("33"),
     30 * 86400
   );
   console.log("Created DAI Loan ID %s:  Borrower account #1, Lender account #0,", loanId);
@@ -303,8 +303,8 @@ async function main() {
     wethTestLendingPlatform,
     baycTokenContract.address,
     456,
-    ethers.utils.parseEther("200"),
-    ethers.utils.parseEther("215"),
+    ethers.utils.parseEther("20"),
+    ethers.utils.parseEther("21"),
     30 * 86400
   );
   console.log("Created WETH Loan ID %s: Borrower account #1, Lender account #0,", loanId);
@@ -315,8 +315,8 @@ async function main() {
     wethTestLendingPlatform,
     baycTokenContract.address,
     768,
-    ethers.utils.parseEther("150"),
-    ethers.utils.parseEther("195"),
+    ethers.utils.parseEther("15"),
+    ethers.utils.parseEther("16"),
     60 * 86400
   );
   console.log("Created WETH Loan ID %s: Borrower account #1, Lender account #0,", loanId);
