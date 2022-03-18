@@ -2315,6 +2315,10 @@ describe("Vault", function () {
       });
       expect(await vault.reserveRatio()).to.equal(ratio);
     });
+    it("fails on invalid value", async function () {
+      await expect(vault.setReserveRatio(FixedPoint.from("1.0"))).to.be.revertedWith("Parameter out of bounds");
+      await expect(vault.setReserveRatio(FixedPoint.from("1.1"))).to.be.revertedWith("Parameter out of bounds");
+    });
     it("fails on invalid caller", async function () {
       const ratio = FixedPoint.from("0.15");
 

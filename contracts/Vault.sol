@@ -1029,6 +1029,7 @@ contract Vault is
      * @param ratio Reserve ratio in UD60x18
      */
     function setReserveRatio(uint256 ratio) external onlyOwner {
+        require(ratio < 1e18, "Parameter out of bounds");
         _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
     }
