@@ -1016,6 +1016,7 @@ contract Vault is
      * @param rate Rate in UD60x18 amount per second
      */
     function setSeniorTrancheRate(uint256 rate) external onlyOwner {
+        require(rate > 0 && rate < 1e18, "Parameter out of bounds");
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
     }

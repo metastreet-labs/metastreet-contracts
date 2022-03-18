@@ -2291,6 +2291,10 @@ describe("Vault", function () {
       });
       expect(await vault.seniorTrancheRate()).to.equal(rate);
     });
+    it("fails on invalid value", async function () {
+      await expect(vault.setSeniorTrancheRate(ethers.constants.Zero)).to.be.revertedWith("Parameter out of bounds");
+      await expect(vault.setSeniorTrancheRate(FixedPoint.from("1.0"))).to.be.revertedWith("Parameter out of bounds");
+    });
     it("fails on invalid caller", async function () {
       const rate = FixedPoint.normalizeRate("0.025");
 
