@@ -94,7 +94,7 @@ abstract contract VaultStorageV1 {
     uint256 internal _seniorTrancheRate;
 
     /**
-     * @dev Reserve ration in UD60x18
+     * @dev Reserve ratio in UD60x18
      */
     uint256 internal _reserveRatio;
 
