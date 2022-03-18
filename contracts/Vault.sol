@@ -214,6 +214,11 @@ contract Vault is
         LPToken seniorLPToken_,
         LPToken juniorLPToken_
     ) external initializer {
+        require(address(currencyToken_) != address(0), "Invalid currency token");
+        require(address(loanPriceOracle_) != address(0), "Invalid loan price oracle");
+        require(address(seniorLPToken_) != address(0), "Invalid senior LP token");
+        require(address(juniorLPToken_) != address(0), "Invalid junior LP token");
+
         require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
 
         __Ownable_init();
