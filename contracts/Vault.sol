@@ -734,8 +734,14 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdraw(TrancheId trancheId, uint256 amount) external whenNotPaused {
+    function withdraw(TrancheId trancheId, uint256 maxAmount) external whenNotPaused {
         Tranche storage tranche = _trancheState(trancheId);
+
+        /* Calculate amount available to withdraw */
+        uint256 amount = Math.min(
+            _lpToken(trancheId).redemptionAvailable(msg.sender, tranche.processedRedemptionQueue),
+            maxAmount
+        );
 
         /* Update user's token state with redemption */
         _lpToken(trancheId).withdraw(msg.sender, amount, tranche.processedRedemptionQueue);

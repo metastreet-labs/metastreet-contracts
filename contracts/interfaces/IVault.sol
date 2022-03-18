@@ -152,9 +152,9 @@ interface IVault is ILoanReceiver {
      * Emits a {Withdrawn} event.
      *
      * @param trancheId Tranche
-     * @param amount Amount of currency tokens
+     * @param maxAmount Maximum amount of currency tokens to withdraw
      */
-    function withdraw(TrancheId trancheId, uint256 amount) external;
+    function withdraw(TrancheId trancheId, uint256 maxAmount) external;
 
     /**************************************************************************/
     /* Liquidation API */
