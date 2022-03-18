@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
@@ -19,8 +19,9 @@ describe("LoanPriceOracle", function () {
   let tok1: TestERC20;
   let nft1: TestERC721;
   let loanPriceOracle: LoanPriceOracle;
+  let snapshotId: string;
 
-  beforeEach("deploy fixture", async () => {
+  before("deploy fixture", async () => {
     accounts = await ethers.getSigners();
 
     const testERC20Factory = await ethers.getContractFactory("TestERC20");
@@ -35,6 +36,14 @@ describe("LoanPriceOracle", function () {
 
     loanPriceOracle = (await loanPriceOracleFactory.deploy(tok1.address)) as LoanPriceOracle;
     await loanPriceOracle.deployed();
+  });
+
+  beforeEach("snapshot blockchain", async () => {
+    snapshotId = await network.provider.send("evm_snapshot", []);
+  });
+
+  afterEach("restore blockchain snapshot", async () => {
+    await network.provider.send("evm_revert", [snapshotId]);
   });
 
   const minimumDiscountRate = FixedPoint.normalizeRate("0.05");

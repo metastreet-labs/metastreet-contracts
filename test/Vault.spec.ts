@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
@@ -37,6 +37,7 @@ describe("Vault", function () {
   let vault: Vault;
   let seniorLPToken: LPToken;
   let juniorLPToken: LPToken;
+  let snapshotId: string;
 
   /* Account references */
   let accountBorrower: SignerWithAddress;
@@ -44,7 +45,7 @@ describe("Vault", function () {
   let accountDepositor: SignerWithAddress;
   let accountLiquidator: SignerWithAddress;
 
-  beforeEach("deploy fixture", async () => {
+  before("deploy fixture", async () => {
     accounts = await ethers.getSigners();
 
     const testERC20Factory = await ethers.getContractFactory("TestERC20");
@@ -129,6 +130,14 @@ describe("Vault", function () {
       lendingPlatform,
       vault
     );
+  });
+
+  beforeEach("snapshot blockchain", async () => {
+    snapshotId = await network.provider.send("evm_snapshot", []);
+  });
+
+  afterEach("restore blockchain snapshot", async () => {
+    await network.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("constants", async function () {

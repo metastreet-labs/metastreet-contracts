@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
@@ -9,8 +9,9 @@ describe("LPToken", function () {
   let accounts: SignerWithAddress[];
   let seniorLPToken: LPToken;
   let juniorLPToken: LPToken;
+  let snapshotId: string;
 
-  beforeEach("deploy fixture", async () => {
+  before("deploy fixture", async () => {
     accounts = await ethers.getSigners();
 
     const lpTokenFactory = await ethers.getContractFactory("LPToken");
@@ -24,6 +25,14 @@ describe("LPToken", function () {
     juniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
     await juniorLPToken.deployed();
     await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
+  });
+
+  beforeEach("snapshot blockchain", async () => {
+    snapshotId = await network.provider.send("evm_snapshot", []);
+  });
+
+  afterEach("restore blockchain snapshot", async () => {
+    await network.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("constants", async function () {

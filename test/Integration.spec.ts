@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
@@ -36,7 +36,7 @@ describe("Integration", function () {
   let vault: Vault;
   let seniorLPToken: LPToken;
   let juniorLPToken: LPToken;
-  let lastBlockTimestamp: number;
+  let snapshotId: string;
 
   /* Account references */
   let accountBorrower: SignerWithAddress;
@@ -73,7 +73,7 @@ describe("Integration", function () {
     sensitivityWeights: [50, 25, 25],
   };
 
-  beforeEach("deploy fixture", async () => {
+  before("deploy fixture", async () => {
     accounts = await ethers.getSigners();
 
     const testERC20Factory = await ethers.getContractFactory("TestERC20");
@@ -162,11 +162,23 @@ describe("Integration", function () {
       lendingPlatform,
       vault
     );
+  });
 
-    lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+  beforeEach("snapshot blockchain", async () => {
+    snapshotId = await network.provider.send("evm_snapshot", []);
+  });
+
+  afterEach("restore blockchain snapshot", async () => {
+    await network.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("single loan", async function () {
+    let lastBlockTimestamp: number;
+
+    beforeEach("get last block timestamp", async function () {
+      lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
+    });
+
     it("tests loan repayment", async function () {
       const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("10.0");
