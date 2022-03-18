@@ -274,6 +274,8 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         external
         onlyOwner
     {
+        require(collateralToken != address(0), "Invalid address");
+
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
 
         emit CollateralParametersUpdated(collateralToken);

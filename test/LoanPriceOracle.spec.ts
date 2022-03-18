@@ -288,6 +288,14 @@ describe("LoanPriceOracle", function () {
         Object.values(collateralParametersUpdate.rateDurationSensitivity)
       );
     });
+    it("fails on invalid address", async function () {
+      await expect(
+        loanPriceOracle.setCollateralParameters(
+          ethers.constants.AddressZero,
+          encodeCollateralParameters(collateralParameters)
+        )
+      ).to.be.revertedWith("Invalid address");
+    });
     it("fails on invalid caller", async function () {
       await expect(
         loanPriceOracle
