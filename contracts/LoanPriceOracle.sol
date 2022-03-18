@@ -62,7 +62,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /**
      * @inheritdoc ILoanPriceOracle
      */
-    IERC20 public override currencyToken;
+    IERC20 public immutable override currencyToken;
 
     /**
      * @notice Minimum discount rate in UD60x18 amount per second
