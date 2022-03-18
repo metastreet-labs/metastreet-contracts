@@ -35,7 +35,7 @@ export async function initializeAccounts(
 
   /* Approve NFT with lending platform for borrower (for loan) */
   await nft.connect(borrower).setApprovalForAll(lendingPlatform.address, true);
-  /* Approve token wiht lending platform for borrower (for repayment) */
+  /* Approve token with lending platform for borrower (for repayment) */
   await tok.connect(borrower).approve(lendingPlatform.address, ethers.constants.MaxUint256);
 
   const noteToken = (await ethers.getContractAt(
