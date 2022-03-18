@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./ILoanPriceOracle.sol";
 import "./INoteAdapter.sol";
@@ -110,7 +109,7 @@ interface IVault is ILoanReceiver {
      * @param minPurchasePrice Minimum purchase price in currency tokens
      */
     function sellNote(
-        IERC721 noteToken,
+        address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
     ) external;
@@ -129,7 +128,7 @@ interface IVault is ILoanReceiver {
      * @param allocation Allocation for each tranche as a percentage in UD60x18
      */
     function sellNoteAndDeposit(
-        IERC721 noteToken,
+        address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice,
         uint256[2] calldata allocation

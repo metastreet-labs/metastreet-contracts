@@ -660,15 +660,15 @@ contract Vault is
      * @inheritdoc IVault
      */
     function sellNote(
-        IERC721 noteToken,
+        address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
     ) external whenNotPaused {
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(address(noteToken), noteTokenId, minPurchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
         /* Transfer promissory note from user to vault */
-        noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
+        IERC721(noteToken).safeTransferFrom(msg.sender, address(this), noteTokenId);
 
         /* Transfer cash from vault to user */
         IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, purchasePrice);
@@ -678,7 +678,7 @@ contract Vault is
      * @inheritdoc IVault
      */
     function sellNoteAndDeposit(
-        IERC721 noteToken,
+        address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice,
         uint256[2] calldata allocation
@@ -687,7 +687,7 @@ contract Vault is
         require(allocation[0] + allocation[1] == 1e18, "Invalid allocation");
 
         /* Purchase the note */
-        uint256 purchasePrice = _sellNote(address(noteToken), noteTokenId, minPurchasePrice);
+        uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
         /* Calculate split of sale proceeds */
         uint256 seniorTrancheAmount = PRBMathUD60x18.mul(allocation[0], purchasePrice);
@@ -698,7 +698,7 @@ contract Vault is
         if (juniorTrancheAmount > 0) _deposit(TrancheId.Junior, juniorTrancheAmount);
 
         /* Transfer promissory note from user to vault */
-        noteToken.safeTransferFrom(msg.sender, address(this), noteTokenId);
+        IERC721(noteToken).safeTransferFrom(msg.sender, address(this), noteTokenId);
     }
 
     /**
