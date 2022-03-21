@@ -559,8 +559,8 @@ contract Vault is
         /* Increase total cash balance */
         _totalCashBalance += amount;
 
-        /* Increase reserves balance */
-        _updateReservesBalance(amount);
+        /* Process redemptions and update reserves with proceeds */
+        _processRedemptionsAndUpdateReserves(amount);
 
         /* Mint LP tokens to user */
         _lpToken(trancheId).mint(msg.sender, shares);

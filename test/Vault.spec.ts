@@ -966,6 +966,61 @@ describe("Vault", function () {
         )
       ).to.equal(ethers.constants.Zero);
     });
+    it("redemptions processed from new deposit", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const redemptionAmount = ethers.utils.parseEther("2.5");
+
+      /* Disable reserve ratio */
+      await vault.setReserveRatio(ethers.constants.Zero);
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Redeem from junior tranche */
+      await vault.connect(accountDepositor).redeem(0, redemptionAmount);
+      await vault.connect(accountDepositor).redeem(1, redemptionAmount);
+
+      /* Check redemption available */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.constants.Zero);
+      expect(
+        await juniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.constants.Zero);
+
+      /* Deposit from another account */
+      await tok1.connect(accountLender).approve(vault.address, ethers.constants.MaxUint256);
+      await vault.connect(accountLender).deposit(0, redemptionAmount.mul(2));
+
+      /* Check redemption available */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(redemptionAmount);
+      expect(
+        await juniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(redemptionAmount);
+    });
     it("fails on invalid shares", async function () {
       const depositAmount = ethers.utils.parseEther("1.23");
       const redemptionAmount = ethers.utils.parseEther("2.34");
