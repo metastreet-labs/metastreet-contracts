@@ -518,10 +518,10 @@ contract Vault is
     function _updateReservesBalance(uint256 proceeds) internal {
         /* Update cash reserves balance */
         uint256 targetReservesBalance = PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance);
-        _totalReservesBalance += Math.min(
-            targetReservesBalance > _totalReservesBalance ? targetReservesBalance - _totalReservesBalance : 0,
-            proceeds
-        );
+        uint256 delta = targetReservesBalance > _totalReservesBalance
+            ? targetReservesBalance - _totalReservesBalance
+            : 0;
+        _totalReservesBalance += Math.min(delta, proceeds);
     }
 
     /**
