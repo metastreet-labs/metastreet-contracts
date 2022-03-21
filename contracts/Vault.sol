@@ -525,6 +525,19 @@ contract Vault is
     }
 
     /**
+     * @dev Apply new proceeds to processing redemptions and updating cash reserves
+     * @param proceeds Proceeds in currency tokens
+     */
+    function _processRedemptionsAndUpdateReserves(uint256 proceeds) internal {
+        /* Process senior redemptions */
+        proceeds = _processRedemptions(_tranches.senior, proceeds);
+        /* Process junior redemptions */
+        proceeds = _processRedemptions(_tranches.junior, proceeds);
+        /* Update cash reserves balance */
+        _updateReservesBalance(proceeds);
+    }
+
+    /**
      * @dev Update tranche state with currency deposit and mint LP tokens to
      * depositer
      * @param trancheId tranche
@@ -854,13 +867,8 @@ contract Vault is
         _totalLoanBalance -= loan.purchasePrice;
         _totalCashBalance += loan.repayment;
 
-        /* Process redemptions for both tranches */
-        uint256 proceeds = loan.repayment;
-        proceeds = _processRedemptions(_tranches.senior, proceeds);
-        proceeds = _processRedemptions(_tranches.junior, proceeds);
-
-        /* Update reserve balance with leftover proceeds */
-        _updateReservesBalance(proceeds);
+        /* Process redemptions and update reserves with proceeds */
+        _processRedemptionsAndUpdateReserves(loan.repayment);
 
         /* Disable loan */
         loan.active = false;
@@ -957,12 +965,8 @@ contract Vault is
         /* Increase total cash balance */
         _totalCashBalance += proceeds;
 
-        /* Process redemptions for both tranches */
-        proceeds = _processRedemptions(_tranches.senior, proceeds);
-        proceeds = _processRedemptions(_tranches.junior, proceeds);
-
-        /* Update reserve balance with leftover proceeds */
-        _updateReservesBalance(proceeds);
+        /* Process redemptions and update reserves with proceeds */
+        _processRedemptionsAndUpdateReserves(proceeds);
 
         /* Disable loan */
         loan.active = false;
