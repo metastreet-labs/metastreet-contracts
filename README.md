@@ -40,6 +40,7 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
 
 - Format contracts (prettier): `npm run format`
 - Lint contracts (solhint): `npm run lint`
+- Run unit tests with gas reporter: `npm run test:gas`
 - Run unit tests with coverage (solidity-coverage): `npm run test:coverage`
 - Run static analyzer (slither, requires external installation): `npm run analyze`
 - Format tests and scripts (prettier): `npm run format:ts`
