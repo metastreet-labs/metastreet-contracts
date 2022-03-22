@@ -376,7 +376,7 @@ contract Vault is
 
     /**
      * @notice Get cash reserve ratio
-     * @return Cash reserve ratio in UD60x18 amount per second
+     * @return Cash reserve ratio as a percentage in UD60x18
      */
     function reserveRatio() external view returns (uint256) {
         return _reserveRatio;
