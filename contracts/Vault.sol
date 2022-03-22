@@ -418,6 +418,18 @@ contract Vault is
     }
 
     /**
+     * @dev Get and validate the note adapter for a note token
+     */
+    function _getNoteAdapter(address noteToken) internal view returns (INoteAdapter) {
+        INoteAdapter noteAdapter = _noteAdapters[noteToken];
+
+        /* Validate note token is supported */
+        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
+
+        return noteAdapter;
+    }
+
+    /**
      * @dev Convert Unix timestamp to time bucket
      */
     function _timestampToTimeBucket(uint64 timestamp) internal pure returns (uint64) {
@@ -601,10 +613,8 @@ contract Vault is
         uint256 noteTokenId,
         uint256 minPurchasePrice
     ) internal returns (uint256) {
-        INoteAdapter noteAdapter = _noteAdapters[noteToken];
-
-        /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Check if loan parameters are supported */
         require(noteAdapter.isSupported(noteTokenId, address(_currencyToken)), "Unsupported note parameters");
@@ -803,10 +813,8 @@ contract Vault is
      * @inheritdoc IVault
      */
     function liquidateLoan(address noteToken, uint256 noteTokenId) external nonReentrant {
-        INoteAdapter noteAdapter = _noteAdapters[noteToken];
-
-        /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Call liquidate on lending platform */
         (bool success, ) = noteAdapter.lendingPlatform().call(noteAdapter.getLiquidateCalldata(noteTokenId));
@@ -849,10 +857,8 @@ contract Vault is
      * @inheritdoc ILoanReceiver
      */
     function onLoanRepaid(address noteToken, uint256 noteTokenId) external {
-        INoteAdapter noteAdapter = _noteAdapters[noteToken];
-
-        /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Lookup loan state */
         Loan storage loan = _loans[noteToken][noteTokenId];
@@ -903,10 +909,8 @@ contract Vault is
      * @inheritdoc ILoanReceiver
      */
     function onLoanLiquidated(address noteToken, uint256 noteTokenId) public {
-        INoteAdapter noteAdapter = _noteAdapters[noteToken];
-
-        /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
