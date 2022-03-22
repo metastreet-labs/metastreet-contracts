@@ -3,6 +3,7 @@
     "build": "hardhat compile",
     "clean": "hardhat clean",
     "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
     "test:coverage": "hardhat coverage",
     "lint": "solhint 'contracts/**/*.sol'",
     "lint:ts": "eslint '{test,scripts}/**'",
