@@ -464,9 +464,11 @@ contract Vault is
      * @return Share price in UD60x18
      */
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
-        uint256 estimatedValue = _computeEstimatedValue(trancheId);
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
-        return (totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(estimatedValue, totalSupply);
+        if (totalSupply == 0) {
+            return 1e18;
+        }
+        return PRBMathUD60x18.div(_computeEstimatedValue(trancheId), totalSupply);
     }
 
     /**
@@ -475,9 +477,11 @@ contract Vault is
      * @return Redemption share price in UD60x18
      */
     function _computeRedemptionSharePrice(TrancheId trancheId) internal view returns (uint256) {
-        uint256 depositValue = _trancheState(trancheId).depositValue;
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
-        return (totalSupply == 0) ? 1e18 : PRBMathUD60x18.div(depositValue, totalSupply);
+        if (totalSupply == 0) {
+            return 1e18;
+        }
+        return PRBMathUD60x18.div(_trancheState(trancheId).depositValue, totalSupply);
     }
 
     /**
