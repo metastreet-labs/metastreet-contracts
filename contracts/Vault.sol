@@ -383,6 +383,18 @@ contract Vault is
     }
 
     /**************************************************************************/
+    /* Modifiers */
+    /**************************************************************************/
+
+    /**
+     * @dev Modifier for collateral liquidator
+     */
+    modifier onlyCollateralLiquidator() {
+        require(msg.sender == _collateralLiquidator, "Invalid caller");
+        _;
+    }
+
+    /**************************************************************************/
     /* Internal Helper Functions */
     /**************************************************************************/
 
@@ -801,10 +813,7 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdrawCollateral(address noteToken, uint256 noteTokenId) external {
-        /* Validate caller is collateral liquidation contract */
-        require(msg.sender == _collateralLiquidator, "Invalid caller");
-
+    function withdrawCollateral(address noteToken, uint256 noteTokenId) external onlyCollateralLiquidator {
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
@@ -945,10 +954,7 @@ contract Vault is
         address noteToken,
         uint256 noteTokenId,
         uint256 proceeds
-    ) external {
-        /* Validate caller is collateral liquidation contract */
-        require(msg.sender == _collateralLiquidator, "Invalid caller");
-
+    ) external onlyCollateralLiquidator {
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
