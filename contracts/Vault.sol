@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
@@ -130,8 +130,8 @@ contract Vault is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     VaultStorage,
+    ERC721Holder,
     IERC165,
-    IERC721Receiver,
     IVault
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -238,7 +238,7 @@ contract Vault is
 
         /* Populate ERC165 supported interfaces */
         _supportedInterfaces[this.supportsInterface.selector] = true;
-        _supportedInterfaces[IERC721Receiver.onERC721Received.selector] = true;
+        _supportedInterfaces[ERC721Holder.onERC721Received.selector] = true;
         _supportedInterfaces[ILoanReceiver.onLoanRepaid.selector] = true;
         _supportedInterfaces[ILoanReceiver.onLoanLiquidated.selector] = true;
     }
@@ -1115,21 +1115,5 @@ contract Vault is
      */
     function supportsInterface(bytes4 interfaceId) external view override returns (bool) {
         return _supportedInterfaces[interfaceId];
-    }
-
-    /******************************************************/
-    /* Receiver Hooks */
-    /******************************************************/
-
-    /**
-     * @inheritdoc IERC721Receiver
-     */
-    function onERC721Received(
-        address, /* operator */
-        address, /* from */
-        uint256, /* tokenId */
-        bytes calldata /* data */
-    ) external pure override returns (bytes4) {
-        return this.onERC721Received.selector;
     }
 }
