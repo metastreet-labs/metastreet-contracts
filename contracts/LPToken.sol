@@ -155,10 +155,10 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
 
         require(redemptionAvailable(account, processedRedemptionQueue) >= amount, "Invalid amount");
 
-        redemption.withdrawn += amount;
-
-        if (redemption.withdrawn == redemption.pending) {
+        if (redemption.withdrawn + amount == redemption.pending) {
             delete _redemptions[account];
+        } else {
+            redemption.withdrawn += amount;
         }
     }
 }
