@@ -407,7 +407,7 @@ describe("Vault", function () {
             vault.interface.encodeFunctionData("deposit", [0, amount1]),
             vault.interface.encodeFunctionData("redeem", [0, amount2]),
           ])
-      ).to.be.revertedWith("Insufficient shares");
+      ).to.be.revertedWith("Insufficient amount");
     });
     it("fails on invalid call", async function () {
       await expect(vault.connect(accountDepositor).multicall(["0xaabbccdd12345678"])).to.be.revertedWith(
@@ -1021,7 +1021,7 @@ describe("Vault", function () {
         )
       ).to.equal(redemptionAmount);
     });
-    it("fails on invalid shares", async function () {
+    it("fails on invalid amount", async function () {
       const depositAmount = ethers.utils.parseEther("1.23");
       const redemptionAmount = ethers.utils.parseEther("2.34");
 
@@ -1030,11 +1030,11 @@ describe("Vault", function () {
 
       /* Try to redeem too much */
       await expect(vault.connect(accountDepositor).redeem(0, redemptionAmount)).to.be.revertedWith(
-        "Insufficient shares"
+        "Insufficient amount"
       );
 
       /* Try to redeem from wrong tranche */
-      await expect(vault.connect(accountDepositor).redeem(1, depositAmount)).to.be.revertedWith("Insufficient shares");
+      await expect(vault.connect(accountDepositor).redeem(1, depositAmount)).to.be.revertedWith("Insufficient amount");
     });
     it("fails on outstanding redemption", async function () {
       const depositAmount = ethers.utils.parseEther("1.23");

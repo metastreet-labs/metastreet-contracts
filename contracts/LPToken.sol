@@ -108,7 +108,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /**
      * @notice Mint tokens to account
      * @param to Recipient account
-     * @param amount Amount of tokens
+     * @param amount Amount of LP tokens
      */
     function mint(address to, uint256 amount) external virtual onlyOwner {
         _mint(to, amount);
@@ -117,48 +117,48 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /**
      * @notice Burn tokens from account for redemption
      * @param account Redeeming account
-     * @param shares Amount of LP tokens
-     * @param amount Amount of currency tokens
+     * @param amount Amount of LP tokens
+     * @param currencyAmount Amount of currency tokens
      * @param redemptionQueueTarget Target in vault's redemption queue
      */
     function redeem(
         address account,
-        uint256 shares,
         uint256 amount,
+        uint256 currencyAmount,
         uint256 redemptionQueueTarget
     ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
-        require(balanceOf(account) >= shares, "Insufficient shares");
+        require(balanceOf(account) >= amount, "Insufficient amount");
         require(redemption.pending == 0, "Redemption in progress");
 
-        redemption.pending = amount;
+        redemption.pending = currencyAmount;
         redemption.withdrawn = 0;
         redemption.redemptionQueueTarget = redemptionQueueTarget;
 
-        _burn(account, shares);
+        _burn(account, amount);
     }
 
     /**
      * @notice Update account's redemption state for withdraw
      * @param account Redeeming account
-     * @param amount Amount of currency tokens
+     * @param currencyAmount Amount of currency tokens
      * @param processedRedemptionQueue Current value of vault's processed
      * redemption queue
      */
     function withdraw(
         address account,
-        uint256 amount,
+        uint256 currencyAmount,
         uint256 processedRedemptionQueue
     ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
-        require(redemptionAvailable(account, processedRedemptionQueue) >= amount, "Invalid amount");
+        require(redemptionAvailable(account, processedRedemptionQueue) >= currencyAmount, "Invalid amount");
 
-        if (redemption.withdrawn + amount == redemption.pending) {
+        if (redemption.withdrawn + currencyAmount == redemption.pending) {
             delete _redemptions[account];
         } else {
-            redemption.withdrawn += amount;
+            redemption.withdrawn += currencyAmount;
         }
     }
 }
