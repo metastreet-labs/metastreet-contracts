@@ -82,6 +82,7 @@ abstract contract VaultStorageV1 {
     mapping(address => INoteAdapter) internal _noteAdapters;
     LPToken internal _seniorLPToken;
     LPToken internal _juniorLPToken;
+    address internal _emergencyAdministrator;
     mapping(bytes4 => bool) internal _supportedInterfaces;
 
     /**************************************************************************/
@@ -200,6 +201,12 @@ contract Vault is
      */
     event NoteAdapterUpdated(address noteToken, address noteAdapter);
 
+    /**
+     * @notice Emitted when emergency administrator is updated
+     * @param emergencyAdministrator New emergency administrator
+     */
+    event EmergencyAdministratorUpdated(address emergencyAdministrator);
+
     /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
@@ -235,6 +242,7 @@ contract Vault is
         _loanPriceOracle = loanPriceOracle_;
         _seniorLPToken = seniorLPToken_;
         _juniorLPToken = juniorLPToken_;
+        _emergencyAdministrator = msg.sender;
 
         /* Populate ERC165 supported interfaces */
         _supportedInterfaces[this.supportsInterface.selector] = true;
@@ -396,6 +404,14 @@ contract Vault is
      */
     modifier onlyCollateralLiquidator() {
         require(msg.sender == _collateralLiquidator, "Invalid caller");
+        _;
+    }
+
+    /**
+     * @dev Modifier for emergency administrator
+     */
+    modifier onlyEmergencyAdministrator() {
+        require(msg.sender == _emergencyAdministrator, "Invalid caller");
         _;
     }
 
@@ -1099,10 +1115,23 @@ contract Vault is
     }
 
     /**
+     * @notice Set the emergency administrator
+     *
+     * Emits a {EmergencyAdministratorUpdated} event.
+     *
+     * @param emergencyAdministrator_ Emergency administrator address
+     */
+    function setEmergencyAdministrator(address emergencyAdministrator_) external onlyOwner {
+        require(emergencyAdministrator_ != address(0), "Invalid address");
+        _emergencyAdministrator = emergencyAdministrator_;
+        emit EmergencyAdministratorUpdated(emergencyAdministrator_);
+    }
+
+    /**
      * @notice Set paused state of contract.
      * @param paused Paused
      */
-    function setPaused(bool paused) external onlyOwner {
+    function setPaused(bool paused) external onlyEmergencyAdministrator {
         if (paused) {
             _pause();
         } else {

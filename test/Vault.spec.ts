@@ -2457,6 +2457,28 @@ describe("Vault", function () {
     });
   });
 
+  describe("#setEmergencyAdministrator", async function () {
+    it("sets emergency administrator", async function () {
+      const addr1 = randomAddress();
+
+      const tx = await vault.setEmergencyAdministrator(addr1);
+
+      await expectEvent(tx, vault, "EmergencyAdministratorUpdated", {
+        emergencyAdministrator: addr1,
+      });
+    });
+    it("fails on invalid address", async function () {
+      await expect(vault.setEmergencyAdministrator(ethers.constants.AddressZero)).to.be.revertedWith("Invalid address");
+    });
+    it("fails on invalid caller", async function () {
+      const addr1 = randomAddress();
+
+      await expect(vault.connect(accounts[1]).setEmergencyAdministrator(addr1)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+  });
+
   describe("#setPaused", async function () {
     it("pauses and unpauses", async function () {
       expect(await vault.paused()).to.equal(false);
@@ -2508,7 +2530,10 @@ describe("Vault", function () {
       );
     });
     it("fails on invalid caller", async function () {
-      await expect(vault.connect(accounts[1]).setPaused(true)).to.be.revertedWith("Ownable: caller is not the owner");
+      await vault.setEmergencyAdministrator(randomAddress());
+
+      await expect(vault.setPaused(true)).to.be.revertedWith("Invalid caller");
+      await expect(vault.setPaused(false)).to.be.revertedWith("Invalid caller");
     });
   });
 
