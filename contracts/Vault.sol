@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
@@ -83,7 +84,6 @@ abstract contract VaultStorageV1 {
     LPToken internal _seniorLPToken;
     LPToken internal _juniorLPToken;
     address internal _emergencyAdministrator;
-    mapping(bytes4 => bool) internal _supportedInterfaces;
 
     /**************************************************************************/
     /* Parameters */
@@ -132,7 +132,7 @@ contract Vault is
     ReentrancyGuardUpgradeable,
     VaultStorage,
     ERC721Holder,
-    IERC165,
+    ERC165,
     IVault
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -243,12 +243,6 @@ contract Vault is
         _seniorLPToken = seniorLPToken_;
         _juniorLPToken = juniorLPToken_;
         _emergencyAdministrator = msg.sender;
-
-        /* Populate ERC165 supported interfaces */
-        _supportedInterfaces[this.supportsInterface.selector] = true;
-        _supportedInterfaces[ERC721Holder.onERC721Received.selector] = true;
-        _supportedInterfaces[ILoanReceiver.onLoanRepaid.selector] = true;
-        _supportedInterfaces[ILoanReceiver.onLoanLiquidated.selector] = true;
     }
 
     /**************************************************************************/
@@ -1146,7 +1140,10 @@ contract Vault is
     /**
      * @inheritdoc IERC165
      */
-    function supportsInterface(bytes4 interfaceId) external view override returns (bool) {
-        return _supportedInterfaces[interfaceId];
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return
+            interfaceId == type(IERC721Receiver).interfaceId ||
+            interfaceId == type(ILoanReceiver).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 }
