@@ -163,7 +163,7 @@ contract Vault is
     /**
      * @notice One in UD60x18
      */
-    uint64 public constant ONE_UD60x18 = 1e18;
+    uint64 public constant ONE_UD60X18 = 1e18;
 
     /**************************************************************************/
     /* Events */
@@ -495,7 +495,7 @@ contract Vault is
     function _computeSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
         if (totalSupply == 0) {
-            return ONE_UD60x18;
+            return ONE_UD60X18;
         }
         return PRBMathUD60x18.div(_computeEstimatedValue(trancheId), totalSupply);
     }
@@ -508,7 +508,7 @@ contract Vault is
     function _computeRedemptionSharePrice(TrancheId trancheId) internal view returns (uint256) {
         uint256 totalSupply = _lpToken(trancheId).totalSupply();
         if (totalSupply == 0) {
-            return ONE_UD60x18;
+            return ONE_UD60X18;
         }
         return PRBMathUD60x18.div(_trancheState(trancheId).depositValue, totalSupply);
     }
@@ -653,7 +653,7 @@ contract Vault is
         /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) */
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
-            ONE_UD60x18 +
+            ONE_UD60X18 +
                 PRBMathUD60x18.mul(_seniorTrancheRate, PRBMathUD60x18.fromUint(loanInfo.maturity - block.timestamp))
         ) - seniorTrancheContribution;
 
@@ -734,7 +734,7 @@ contract Vault is
         uint256[2] calldata allocation
     ) external whenNotPaused {
         /* Check allocations sum to one */
-        require(allocation[0] + allocation[1] == ONE_UD60x18, "Invalid allocation");
+        require(allocation[0] + allocation[1] == ONE_UD60X18, "Invalid allocation");
 
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
@@ -1040,7 +1040,7 @@ contract Vault is
      * @param rate Rate in UD60x18 amount per second
      */
     function setSeniorTrancheRate(uint256 rate) external onlyOwner {
-        require(rate > 0 && rate < ONE_UD60x18, "Parameter out of bounds");
+        require(rate > 0 && rate < ONE_UD60X18, "Parameter out of bounds");
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
     }
@@ -1053,7 +1053,7 @@ contract Vault is
      * @param ratio Reserve ratio in UD60x18
      */
     function setReserveRatio(uint256 ratio) external onlyOwner {
-        require(ratio < ONE_UD60x18, "Parameter out of bounds");
+        require(ratio < ONE_UD60X18, "Parameter out of bounds");
         _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
     }
