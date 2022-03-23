@@ -880,7 +880,7 @@ describe("Vault", function () {
         expect((await seniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(redemptionAmount);
         expect((await seniorLPToken.redemptions(accountDepositor.address)).withdrawn).to.equal(ethers.constants.Zero);
         expect((await seniorLPToken.redemptions(accountDepositor.address)).redemptionQueueTarget).to.equal(
-          redemptionAmount
+          ethers.constants.Zero
         );
       });
     });
@@ -1289,7 +1289,7 @@ describe("Vault", function () {
       expect((await seniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(redemptionAmount);
       expect((await seniorLPToken.redemptions(accountDepositor.address)).withdrawn).to.equal(withdrawAmount);
       expect((await seniorLPToken.redemptions(accountDepositor.address)).redemptionQueueTarget).to.equal(
-        redemptionAmount
+        ethers.constants.Zero
       );
       expect(
         await seniorLPToken.redemptionAvailable(

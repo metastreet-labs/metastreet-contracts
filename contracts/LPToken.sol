@@ -87,14 +87,12 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
         if (redemption.pending == 0) {
             /* No redemption pending */
             return 0;
-        } else if (processedRedemptionQueue >= redemption.redemptionQueueTarget) {
+        } else if (processedRedemptionQueue >= redemption.redemptionQueueTarget + redemption.pending) {
             /* Full redemption available for withdraw */
             return redemption.pending - redemption.withdrawn;
-        } else if (processedRedemptionQueue > redemption.redemptionQueueTarget - redemption.pending) {
+        } else if (processedRedemptionQueue > redemption.redemptionQueueTarget) {
             /* Partial redemption available for withdraw */
-            return
-                processedRedemptionQueue -
-                (redemption.redemptionQueueTarget - redemption.pending + redemption.withdrawn);
+            return processedRedemptionQueue - redemption.redemptionQueueTarget - redemption.withdrawn;
         } else {
             /* No redemption available for withdraw */
             return 0;

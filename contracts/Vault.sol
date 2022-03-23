@@ -766,12 +766,12 @@ contract Vault is
         /* Compute redemption amount */
         uint256 redemptionAmount = PRBMathUD60x18.mul(shares, currentRedemptionSharePrice);
 
+        /* Schedule redemption with user's token state and burn LP tokens */
+        _lpToken(trancheId).redeem(msg.sender, shares, redemptionAmount, tranche.redemptionQueue);
+
         /* Schedule redemption in tranche */
         tranche.pendingRedemptions += redemptionAmount;
         tranche.redemptionQueue += redemptionAmount;
-
-        /* Schedule redemption with user's token state and burn LP tokens */
-        _lpToken(trancheId).redeem(msg.sender, shares, redemptionAmount, tranche.redemptionQueue);
 
         /* Process redemption from cash reserves */
         uint256 immediateRedemptionAmount = Math.min(redemptionAmount, _totalReservesBalance);
