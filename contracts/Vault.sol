@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
@@ -133,6 +134,7 @@ contract Vault is
     VaultStorage,
     ERC721Holder,
     ERC165,
+    Multicall,
     IVault
 {
     using SafeERC20 for IERC20;
@@ -1005,37 +1007,6 @@ contract Vault is
         _currencyToken.safeTransferFrom(msg.sender, address(this), proceeds);
 
         emit CollateralLiquidated(noteToken, noteTokenId, [seniorTrancheRepayment, juniorTrancheRepayment]);
-    }
-
-    /**************************************************************************/
-    /* Multicall */
-    /**************************************************************************/
-
-    /**
-     * @notice Execute a batch of function calls on this contract.
-     * Inlined from openzeppelin/contracts/utils/Multicall.sol.
-     * @param data Calldatas
-     * @return results Call results
-     */
-    function multicall(bytes[] calldata data) external returns (bytes[] memory results) {
-        results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            /// @custom:oz-upgrades-unsafe-allow delegatecall
-            (bool success, bytes memory returndata) = address(this).delegatecall(data[i]);
-            if (success) {
-                results[i] = returndata;
-            } else {
-                if (returndata.length > 0) {
-                    assembly {
-                        let returndata_size := mload(returndata)
-                        revert(add(32, returndata), returndata_size)
-                    }
-                } else {
-                    revert("Low-level delegate call failed");
-                }
-            }
-        }
-        return results;
     }
 
     /**************************************************************************/

@@ -411,7 +411,7 @@ describe("Vault", function () {
     });
     it("fails on invalid call", async function () {
       await expect(vault.connect(accountDepositor).multicall(["0xaabbccdd12345678"])).to.be.revertedWith(
-        "Low-level delegate call failed"
+        "Address: low-level delegate call failed"
       );
     });
   });
