@@ -26,14 +26,14 @@ abstract contract VaultStorageV1 {
 
     /**
      * @notice Tranche state
-     * @param depositValue Deposit value
+     * @param realizedValue Realized value
      * @param pendingRedemptions Pending redemptions
      * @param redemptionQueue Current redemption queue (tail)
      * @param processedRedemptionQueue Processed redemption queue (head)
      * @param pendingReturns Mapping of time bucket to pending returns
      */
     struct Tranche {
-        uint256 depositValue;
+        uint256 realizedValue;
         uint256 pendingRedemptions;
         uint256 redemptionQueue;
         uint256 processedRedemptionQueue;
@@ -319,7 +319,7 @@ contract Vault is
     /**
      * @notice Get tranche state
      * @param trancheId Tranche
-     * @return depositValue Deposit value
+     * @return realizedValue Realized value
      * @return pendingRedemptions Pending redemptions
      * @return redemptionQueue Current redemption queue
      * @return processedRedemptionQueue Processed redemption queue
@@ -328,7 +328,7 @@ contract Vault is
         external
         view
         returns (
-            uint256 depositValue,
+            uint256 realizedValue,
             uint256 pendingRedemptions,
             uint256 redemptionQueue,
             uint256 processedRedemptionQueue
@@ -336,7 +336,7 @@ contract Vault is
     {
         Tranche storage tranche = _trancheState(trancheId);
         return (
-            tranche.depositValue,
+            tranche.realizedValue,
             tranche.pendingRedemptions,
             tranche.redemptionQueue,
             tranche.processedRedemptionQueue
@@ -484,8 +484,8 @@ contract Vault is
             );
         }
 
-        /* Return the deposit value plus prorated returns */
-        return tranche.depositValue + proratedReturns;
+        /* Return the realized value plus prorated returns */
+        return tranche.realizedValue + proratedReturns;
     }
 
     /**
@@ -494,7 +494,7 @@ contract Vault is
      * @return Tranche is solvent
      */
     function _isSolvent(TrancheId trancheId) internal view returns (bool) {
-        return _trancheState(trancheId).depositValue != 0 || _lpToken(trancheId).totalSupply() == 0;
+        return _trancheState(trancheId).realizedValue != 0 || _lpToken(trancheId).totalSupply() == 0;
     }
 
     /**
@@ -520,7 +520,7 @@ contract Vault is
         if (totalSupply == 0) {
             return ONE_UD60X18;
         }
-        return PRBMathUD60x18.div(_trancheState(trancheId).depositValue, totalSupply);
+        return PRBMathUD60x18.div(_trancheState(trancheId).realizedValue, totalSupply);
     }
 
     /**
@@ -539,12 +539,12 @@ contract Vault is
      */
     function _processRedemptions(Tranche storage tranche, uint256 proceeds) internal returns (uint256) {
         /* Compute maximum redemption possible */
-        uint256 redemptionAmount = Math.min(tranche.depositValue, Math.min(tranche.pendingRedemptions, proceeds));
+        uint256 redemptionAmount = Math.min(tranche.realizedValue, Math.min(tranche.pendingRedemptions, proceeds));
 
         /* Update tranche redemption state */
         tranche.pendingRedemptions -= redemptionAmount;
         tranche.processedRedemptionQueue += redemptionAmount;
-        tranche.depositValue -= redemptionAmount;
+        tranche.realizedValue -= redemptionAmount;
 
         /* Move redemption from cash to withdrawal balance */
         _totalCashBalance -= redemptionAmount;
@@ -596,8 +596,8 @@ contract Vault is
         /* Compute number of shares to mint from current tranche share price */
         uint256 shares = PRBMathUD60x18.div(amount, currentSharePrice);
 
-        /* Increase deposit value of tranche */
-        _trancheState(trancheId).depositValue += amount;
+        /* Increase realized value of tranche */
+        _trancheState(trancheId).realizedValue += amount;
 
         /* Increase total cash balance */
         _totalCashBalance += amount;
@@ -652,11 +652,11 @@ contract Vault is
         /* Validate cash available */
         require(_totalCashBalance - _totalReservesBalance >= purchasePrice, "Insufficient cash in vault");
 
-        /* Calculate senior tranche contribution based on deposit proportion */
+        /* Calculate senior tranche contribution based on realized value proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
         uint256 seniorTrancheContribution = PRBMathUD60x18.div(
-            PRBMathUD60x18.mul(_tranches.senior.depositValue, purchasePrice),
-            _tranches.senior.depositValue + _tranches.junior.depositValue
+            PRBMathUD60x18.mul(_tranches.senior.realizedValue, purchasePrice),
+            _tranches.senior.realizedValue + _tranches.junior.realizedValue
         );
 
         /* Calculate senior tranche return */
@@ -894,9 +894,9 @@ contract Vault is
         _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Senior)];
         _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
 
-        /* Increase tranche deposit values */
-        _tranches.senior.depositValue += loan.trancheReturns[uint256(TrancheId.Senior)];
-        _tranches.junior.depositValue += loan.trancheReturns[uint256(TrancheId.Junior)];
+        /* Increase tranche realized values */
+        _tranches.senior.realizedValue += loan.trancheReturns[uint256(TrancheId.Senior)];
+        _tranches.junior.realizedValue += loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Update total loan and cash balances */
         _totalLoanBalance -= loan.purchasePrice;
@@ -947,12 +947,12 @@ contract Vault is
         _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
 
         /* Compute tranche losses */
-        uint256 juniorTrancheLoss = Math.min(loan.purchasePrice, _tranches.junior.depositValue);
+        uint256 juniorTrancheLoss = Math.min(loan.purchasePrice, _tranches.junior.realizedValue);
         uint256 seniorTrancheLoss = loan.purchasePrice - juniorTrancheLoss;
 
-        /* Decrease tranche deposit values */
-        _tranches.senior.depositValue -= seniorTrancheLoss;
-        _tranches.junior.depositValue -= juniorTrancheLoss;
+        /* Decrease tranche realized values */
+        _tranches.senior.realizedValue -= seniorTrancheLoss;
+        _tranches.junior.realizedValue -= juniorTrancheLoss;
 
         /* Decrease total loan balance */
         _totalLoanBalance -= loan.purchasePrice;
@@ -988,9 +988,9 @@ contract Vault is
         uint256 seniorTrancheRepayment = Math.min(proceeds, loan.trancheReturns[uint256(TrancheId.Senior)]);
         uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
 
-        /* Increase tranche deposit values */
-        _tranches.senior.depositValue += seniorTrancheRepayment;
-        _tranches.junior.depositValue += juniorTrancheRepayment;
+        /* Increase tranche realized values */
+        _tranches.senior.realizedValue += seniorTrancheRepayment;
+        _tranches.junior.realizedValue += juniorTrancheRepayment;
 
         /* Increase total cash balance */
         _totalCashBalance += proceeds;

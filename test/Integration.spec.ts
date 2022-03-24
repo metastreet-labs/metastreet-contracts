@@ -201,9 +201,9 @@ describe("Integration", function () {
         duration
       );
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
@@ -229,9 +229,9 @@ describe("Integration", function () {
         .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
-      /* Check vault deposit value and share price after sale */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price after sale */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.be.gt(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.be.gt(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
@@ -246,7 +246,7 @@ describe("Integration", function () {
       /* Callback vault */
       await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId);
 
-      /* Check vault deposit value and share price after repayment */
+      /* Check vault realized value and share price after repayment */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(actualPurchasePrice))
       );
@@ -254,8 +254,8 @@ describe("Integration", function () {
         FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio()),
         100
       );
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("5.027508882314796534"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.027508882314796534"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.002752045694294585"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1.005501776462959306"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -284,9 +284,9 @@ describe("Integration", function () {
         duration
       );
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
@@ -312,9 +312,9 @@ describe("Integration", function () {
         .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
-      /* Check vault deposit value and share price after sale */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price after sale */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.be.gt(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.be.gt(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
@@ -335,7 +335,7 @@ describe("Integration", function () {
       /* Callback vault */
       await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, liquidation);
 
-      /* Check vault deposit value and share price after repayment */
+      /* Check vault realized value and share price after repayment */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(liquidation.sub(actualPurchasePrice))
       );
@@ -343,8 +343,8 @@ describe("Integration", function () {
         FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio()),
         100
       );
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("14.927508882314796534"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("14.927508882314796534"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.002752045694294585"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("2.985501776462959306"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -373,9 +373,9 @@ describe("Integration", function () {
         duration
       );
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
@@ -401,9 +401,9 @@ describe("Integration", function () {
         .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
-      /* Check vault deposit value and share price after sale */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price after sale */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.be.gt(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.be.gt(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
@@ -424,7 +424,7 @@ describe("Integration", function () {
       /* Callback vault */
       await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, liquidation);
 
-      /* Check vault deposit value and share price after repayment */
+      /* Check vault realized value and share price after repayment */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
         depositAmounts[0].add(depositAmounts[1]).sub(actualPurchasePrice.sub(liquidation))
       );
@@ -432,8 +432,8 @@ describe("Integration", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio()),
         100
       );
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("1.927508882314796534"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.027520456942945852"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("1.927508882314796534"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.002752045694294585"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("0.385501776462959306"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -594,7 +594,7 @@ describe("Integration", function () {
       /* Check final balances match expected */
       expect((await vault.balanceState()).totalCashBalance).to.equal(expectedCashBalance);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(0)).depositValue.add((await vault.trancheState(1)).depositValue)).to.equal(
+      expect((await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)).to.equal(
         expectedCashBalance
       );
     });

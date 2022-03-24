@@ -139,7 +139,7 @@ describe("Vault Accounting", function () {
     await network.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe("tranche returns and deposit value", async function () {
+  describe("tranche returns and realized value", async function () {
     it("only senior tranche", async function () {
       const depositAmount = ethers.utils.parseEther("10");
       const principal = ethers.utils.parseEther("2.0");
@@ -148,9 +148,9 @@ describe("Vault Accounting", function () {
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(0, depositAmount);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmount);
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.constants.Zero);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmount);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.constants.Zero);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -176,9 +176,9 @@ describe("Vault Accounting", function () {
         ethers.utils.parseEther("0.191780828260742396")
       );
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.008219171739257604"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("0.191780828260742396"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.008219171739257604"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("0.191780828260742396"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.000821917173925760"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -192,9 +192,9 @@ describe("Vault Accounting", function () {
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(1, depositAmount);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmount);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmount);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -218,9 +218,9 @@ describe("Vault Accounting", function () {
         ethers.utils.parseEther("0.2")
       );
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("10.2"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("10.2"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1.02"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -235,9 +235,9 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -263,9 +263,9 @@ describe("Vault Accounting", function () {
         ethers.utils.parseEther("0.194520552173828264")
       );
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("5.194520552173828264"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.194520552173828264"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.000547944782617173"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1.038904110434765652"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -280,9 +280,9 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -300,9 +300,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("3"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("3"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("0.6"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -317,9 +317,9 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -337,9 +337,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("8"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("0"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("8"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("0"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("0.8"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("0"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -354,9 +354,9 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -386,9 +386,9 @@ describe("Vault Accounting", function () {
           principal.add(ethers.utils.parseEther("0.005479447826171736"))
         );
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("5"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.000547944782617173"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -403,9 +403,9 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -431,9 +431,9 @@ describe("Vault Accounting", function () {
         .connect(accountLiquidator)
         .onCollateralLiquidated(noteToken.address, loanId, ethers.utils.parseEther("2"));
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("0"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("0"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("0"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -448,9 +448,9 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Check vault deposit value and share price before */
-      expect((await vault.trancheState(0)).depositValue).to.equal(depositAmounts[0]);
-      expect((await vault.trancheState(1)).depositValue).to.equal(depositAmounts[1]);
+      /* Check vault realized value and share price before */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
 
@@ -474,9 +474,9 @@ describe("Vault Accounting", function () {
         .connect(accountLiquidator)
         .onCollateralLiquidated(noteToken.address, loanId, ethers.utils.parseEther("3"));
 
-      /* Check vault deposit value and share price after */
-      expect((await vault.trancheState(0)).depositValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
-      expect((await vault.trancheState(1)).depositValue).to.equal(ethers.utils.parseEther("5.994520552173828264"));
+      /* Check vault realized value and share price after */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.994520552173828264"));
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1.000547944782617173"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1.198904110434765652"));
       expect(await vault.redemptionSharePrice(0)).to.equal(await vault.sharePrice(0));
@@ -514,7 +514,7 @@ describe("Vault Accounting", function () {
         );
       }
 
-      return (await vault.trancheState(trancheId)).depositValue.add(proratedReturn);
+      return (await vault.trancheState(trancheId)).realizedValue.add(proratedReturn);
     }
 
     async function computeSharePrice(
