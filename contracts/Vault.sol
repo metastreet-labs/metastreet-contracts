@@ -28,8 +28,8 @@ abstract contract VaultStorageV1 {
      * @notice Tranche state
      * @param depositValue Deposit value
      * @param pendingRedemptions Pending redemptions
-     * @param redemptionQueue Current redemption queue
-     * @param processedRedemptionQueue Processed redemption queue
+     * @param redemptionQueue Current redemption queue (tail)
+     * @param processedRedemptionQueue Processed redemption queue (head)
      * @param pendingReturns Mapping of time bucket to pending returns
      */
     struct Tranche {
@@ -681,7 +681,7 @@ contract Vault is
         _tranches.senior.pendingReturns[loanMaturityTimeBucket] += seniorTrancheReturn;
         _tranches.junior.pendingReturns[loanMaturityTimeBucket] += juniorTrancheReturn;
 
-        /* Update global cash and loan balances */
+        /* Update total cash and loan balances */
         _totalCashBalance -= purchasePrice;
         _totalLoanBalance += purchasePrice;
 
@@ -806,7 +806,7 @@ contract Vault is
         /* Update user's token state with redemption */
         _lpToken(trancheId).withdraw(msg.sender, amount, tranche.processedRedemptionQueue);
 
-        /* Decrease global withdrawal balance */
+        /* Decrease total withdrawal balance */
         _totalWithdrawalBalance -= amount;
 
         /* Transfer cash from vault to user */
@@ -898,7 +898,7 @@ contract Vault is
         _tranches.senior.depositValue += loan.trancheReturns[uint256(TrancheId.Senior)];
         _tranches.junior.depositValue += loan.trancheReturns[uint256(TrancheId.Junior)];
 
-        /* Decrease total loan and cash balances */
+        /* Update total loan and cash balances */
         _totalLoanBalance -= loan.purchasePrice;
         _totalCashBalance += loan.repayment;
 
