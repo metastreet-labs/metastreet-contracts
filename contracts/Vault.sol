@@ -5,8 +5,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -135,7 +135,7 @@ contract Vault is
     ERC165,
     IVault
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /**************************************************************************/
     /* Constants */
@@ -713,7 +713,7 @@ contract Vault is
         _deposit(trancheId, amount);
 
         /* Transfer cash from user to vault */
-        IERC20Upgradeable(address(_currencyToken)).safeTransferFrom(msg.sender, address(this), amount);
+        _currencyToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
@@ -731,7 +731,7 @@ contract Vault is
         IERC721(noteToken).safeTransferFrom(msg.sender, address(this), noteTokenId);
 
         /* Transfer cash from vault to user */
-        IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, purchasePrice);
+        _currencyToken.safeTransfer(msg.sender, purchasePrice);
     }
 
     /**
@@ -810,7 +810,7 @@ contract Vault is
         _totalWithdrawalBalance -= amount;
 
         /* Transfer cash from vault to user */
-        IERC20Upgradeable(address(_currencyToken)).safeTransfer(msg.sender, amount);
+        _currencyToken.safeTransfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, trancheId, amount);
     }
@@ -1002,7 +1002,7 @@ contract Vault is
         loan.active = false;
 
         /* Transfer cash from liquidator to vault */
-        IERC20Upgradeable(address(_currencyToken)).safeTransferFrom(msg.sender, address(this), proceeds);
+        _currencyToken.safeTransferFrom(msg.sender, address(this), proceeds);
 
         emit CollateralLiquidated(noteToken, noteTokenId, [seniorTrancheRepayment, juniorTrancheRepayment]);
     }
