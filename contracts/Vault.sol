@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -80,11 +80,9 @@ abstract contract VaultStorageV1 {
     string internal _name;
     IERC20 internal _currencyToken;
     ILoanPriceOracle internal _loanPriceOracle;
-    address internal _collateralLiquidator;
     mapping(address => INoteAdapter) internal _noteAdapters;
     LPToken internal _seniorLPToken;
     LPToken internal _juniorLPToken;
-    address internal _emergencyAdministrator;
 
     /**************************************************************************/
     /* Parameters */
@@ -128,7 +126,7 @@ abstract contract VaultStorage is VaultStorageV1 {
  */
 contract Vault is
     Initializable,
-    OwnableUpgradeable,
+    AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     VaultStorage,
@@ -169,6 +167,20 @@ contract Vault is
     uint64 public constant ONE_UD60X18 = 1e18;
 
     /**************************************************************************/
+    /* Access Control Roles */
+    /**************************************************************************/
+
+    /**
+     * @notice Collateral liquidator role
+     */
+    bytes32 public constant COLLATERAL_LIQUIDATOR_ROLE = keccak256("COLLATERAL_LIQUIDATOR");
+
+    /**
+     * @notice Emergency administrator role
+     */
+    bytes32 public constant EMERGENCY_ADMIN_ROLE = keccak256("EMERGENCY_ADMIN");
+
+    /**************************************************************************/
     /* Events */
     /**************************************************************************/
 
@@ -191,23 +203,11 @@ contract Vault is
     event LoanPriceOracleUpdated(address loanPriceOracle);
 
     /**
-     * @notice Emitted when collateral liquidator contract is updated
-     * @param collateralLiquidator New collateral liquidator contract
-     */
-    event CollateralLiquidatorUpdated(address collateralLiquidator);
-
-    /**
      * @notice Emitted when note adapter is updated
      * @param noteToken Note token contract
      * @param noteAdapter Note adapter contract
      */
     event NoteAdapterUpdated(address noteToken, address noteAdapter);
-
-    /**
-     * @notice Emitted when emergency administrator is updated
-     * @param emergencyAdministrator New emergency administrator
-     */
-    event EmergencyAdministratorUpdated(address emergencyAdministrator);
 
     /**************************************************************************/
     /* Constructor */
@@ -235,7 +235,7 @@ contract Vault is
 
         require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
 
-        __Ownable_init();
+        __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
@@ -244,7 +244,9 @@ contract Vault is
         _loanPriceOracle = loanPriceOracle_;
         _seniorLPToken = seniorLPToken_;
         _juniorLPToken = juniorLPToken_;
-        _emergencyAdministrator = msg.sender;
+
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(EMERGENCY_ADMIN_ROLE, msg.sender);
     }
 
     /**************************************************************************/
@@ -277,13 +279,6 @@ contract Vault is
      */
     function loanPriceOracle() external view returns (ILoanPriceOracle) {
         return _loanPriceOracle;
-    }
-
-    /**
-     * @inheritdoc IVault
-     */
-    function collateralLiquidator() external view returns (address) {
-        return _collateralLiquidator;
     }
 
     /**
@@ -389,26 +384,6 @@ contract Vault is
      */
     function reserveRatio() external view returns (uint256) {
         return _reserveRatio;
-    }
-
-    /**************************************************************************/
-    /* Modifiers */
-    /**************************************************************************/
-
-    /**
-     * @dev Modifier for collateral liquidator
-     */
-    modifier onlyCollateralLiquidator() {
-        require(msg.sender == _collateralLiquidator, "Invalid caller");
-        _;
-    }
-
-    /**
-     * @dev Modifier for emergency administrator
-     */
-    modifier onlyEmergencyAdministrator() {
-        require(msg.sender == _emergencyAdministrator, "Invalid caller");
-        _;
     }
 
     /**************************************************************************/
@@ -839,7 +814,7 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdrawCollateral(address noteToken, uint256 noteTokenId) external onlyCollateralLiquidator {
+    function withdrawCollateral(address noteToken, uint256 noteTokenId) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
@@ -850,14 +825,14 @@ contract Vault is
         require(loan.liquidated, "Loan not liquidated");
 
         /* Transfer collateral to liquidator */
-        loan.collateralToken.safeTransferFrom(address(this), _collateralLiquidator, loan.collateralTokenId);
+        loan.collateralToken.safeTransferFrom(address(this), msg.sender, loan.collateralTokenId);
 
         emit CollateralWithdrawn(
             noteToken,
             noteTokenId,
             address(loan.collateralToken),
             loan.collateralTokenId,
-            _collateralLiquidator
+            msg.sender
         );
     }
 
@@ -976,7 +951,7 @@ contract Vault is
         address noteToken,
         uint256 noteTokenId,
         uint256 proceeds
-    ) external onlyCollateralLiquidator {
+    ) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
@@ -1020,7 +995,7 @@ contract Vault is
      *
      * @param rate Rate in UD60x18 amount per second
      */
-    function setSeniorTrancheRate(uint256 rate) external onlyOwner {
+    function setSeniorTrancheRate(uint256 rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(rate > 0 && rate < ONE_UD60X18, "Parameter out of bounds");
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
@@ -1033,7 +1008,7 @@ contract Vault is
      *
      * @param ratio Reserve ratio in UD60x18
      */
-    function setReserveRatio(uint256 ratio) external onlyOwner {
+    function setReserveRatio(uint256 ratio) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(ratio < ONE_UD60X18, "Parameter out of bounds");
         _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
@@ -1046,23 +1021,10 @@ contract Vault is
      *
      * @param loanPriceOracle_ Loan price oracle contract
      */
-    function setLoanPriceOracle(address loanPriceOracle_) external onlyOwner {
+    function setLoanPriceOracle(address loanPriceOracle_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(loanPriceOracle_ != address(0), "Invalid address");
         _loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
-    }
-
-    /**
-     * @notice Set the collateral liquidator contract
-     *
-     * Emits a {CollateralLiquidatorUpdated} event.
-     *
-     * @param collateralLiquidator_ Collateral liquidator contract
-     */
-    function setCollateralLiquidator(address collateralLiquidator_) external onlyOwner {
-        require(collateralLiquidator_ != address(0), "Invalid address");
-        _collateralLiquidator = collateralLiquidator_;
-        emit CollateralLiquidatorUpdated(collateralLiquidator_);
     }
 
     /**
@@ -1073,36 +1035,23 @@ contract Vault is
      * @param noteToken Note token contract
      * @param noteAdapter Note adapter contract
      */
-    function setNoteAdapter(address noteToken, address noteAdapter) external onlyOwner {
+    function setNoteAdapter(address noteToken, address noteAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(noteToken != address(0), "Invalid address");
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
 
     /**
-     * @notice Set the emergency administrator
-     *
-     * Emits a {EmergencyAdministratorUpdated} event.
-     *
-     * @param emergencyAdministrator_ Emergency administrator address
-     */
-    function setEmergencyAdministrator(address emergencyAdministrator_) external onlyOwner {
-        require(emergencyAdministrator_ != address(0), "Invalid address");
-        _emergencyAdministrator = emergencyAdministrator_;
-        emit EmergencyAdministratorUpdated(emergencyAdministrator_);
-    }
-
-    /**
      * @notice Pause contract
      */
-    function pause() external onlyEmergencyAdministrator {
+    function pause() external onlyRole(EMERGENCY_ADMIN_ROLE) {
         _pause();
     }
 
     /**
      * @notice Unpause contract
      */
-    function unpause() external onlyEmergencyAdministrator {
+    function unpause() external onlyRole(EMERGENCY_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -1113,8 +1062,14 @@ contract Vault is
     /**
      * @inheritdoc IERC165
      */
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(AccessControlUpgradeable, ERC165)
+        returns (bool)
+    {
         return
+            interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             interfaceId == type(IERC721Receiver).interfaceId ||
             interfaceId == type(ILoanReceiver).interfaceId ||
             super.supportsInterface(interfaceId);

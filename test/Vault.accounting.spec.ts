@@ -111,7 +111,7 @@ describe("Vault Accounting", function () {
     await vault.setNoteAdapter(noteToken.address, testNoteAdapter.address);
     await vault.setSeniorTrancheRate(FixedPoint.normalizeRate("0.05"));
     await vault.setReserveRatio(FixedPoint.from("0.10"));
-    await vault.setCollateralLiquidator(accounts[6].address);
+    await vault.grantRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), accounts[6].address);
 
     /* Setup accounts */
     accountBorrower = accounts[1];

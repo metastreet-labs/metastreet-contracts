@@ -53,12 +53,6 @@ interface IVault is ILoanReceiver {
     function loanPriceOracle() external view returns (ILoanPriceOracle);
 
     /**
-     * @notice Get collateral liquidator
-     * @return Collateral liquidator contract
-     */
-    function collateralLiquidator() external view returns (address);
-
-    /**
      * @notice Get note adapter contract
      * @param noteToken Note token contract
      * @return Note adapter contract

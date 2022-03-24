@@ -112,7 +112,7 @@ describe("Vault", function () {
     await vault.setNoteAdapter(noteToken.address, testNoteAdapter.address);
     await vault.setSeniorTrancheRate(FixedPoint.normalizeRate("0.05"));
     await vault.setReserveRatio(FixedPoint.from("0.10"));
-    await vault.setCollateralLiquidator(accounts[6].address);
+    await vault.grantRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), accounts[6].address);
 
     /* Setup accounts */
     accountBorrower = accounts[1];
@@ -148,14 +148,18 @@ describe("Vault", function () {
 
   describe("initial state", async function () {
     it("getters are correct", async function () {
-      expect(await vault.owner()).to.equal(accounts[0].address);
       expect(await vault.name()).to.equal("Test Vault");
       expect(await vault.currencyToken()).to.equal(tok1.address);
       expect(await vault.lpToken(0)).to.equal(seniorLPToken.address);
       expect(await vault.lpToken(1)).to.equal(juniorLPToken.address);
       expect(await vault.loanPriceOracle()).to.equal(mockLoanPriceOracle.address);
-      expect(await vault.collateralLiquidator()).to.equal(accountLiquidator.address);
       expect(await vault.noteAdapters(noteToken.address)).to.equal(testNoteAdapter.address);
+    });
+
+    it("roles are correct", async function () {
+      expect(await vault.hasRole(await vault.DEFAULT_ADMIN_ROLE(), accounts[0].address)).to.equal(true);
+      expect(await vault.hasRole(await vault.EMERGENCY_ADMIN_ROLE(), accounts[0].address)).to.equal(true);
+      expect(await vault.hasRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), accountLiquidator.address)).to.equal(true);
     });
 
     it("tranche states are initialized", async function () {
@@ -1635,7 +1639,7 @@ describe("Vault", function () {
     });
     it("fails on invalid caller", async function () {
       await expect(vault.connect(accountBorrower).withdrawCollateral(noteToken.address, 12345)).to.be.revertedWith(
-        "Invalid caller"
+        "AccessControl: account"
       );
     });
   });
@@ -2295,7 +2299,7 @@ describe("Vault", function () {
     it("fails on invalid caller", async function () {
       await expect(
         vault.connect(accountBorrower).onCollateralLiquidated(noteToken.address, 12345, ethers.utils.parseEther("2.2"))
-      ).to.be.revertedWith("Invalid caller");
+      ).to.be.revertedWith("AccessControl: account");
     });
   });
 
@@ -2353,9 +2357,7 @@ describe("Vault", function () {
     it("fails on invalid caller", async function () {
       const rate = FixedPoint.normalizeRate("0.025");
 
-      await expect(vault.connect(accounts[1]).setSeniorTrancheRate(rate)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(vault.connect(accounts[1]).setSeniorTrancheRate(rate)).to.be.revertedWith("AccessControl: account");
     });
   });
 
@@ -2377,9 +2379,7 @@ describe("Vault", function () {
     it("fails on invalid caller", async function () {
       const ratio = FixedPoint.from("0.15");
 
-      await expect(vault.connect(accounts[1]).setReserveRatio(ratio)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(vault.connect(accounts[1]).setReserveRatio(ratio)).to.be.revertedWith("AccessControl: account");
     });
   });
 
@@ -2400,32 +2400,7 @@ describe("Vault", function () {
     it("fails on invalid caller", async function () {
       const addr = randomAddress();
 
-      await expect(vault.connect(accounts[1]).setLoanPriceOracle(addr)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
-    });
-  });
-
-  describe("#setCollateralLiquidator", async function () {
-    it("sets collateral liquidator successfully", async function () {
-      const addr = randomAddress();
-
-      const tx = await vault.setCollateralLiquidator(addr);
-
-      await expectEvent(tx, vault, "CollateralLiquidatorUpdated", {
-        collateralLiquidator: addr,
-      });
-      expect(await vault.collateralLiquidator()).to.equal(addr);
-    });
-    it("fails on invalid address", async function () {
-      await expect(vault.setCollateralLiquidator(ethers.constants.AddressZero)).to.be.revertedWith("Invalid address");
-    });
-    it("fails on invalid caller", async function () {
-      const addr = randomAddress();
-
-      await expect(vault.connect(accounts[1]).setCollateralLiquidator(addr)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(vault.connect(accounts[1]).setLoanPriceOracle(addr)).to.be.revertedWith("AccessControl: account");
     });
   });
 
@@ -2452,29 +2427,7 @@ describe("Vault", function () {
       const addr2 = randomAddress();
 
       await expect(vault.connect(accounts[1]).setNoteAdapter(addr1, addr2)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
-    });
-  });
-
-  describe("#setEmergencyAdministrator", async function () {
-    it("sets emergency administrator", async function () {
-      const addr1 = randomAddress();
-
-      const tx = await vault.setEmergencyAdministrator(addr1);
-
-      await expectEvent(tx, vault, "EmergencyAdministratorUpdated", {
-        emergencyAdministrator: addr1,
-      });
-    });
-    it("fails on invalid address", async function () {
-      await expect(vault.setEmergencyAdministrator(ethers.constants.AddressZero)).to.be.revertedWith("Invalid address");
-    });
-    it("fails on invalid caller", async function () {
-      const addr1 = randomAddress();
-
-      await expect(vault.connect(accounts[1]).setEmergencyAdministrator(addr1)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+        "AccessControl: account"
       );
     });
   });
@@ -2530,10 +2483,11 @@ describe("Vault", function () {
       );
     });
     it("fails on invalid caller", async function () {
-      await vault.setEmergencyAdministrator(randomAddress());
+      await vault.revokeRole(await vault.EMERGENCY_ADMIN_ROLE(), accounts[0].address);
+      await vault.grantRole(await vault.EMERGENCY_ADMIN_ROLE(), randomAddress());
 
-      await expect(vault.pause()).to.be.revertedWith("Invalid caller");
-      await expect(vault.unpause()).to.be.revertedWith("Invalid caller");
+      await expect(vault.pause()).to.be.revertedWith("AccessControl: account");
+      await expect(vault.unpause()).to.be.revertedWith("AccessControl: account");
     });
   });
 
@@ -2541,6 +2495,20 @@ describe("Vault", function () {
     it("returns true on supported interfaces", async function () {
       /* ERC165 */
       expect(await vault.supportsInterface(vault.interface.getSighash("supportsInterface"))).to.equal(true);
+      /* AccessControl */
+      expect(
+        await vault.supportsInterface(
+          ethers.utils.hexlify(
+            [
+              vault.interface.getSighash("hasRole"),
+              vault.interface.getSighash("getRoleAdmin"),
+              vault.interface.getSighash("grantRole"),
+              vault.interface.getSighash("revokeRole"),
+              vault.interface.getSighash("renounceRole"),
+            ].reduce((acc, value) => acc.xor(ethers.BigNumber.from(value)), ethers.constants.Zero)
+          )
+        )
+      ).to.equal(true);
       /* ERC721 */
       expect(await vault.supportsInterface(vault.interface.getSighash("onERC721Received"))).to.equal(true);
       /* ILoanReceiver */
