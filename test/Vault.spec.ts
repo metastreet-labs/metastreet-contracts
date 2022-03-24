@@ -2479,32 +2479,32 @@ describe("Vault", function () {
     });
   });
 
-  describe("#setPaused", async function () {
+  describe("#pause/unpause", async function () {
     it("pauses and unpauses", async function () {
       expect(await vault.paused()).to.equal(false);
 
-      await vault.setPaused(true);
+      await vault.pause();
       expect(await vault.paused()).to.equal(true);
 
-      await vault.setPaused(false);
+      await vault.unpause();
       expect(await vault.paused()).to.equal(false);
     });
     it("deposit fails when paused", async function () {
-      await vault.setPaused(true);
+      await vault.pause();
 
       await expect(vault.connect(accountDepositor).deposit(0, ethers.utils.parseEther("1.23"))).to.be.revertedWith(
         "Pausable: paused"
       );
     });
     it("sell note fails when paused", async function () {
-      await vault.setPaused(true);
+      await vault.pause();
 
       await expect(
         vault.connect(accountLender).sellNote(noteToken.address, 12345, ethers.utils.parseEther("100"))
       ).to.be.revertedWith("Pausable: paused");
     });
     it("sell note and deposit fails when paused", async function () {
-      await vault.setPaused(true);
+      await vault.pause();
 
       await expect(
         vault
@@ -2516,14 +2516,14 @@ describe("Vault", function () {
       ).to.be.revertedWith("Pausable: paused");
     });
     it("redeem fails when paused", async function () {
-      await vault.setPaused(true);
+      await vault.pause();
 
       await expect(vault.connect(accountDepositor).redeem(0, ethers.utils.parseEther("1.23"))).to.be.revertedWith(
         "Pausable: paused"
       );
     });
     it("withdraw fails when paused", async function () {
-      await vault.setPaused(true);
+      await vault.pause();
 
       await expect(vault.connect(accountDepositor).withdraw(0, ethers.utils.parseEther("1.23"))).to.be.revertedWith(
         "Pausable: paused"
@@ -2532,8 +2532,8 @@ describe("Vault", function () {
     it("fails on invalid caller", async function () {
       await vault.setEmergencyAdministrator(randomAddress());
 
-      await expect(vault.setPaused(true)).to.be.revertedWith("Invalid caller");
-      await expect(vault.setPaused(false)).to.be.revertedWith("Invalid caller");
+      await expect(vault.pause()).to.be.revertedWith("Invalid caller");
+      await expect(vault.unpause()).to.be.revertedWith("Invalid caller");
     });
   });
 

@@ -1093,15 +1093,17 @@ contract Vault is
     }
 
     /**
-     * @notice Set paused state of contract.
-     * @param paused Paused
+     * @notice Pause contract
      */
-    function setPaused(bool paused) external onlyEmergencyAdministrator {
-        if (paused) {
-            _pause();
-        } else {
-            _unpause();
-        }
+    function pause() external onlyEmergencyAdministrator {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause contract
+     */
+    function unpause() external onlyEmergencyAdministrator {
+        _unpause();
     }
 
     /******************************************************/
