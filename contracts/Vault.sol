@@ -531,11 +531,10 @@ contract Vault is
         tranche.processedRedemptionQueue += redemptionAmount;
         tranche.realizedValue -= redemptionAmount;
 
-        /* Move redemption from cash to withdrawal balance */
-        _totalCashBalance -= redemptionAmount;
+        /* Add redemption to withdrawal balance */
         _totalWithdrawalBalance += redemptionAmount;
 
-        /* Return amount of cash leftover (for further tranche redemptions) */
+        /* Return amount of proceeds leftover */
         return proceeds - redemptionAmount;
     }
 
@@ -544,23 +543,30 @@ contract Vault is
      * @param proceeds Proceeds in currency tokens
      */
     function _updateReservesBalance(uint256 proceeds) internal {
-        /* Update cash reserves balance */
+        /* Calculate target cash reserves balance */
         uint256 targetReservesBalance = PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance);
+
+        /* Calculate delta to target cash reserves balance */
         uint256 delta = targetReservesBalance > _totalReservesBalance
             ? targetReservesBalance - _totalReservesBalance
             : 0;
+
+        /* Update cash reserves balance */
         _totalReservesBalance += Math.min(delta, proceeds);
     }
 
     /**
-     * @dev Apply new proceeds to processing redemptions and updating cash reserves
+     * @dev Process new proceeds by applying them to redemptions, cash
+     * reserves, and undeployed cash
      * @param proceeds Proceeds in currency tokens
      */
-    function _processRedemptionsAndUpdateReserves(uint256 proceeds) internal {
+    function _processProceeds(uint256 proceeds) internal {
         /* Process senior redemptions */
         proceeds = _processRedemptions(_tranches.senior, proceeds);
         /* Process junior redemptions */
         proceeds = _processRedemptions(_tranches.junior, proceeds);
+        /* Update undeployed cash balance */
+        _totalCashBalance += proceeds;
         /* Update cash reserves balance */
         _updateReservesBalance(proceeds);
     }
@@ -584,11 +590,8 @@ contract Vault is
         /* Increase realized value of tranche */
         _trancheState(trancheId).realizedValue += amount;
 
-        /* Increase total cash balance */
-        _totalCashBalance += amount;
-
-        /* Process redemptions and update reserves with proceeds */
-        _processRedemptionsAndUpdateReserves(amount);
+        /* Process new proceeds */
+        _processProceeds(amount);
 
         /* Mint LP tokens to user */
         _lpToken(trancheId).mint(msg.sender, shares);
@@ -770,10 +773,11 @@ contract Vault is
         tranche.pendingRedemptions += redemptionAmount;
         tranche.redemptionQueue += redemptionAmount;
 
-        /* Process redemption from cash reserves */
+        /* Process redemptions from cash reserves */
         uint256 immediateRedemptionAmount = Math.min(redemptionAmount, _totalReservesBalance);
         _totalReservesBalance -= immediateRedemptionAmount;
-        _processRedemptions(tranche, immediateRedemptionAmount);
+        _totalCashBalance -= immediateRedemptionAmount;
+        _processProceeds(immediateRedemptionAmount);
 
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
     }
@@ -881,12 +885,11 @@ contract Vault is
         _tranches.senior.realizedValue += seniorTrancheReturn;
         _tranches.junior.realizedValue += juniorTrancheReturn;
 
-        /* Update total loan and cash balances */
+        /* Update total loan balance */
         _totalLoanBalance -= loan.purchasePrice;
-        _totalCashBalance += loan.repayment;
 
-        /* Process redemptions and update reserves with proceeds */
-        _processRedemptionsAndUpdateReserves(loan.repayment);
+        /* Process new proceeds */
+        _processProceeds(loan.repayment);
 
         /* Mark loan complete */
         loan.status = LoanStatus.Complete;
@@ -929,7 +932,7 @@ contract Vault is
         _tranches.senior.realizedValue -= seniorTrancheLoss;
         _tranches.junior.realizedValue -= juniorTrancheLoss;
 
-        /* Decrease total loan balance */
+        /* Update total loan balance */
         _totalLoanBalance -= loan.purchasePrice;
 
         /* Update senior tranche return for collateral liquidation */
@@ -963,11 +966,8 @@ contract Vault is
         _tranches.senior.realizedValue += seniorTrancheRepayment;
         _tranches.junior.realizedValue += juniorTrancheRepayment;
 
-        /* Increase total cash balance */
-        _totalCashBalance += proceeds;
-
-        /* Process redemptions and update reserves with proceeds */
-        _processRedemptionsAndUpdateReserves(proceeds);
+        /* Process proceeds */
+        _processProceeds(proceeds);
 
         /* Mark loan complete */
         loan.status = LoanStatus.Complete;
