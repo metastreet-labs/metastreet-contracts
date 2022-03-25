@@ -119,15 +119,23 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      * input x
      * @param model Piecewise linear model to compute
      * @param x Input value in UD60x18
+     * @param index Parameter index (for error reporting)
      * @return Result in UD60x18
      */
-    function _computeRateComponent(PiecewiseLinearModel storage model, uint256 x) internal view returns (uint256) {
-        uint256 y = (x <= model.target)
-            ? minimumDiscountRate + PRBMathUD60x18.mul(x, model.slope1)
-            : minimumDiscountRate +
-                PRBMathUD60x18.mul(model.target, model.slope1) +
-                PRBMathUD60x18.mul(x - model.target, model.slope2);
-        return (x < model.max) ? y : type(uint256).max;
+    function _computeRateComponent(
+        PiecewiseLinearModel storage model,
+        uint256 x,
+        uint256 index
+    ) internal view returns (uint256) {
+        if (x > model.max) {
+            revert PriceError_ParameterOutOfBounds(index);
+        }
+        return
+            (x <= model.target)
+                ? minimumDiscountRate + PRBMathUD60x18.mul(x, model.slope1)
+                : minimumDiscountRate +
+                    PRBMathUD60x18.mul(model.target, model.slope1) +
+                    PRBMathUD60x18.mul(x - model.target, model.slope2);
     }
 
     /**
@@ -190,21 +198,10 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
         /* Compute discount rate components for utilization, loan-to-value, and duration */
         uint256[3] memory rateComponents = [
-            _computeRateComponent(collateralParameters.rateUtilizationSensitivity, utilization),
-            _computeRateComponent(collateralParameters.rateLoanToValueSensitivity, loanToValue),
-            _computeRateComponent(collateralParameters.rateDurationSensitivity, loanTimeRemaining)
+            _computeRateComponent(collateralParameters.rateUtilizationSensitivity, utilization, 0),
+            _computeRateComponent(collateralParameters.rateLoanToValueSensitivity, loanToValue, 1),
+            _computeRateComponent(collateralParameters.rateDurationSensitivity, loanTimeRemaining, 2)
         ];
-
-        /* Check component validities */
-        if (rateComponents[0] == type(uint256).max) {
-            revert PriceError_ParameterOutOfBounds(0);
-        }
-        if (rateComponents[1] == type(uint256).max) {
-            revert PriceError_ParameterOutOfBounds(1);
-        }
-        if (rateComponents[2] == type(uint256).max) {
-            revert PriceError_ParameterOutOfBounds(2);
-        }
 
         /* Calculate discount rate from components */
         uint256 discountRate = _computeWeightedRate(collateralParameters.sensitivityWeights, rateComponents);
