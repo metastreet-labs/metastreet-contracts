@@ -803,8 +803,11 @@ contract Vault is
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
+        /* Get liquidate target and calldata */
+        (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(noteTokenId);
+
         /* Call liquidate on lending platform */
-        (bool success, ) = noteAdapter.lendingPlatform().call(noteAdapter.getLiquidateCalldata(noteTokenId));
+        (bool success, ) = target.call(data);
         require(success, "Liquidate failed");
 
         /* Process loan liquidation */

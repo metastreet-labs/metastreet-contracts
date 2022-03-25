@@ -49,8 +49,8 @@ contract TestNoteAdapter is INoteAdapter {
         return loanInfo;
     }
 
-    function getLiquidateCalldata(uint256 noteTokenId) public pure returns (bytes memory) {
-        return abi.encodeWithSignature("liquidate(uint256)", noteTokenId);
+    function getLiquidateCalldata(uint256 noteTokenId) public view returns (address, bytes memory) {
+        return (address(_lendingPlatform), abi.encodeWithSignature("liquidate(uint256)", noteTokenId));
     }
 
     function isSupported(uint256 noteTokenId, address currencyToken) public view returns (bool) {

@@ -58,11 +58,12 @@ interface INoteAdapter {
     function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory);
 
     /**
-     * @notice Get calldata to liquidate loan
+     * @notice Get target and calldata to liquidate loan
      * @param noteTokenId Note token ID
+     * @return Target address
      * @return Encoded calldata with selector
      */
-    function getLiquidateCalldata(uint256 noteTokenId) external view returns (bytes memory);
+    function getLiquidateCalldata(uint256 noteTokenId) external view returns (address, bytes memory);
 
     /**
      * @notice Check if loan is supported by Vault
