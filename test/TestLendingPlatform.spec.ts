@@ -145,9 +145,9 @@ describe("TestLendingPlatform", function () {
     expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent repayment fails */
-    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Unknown loan");
+    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Loan already complete");
     /* Check subsequent liquidate fails */
-    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Unknown loan");
+    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan already complete");
   });
 
   it("lend and liquidate", async function () {
@@ -216,8 +216,8 @@ describe("TestLendingPlatform", function () {
     expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent liquidate fails */
-    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Unknown loan");
+    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan already complete");
     /* Check subsequent repayment fails */
-    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Unknown loan");
+    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Loan already complete");
   });
 });

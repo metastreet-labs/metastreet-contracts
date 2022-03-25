@@ -85,6 +85,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         LoanTerms storage loan = loans[loanId];
 
         require(loan.borrower != address(0x0), "Unknown loan");
+        require(!loansComplete[loanId], "Loan already complete");
         require(loan.borrower == msg.sender, "Invalid caller");
 
         loansComplete[loanId] = true;
@@ -99,14 +100,13 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
             ILoanReceiver(noteOwner).onLoanRepaid(address(noteToken), loanId);
 
         emit LoanRepaid(loanId);
-
-        delete loans[loanId];
     }
 
     function liquidate(uint256 loanId) public {
         LoanTerms storage loan = loans[loanId];
 
         require(loan.borrower != address(0x0), "Unknown loan");
+        require(!loansComplete[loanId], "Loan already complete");
         require(block.timestamp > loan.startTime + loan.duration, "Loan not expired");
 
         loansComplete[loanId] = true;
@@ -119,8 +119,6 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         noteToken.burn(loanId);
 
         emit LoanLiquidated(loanId);
-
-        delete loans[loanId];
     }
 
     /******************************************************/
