@@ -166,6 +166,80 @@ contract Vault is
     uint64 public constant ONE_UD60X18 = 1e18;
 
     /**************************************************************************/
+    /* Errors */
+    /**************************************************************************/
+
+    /**
+     * @notice Invalid address (e.g. zero address)
+     */
+    error InvalidAddress();
+
+    /**
+     * @notice Parameter out of bounds
+     */
+    error ParameterOutOfBounds();
+
+    /**
+     * @notice Unsupported token decimals
+     */
+    error UnsupportedTokenDecimals();
+
+    /**
+     * @notice Unsupported note token
+     */
+    error UnsupportedNoteToken();
+
+    /**
+     * @notice Unsupported note parameters
+     */
+    error UnsupportedNoteParameters();
+
+    /**
+     * @notice Insolvent tranche
+     */
+    error InsolventTranche();
+
+    /**
+     * @notice Purchase price too low
+     */
+    error PurchasePriceTooLow();
+
+    /**
+     * @notice Purchase price too high
+     */
+    error PurchasePriceTooHigh();
+
+    /**
+     * @notice Insufficient cash available
+     */
+    error InsufficientCashAvailable();
+
+    /**
+     * @notice Interest rate too low
+     */
+    error InterestRateTooLow();
+
+    /**
+     * @notice Invalid loan status
+     */
+    error InvalidLoanStatus();
+
+    /**
+     * @notice Loan not repaid
+     */
+    error LoanNotRepaid();
+
+    /**
+     * @notice Loan not liquidated
+     */
+    error LoanNotLiquidated();
+
+    /**
+     * @notice Liquidate failed
+     */
+    error LiquidateFailed();
+
+    /**************************************************************************/
     /* Access Control Roles */
     /**************************************************************************/
 
@@ -227,12 +301,12 @@ contract Vault is
         LPToken seniorLPToken_,
         LPToken juniorLPToken_
     ) external initializer {
-        require(address(currencyToken_) != address(0), "Invalid currency token");
-        require(address(loanPriceOracle_) != address(0), "Invalid loan price oracle");
-        require(address(seniorLPToken_) != address(0), "Invalid senior LP token");
-        require(address(juniorLPToken_) != address(0), "Invalid junior LP token");
+        if (address(currencyToken_) == address(0)) revert InvalidAddress();
+        if (address(loanPriceOracle_) == address(0)) revert InvalidAddress();
+        if (address(seniorLPToken_) == address(0)) revert InvalidAddress();
+        if (address(juniorLPToken_) == address(0)) revert InvalidAddress();
 
-        require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
+        if (IERC20Metadata(address(currencyToken_)).decimals() != 18) revert UnsupportedTokenDecimals();
 
         __AccessControl_init();
         __Pausable_init();
@@ -410,7 +484,7 @@ contract Vault is
         INoteAdapter noteAdapter = _noteAdapters[noteToken];
 
         /* Validate note token is supported */
-        require(noteAdapter != INoteAdapter(address(0x0)), "Unsupported note token");
+        if (noteAdapter == INoteAdapter(address(0x0))) revert UnsupportedNoteToken();
 
         return noteAdapter;
     }
@@ -577,7 +651,7 @@ contract Vault is
      */
     function _deposit(TrancheId trancheId, uint256 amount) internal {
         /* Check tranche is solvent */
-        require(_isSolvent(trancheId), "Tranche is currently insolvent");
+        if (!_isSolvent(trancheId)) revert InsolventTranche();
 
         /* Compute current share price */
         uint256 currentSharePrice = _computeSharePrice(trancheId);
@@ -613,7 +687,7 @@ contract Vault is
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Check if loan parameters are supported */
-        require(noteAdapter.isSupported(noteTokenId, address(_currencyToken)), "Unsupported note parameters");
+        if (!noteAdapter.isSupported(noteTokenId, address(_currencyToken))) revert UnsupportedNoteParameters();
 
         /* Get loan info */
         INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(noteTokenId);
@@ -630,13 +704,13 @@ contract Vault is
         );
 
         /* Validate purchase price */
-        require(purchasePrice >= minPurchasePrice, "Purchase price less than min");
+        if (purchasePrice < minPurchasePrice) revert PurchasePriceTooLow();
 
         /* Validate repayment */
-        require(loanInfo.repayment > purchasePrice, "Purchase price exceeds repayment");
+        if (purchasePrice >= loanInfo.repayment) revert PurchasePriceTooHigh();
 
         /* Validate cash available */
-        require(_totalCashBalance >= purchasePrice, "Insufficient cash in vault");
+        if (purchasePrice > _totalCashBalance) revert InsufficientCashAvailable();
 
         /* Calculate senior tranche contribution based on realized value proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price
@@ -657,7 +731,7 @@ contract Vault is
         );
 
         /* Validate senior tranche return */
-        require(seniorTrancheReturn < (loanInfo.repayment - purchasePrice), "Interest rate too low");
+        if (loanInfo.repayment - purchasePrice < seniorTrancheReturn) revert InterestRateTooLow();
 
         /* Calculate junior tranche return */
         /* Junior Tranche Return = Repayment - Purchase Price - Senior Tranche Return */
@@ -732,7 +806,7 @@ contract Vault is
         uint256[2] calldata allocation
     ) external whenNotPaused {
         /* Check allocations sum to one */
-        require(allocation[0] + allocation[1] == ONE_UD60X18, "Invalid allocation");
+        if (allocation[0] + allocation[1] != ONE_UD60X18) revert ParameterOutOfBounds();
 
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
@@ -756,7 +830,7 @@ contract Vault is
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Check tranche is solvent */
-        require(_isSolvent(trancheId), "Tranche is currently insolvent");
+        if (!_isSolvent(trancheId)) revert InsolventTranche();
 
         /* Compute current redemption share price */
         uint256 currentRedemptionSharePrice = _computeRedemptionSharePrice(trancheId);
@@ -819,7 +893,7 @@ contract Vault is
 
         /* Call liquidate on lending platform */
         (bool success, ) = target.call(data);
-        require(success, "Liquidate failed");
+        if (!success) revert LiquidateFailed();
 
         /* Process loan liquidation */
         onLoanLiquidated(noteToken, noteTokenId);
@@ -833,7 +907,7 @@ contract Vault is
         Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan is liquidated */
-        require(loan.status == LoanStatus.Liquidated, "Invalid loan status");
+        if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
 
         /* Transfer collateral to liquidator */
         loan.collateralToken.safeTransferFrom(address(this), msg.sender, loan.collateralTokenId);
@@ -862,13 +936,13 @@ contract Vault is
         Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan is active */
-        require(loan.status == LoanStatus.Active, "Invalid loan status");
+        if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
         /* Validate loan was repaid, by checking the loan is complete and the
          * collateral is not in contract's possession */
         bool loanRepaid = (noteAdapter.isComplete(noteTokenId) &&
             loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
-        require(loanRepaid, "Loan not repaid");
+        if (!loanRepaid) revert LoanNotRepaid();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
@@ -905,13 +979,13 @@ contract Vault is
         Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan is active */
-        require(loan.status == LoanStatus.Active, "Invalid loan status");
+        if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
         /* Validate loan was liquidated, by checking the loan is complete and
          * the collateral is in the contract's possession */
         bool loanLiquidated = (noteAdapter.isComplete(noteTokenId) &&
             IERC721(loan.collateralToken).ownerOf(loan.collateralTokenId) == address(this));
-        require(loanLiquidated, "Loan not liquidated");
+        if (!loanLiquidated) revert LoanNotLiquidated();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
@@ -953,7 +1027,7 @@ contract Vault is
         Loan storage loan = _loans[noteToken][noteTokenId];
 
         /* Validate loan is liquidated */
-        require(loan.status == LoanStatus.Liquidated, "Invalid loan status");
+        if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
 
         /* Compute tranche repayments */
         uint256 seniorTrancheRepayment = Math.min(proceeds, loan.seniorTrancheReturn);
@@ -987,7 +1061,7 @@ contract Vault is
      * @param rate Rate in UD60x18 amount per second
      */
     function setSeniorTrancheRate(uint256 rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(rate > 0 && rate < ONE_UD60X18, "Parameter out of bounds");
+        if (rate == 0 || rate >= ONE_UD60X18) revert ParameterOutOfBounds();
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
     }
@@ -1000,7 +1074,7 @@ contract Vault is
      * @param ratio Reserve ratio in UD60x18
      */
     function setReserveRatio(uint256 ratio) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(ratio < ONE_UD60X18, "Parameter out of bounds");
+        if (ratio >= ONE_UD60X18) revert ParameterOutOfBounds();
         _reserveRatio = ratio;
         emit ReserveRatioUpdated(ratio);
     }
@@ -1013,7 +1087,7 @@ contract Vault is
      * @param loanPriceOracle_ Loan price oracle contract
      */
     function setLoanPriceOracle(address loanPriceOracle_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(loanPriceOracle_ != address(0), "Invalid address");
+        if (loanPriceOracle_ == address(0)) revert InvalidAddress();
         _loanPriceOracle = ILoanPriceOracle(loanPriceOracle_);
         emit LoanPriceOracleUpdated(loanPriceOracle_);
     }
@@ -1027,7 +1101,7 @@ contract Vault is
      * @param noteAdapter Note adapter contract
      */
     function setNoteAdapter(address noteToken, address noteAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(noteToken != address(0), "Invalid address");
+        if (noteToken == address(0)) revert InvalidAddress();
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
