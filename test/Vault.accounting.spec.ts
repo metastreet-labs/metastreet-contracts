@@ -674,7 +674,7 @@ describe("Vault Accounting", function () {
         principal,
         repayment
       );
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("9.3"));
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("8.9"));
       expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.4"));
 
       /* Cycle a loan */
@@ -688,7 +688,7 @@ describe("Vault Accounting", function () {
         principal,
         repayment
       );
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("9.6"));
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("8.8"));
       expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.8"));
 
       /* Cycle a loan */
@@ -702,8 +702,51 @@ describe("Vault Accounting", function () {
         principal,
         repayment
       );
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("9.9"));
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("8.91"));
       expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.99"));
+    });
+    it("cash reserves adjust downward after low collateral liquidation", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Check vault balances before */
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("13.5"));
+      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("1.5"));
+
+      /* Cycle a defaulted loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Check vault balances after, with decreased reserves */
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("11.5"));
+      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("1.5"));
+      expect((await vault.balanceState()).totalLoanBalance).to.be.equal(ethers.constants.Zero);
+
+      /* Callback vault */
+      await vault
+        .connect(accountLiquidator)
+        .onCollateralLiquidated(noteToken.address, loanId, ethers.utils.parseEther("1"));
+
+      /* Check vault balances after, with decreased reserves */
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("12.6"));
+      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("1.4"));
+      expect((await vault.balanceState()).totalLoanBalance).to.be.equal(ethers.constants.Zero);
     });
   });
 

@@ -221,10 +221,10 @@ describe("Vault", function () {
       expect(await seniorLPToken.balanceOf(accountDepositor.address)).to.equal(amount);
       expect((await vault.trancheState(0)).realizedValue).to.equal(amount);
       expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalCashBalance).to.equal(amount);
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(amount, await vault.reserveRatio())
-      );
+
+      const reserves = FixedPoint.mul(amount, await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(amount.sub(reserves));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
     });
     it("deposits into junior tranche", async function () {
       const amount = ethers.utils.parseEther("1.23");
@@ -261,10 +261,10 @@ describe("Vault", function () {
       expect(await juniorLPToken.balanceOf(accountDepositor.address)).to.equal(amount);
       expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.constants.Zero);
       expect((await vault.trancheState(1)).realizedValue).to.equal(amount);
-      expect((await vault.balanceState()).totalCashBalance).to.equal(amount);
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(amount, await vault.reserveRatio())
-      );
+
+      const reserves = FixedPoint.mul(amount, await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(amount.sub(reserves));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
     });
     [1, 0].forEach((trancheId) => {
       it(`fails on ${trancheId === 1 ? "junior" : "senior"} tranche insolvency`, async function () {
@@ -396,10 +396,10 @@ describe("Vault", function () {
       expect(await juniorLPToken.balanceOf(accountDepositor.address)).to.equal(amount2);
       expect((await vault.trancheState(0)).realizedValue).to.equal(amount1);
       expect((await vault.trancheState(1)).realizedValue).to.equal(amount2);
-      expect((await vault.balanceState()).totalCashBalance).to.equal(amount1.add(amount2));
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+
+      const reserves = FixedPoint.mul(amount1.add(amount2), await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(amount1.add(amount2).sub(reserves));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
     });
     it("fails on reverted call", async function () {
       const amount1 = ethers.utils.parseEther("1.23");
@@ -447,10 +447,11 @@ describe("Vault", function () {
       await mockLoanPriceOracle.setPrice(principal);
 
       /* Check state before sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves)
       );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(ethers.constants.Zero);
@@ -476,11 +477,9 @@ describe("Vault", function () {
 
       /* Check state after sale */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).collateralToken).to.equal(nft1.address);
@@ -628,10 +627,11 @@ describe("Vault", function () {
       await mockLoanPriceOracle.setPrice(purchasePrice);
 
       /* Check state before sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves)
       );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
 
@@ -662,10 +662,14 @@ describe("Vault", function () {
       });
 
       /* Check state after sale */
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmounts[0].add(depositAmounts[1]));
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]).add(purchasePrice), await vault.reserveRatio())
+      const newReserves = FixedPoint.mul(
+        depositAmounts[0].add(depositAmounts[1]).add(purchasePrice),
+        await vault.reserveRatio()
       );
+      expect((await vault.balanceState()).totalCashBalance).to.equal(
+        depositAmounts[0].add(depositAmounts[1]).sub(newReserves)
+      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(newReserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(purchasePrice);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
     });
@@ -863,17 +867,17 @@ describe("Vault", function () {
           shares: redemptionAmount,
         });
 
-        const partialRedemptionAmount = FixedPoint.mul(ratio, depositAmount);
+        const immediateRedemptionAmount = FixedPoint.mul(ratio, depositAmount);
 
         /* Check state after redemption */
         expect(await tok1.balanceOf(accountDepositor.address)).to.equal(tokBalanceBefore.sub(depositAmount));
         expect(await seniorLPToken.balanceOf(accountDepositor.address)).to.equal(depositAmount.sub(redemptionAmount));
-        expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmount.sub(partialRedemptionAmount));
+        expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmount.sub(immediateRedemptionAmount));
         expect((await vault.trancheState(0)).pendingRedemptions).to.equal(
-          redemptionAmount.sub(partialRedemptionAmount)
+          redemptionAmount.sub(immediateRedemptionAmount)
         );
         expect((await vault.trancheState(0)).redemptionQueue).to.equal(redemptionAmount);
-        expect((await vault.trancheState(0)).processedRedemptionQueue).to.equal(partialRedemptionAmount);
+        expect((await vault.trancheState(0)).processedRedemptionQueue).to.equal(immediateRedemptionAmount);
         expect(
           await seniorLPToken.redemptionAvailable(
             accountDepositor.address,
@@ -881,7 +885,7 @@ describe("Vault", function () {
               await vault.trancheState(0)
             ).processedRedemptionQueue
           )
-        ).to.equal(partialRedemptionAmount);
+        ).to.equal(immediateRedemptionAmount);
         expect((await seniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(redemptionAmount);
         expect((await seniorLPToken.redemptions(accountDepositor.address)).withdrawn).to.equal(ethers.constants.Zero);
         expect((await seniorLPToken.redemptions(accountDepositor.address)).redemptionQueueTarget).to.equal(
@@ -1098,13 +1102,12 @@ describe("Vault", function () {
       const redemptionAmount = ethers.utils.parseEther("7.5");
       const withdrawAmount = redemptionAmount;
 
-      const partialRedemptionAmount = FixedPoint.mul(await vault.reserveRatio(), depositAmount);
-
       /* Deposit and redeem */
       await vault.connect(accountDepositor).deposit(0, depositAmount);
       await vault.connect(accountDepositor).redeem(0, redemptionAmount);
 
       /* Check vault balances before */
+      const immediateRedemptionAmount = FixedPoint.mul(depositAmount, await vault.reserveRatio());
       expect(
         await seniorLPToken.redemptionAvailable(
           accountDepositor.address,
@@ -1112,11 +1115,11 @@ describe("Vault", function () {
             await vault.trancheState(0)
           ).processedRedemptionQueue
         )
-      ).to.equal(partialRedemptionAmount);
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(partialRedemptionAmount));
+      ).to.equal(immediateRedemptionAmount);
+      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(immediateRedemptionAmount));
       expect((await vault.balanceState()).totalReservesBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(partialRedemptionAmount);
+      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(immediateRedemptionAmount);
 
       /* Cycle a loan */
       await cycleLoan(
@@ -1142,12 +1145,14 @@ describe("Vault", function () {
           ).processedRedemptionQueue
         )
       ).to.equal(redemptionAmount);
+      const reserves = FixedPoint.mul(
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")),
+        await vault.reserveRatio()
+      );
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")).sub(reserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(redemptionAmount);
 
@@ -1180,11 +1185,9 @@ describe("Vault", function () {
         )
       ).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")).sub(reserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
     });
@@ -1241,13 +1244,12 @@ describe("Vault", function () {
       const redemptionAmount = ethers.utils.parseEther("7.5");
       const withdrawAmount = ethers.utils.parseEther("3.0");
 
-      const partialRedemptionAmount = FixedPoint.mul(await vault.reserveRatio(), depositAmount);
-
       /* Deposit and redeem */
       await vault.connect(accountDepositor).deposit(0, depositAmount);
       await vault.connect(accountDepositor).redeem(0, redemptionAmount);
 
       /* Check vault balances before */
+      const immediateRedemptionAmount = FixedPoint.mul(depositAmount, await vault.reserveRatio());
       expect(
         await seniorLPToken.redemptionAvailable(
           accountDepositor.address,
@@ -1255,11 +1257,11 @@ describe("Vault", function () {
             await vault.trancheState(0)
           ).processedRedemptionQueue
         )
-      ).to.equal(partialRedemptionAmount);
-      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(partialRedemptionAmount));
+      ).to.equal(immediateRedemptionAmount);
+      expect((await vault.balanceState()).totalCashBalance).to.equal(depositAmount.sub(immediateRedemptionAmount));
       expect((await vault.balanceState()).totalReservesBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(partialRedemptionAmount);
+      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(immediateRedemptionAmount);
 
       /* Cycle a loan */
       await cycleLoan(
@@ -1277,12 +1279,14 @@ describe("Vault", function () {
       const tokBalanceBefore = await tok1.balanceOf(accountDepositor.address);
 
       /* Check vault balances after loan */
+      const reserves = FixedPoint.mul(
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")),
+        await vault.reserveRatio()
+      );
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")).sub(reserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(redemptionAmount);
 
@@ -1305,11 +1309,9 @@ describe("Vault", function () {
         )
       ).to.equal(redemptionAmount.sub(withdrawAmount));
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")).sub(reserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(redemptionAmount.sub(withdrawAmount));
 
@@ -1332,11 +1334,9 @@ describe("Vault", function () {
         )
       ).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1"))
+        depositAmount.sub(redemptionAmount).add(ethers.utils.parseEther("1")).sub(reserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
     });
@@ -1344,7 +1344,7 @@ describe("Vault", function () {
       const depositAmount = ethers.utils.parseEther("15.0");
       const redemptionAmount = ethers.utils.parseEther("7.5");
 
-      const partialRedemptionAmount = FixedPoint.mul(await vault.reserveRatio(), depositAmount);
+      const immediateRedemptionAmount = FixedPoint.mul(await vault.reserveRatio(), depositAmount);
 
       /* Deposit and redeem */
       await vault.connect(accountDepositor).deposit(0, depositAmount);
@@ -1355,12 +1355,12 @@ describe("Vault", function () {
       await expectEvent(withdrawTx1, tok1, "Transfer", {
         from: vault.address,
         to: accountDepositor.address,
-        value: partialRedemptionAmount,
+        value: immediateRedemptionAmount,
       });
       await expectEvent(withdrawTx1, vault, "Withdrawn", {
         account: accountDepositor.address,
         trancheId: 0,
-        amount: partialRedemptionAmount,
+        amount: immediateRedemptionAmount,
       });
 
       /* Cycle a loan to make entire redemption available */
@@ -1380,12 +1380,12 @@ describe("Vault", function () {
       await expectEvent(withdrawTx2, tok1, "Transfer", {
         from: vault.address,
         to: accountDepositor.address,
-        value: redemptionAmount.sub(partialRedemptionAmount),
+        value: redemptionAmount.sub(immediateRedemptionAmount),
       });
       await expectEvent(withdrawTx2, vault, "Withdrawn", {
         account: accountDepositor.address,
         trancheId: 0,
-        amount: redemptionAmount.sub(partialRedemptionAmount),
+        amount: redemptionAmount.sub(immediateRedemptionAmount),
       });
     });
     it("withdraws maximum available after several withdraws", async function () {
@@ -1465,12 +1465,11 @@ describe("Vault", function () {
       await elapseTime(duration);
 
       /* Check state before callback */
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
@@ -1481,11 +1480,9 @@ describe("Vault", function () {
 
       /* Check state after callback */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Liquidated);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
@@ -1677,12 +1674,11 @@ describe("Vault", function () {
       await lendingPlatform.connect(accountBorrower).repay(loanId, false);
 
       /* Check state before callback */
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
       expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(principal);
@@ -1697,12 +1693,14 @@ describe("Vault", function () {
       });
 
       /* Check state after callback */
+      const newReserves = FixedPoint.mul(
+        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal)),
+        await vault.reserveRatio()
+      );
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
+        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal)).sub(newReserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(newReserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Complete);
       expect((await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)).to.equal(
@@ -1912,12 +1910,11 @@ describe("Vault", function () {
       await lendingPlatform.liquidate(loanId);
 
       /* Check state before callback */
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
@@ -1932,11 +1929,9 @@ describe("Vault", function () {
 
       /* Check state after callback */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Liquidated);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
@@ -2136,12 +2131,11 @@ describe("Vault", function () {
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
 
       /* Check state before callback */
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).sub(principal)
+        depositAmounts[0].add(depositAmounts[1]).sub(reserves).sub(principal)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Liquidated);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
@@ -2162,12 +2156,14 @@ describe("Vault", function () {
       });
 
       /* Check state after callback */
+      const newReserves = FixedPoint.mul(
+        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal)),
+        await vault.reserveRatio()
+      );
       expect((await vault.balanceState()).totalCashBalance).to.equal(
-        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
+        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal)).sub(newReserves)
       );
-      expect((await vault.balanceState()).totalReservesBalance).to.equal(
-        FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
-      );
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(newReserves);
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Complete);
       expect((await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)).to.equal(

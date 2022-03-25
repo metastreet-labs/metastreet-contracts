@@ -342,7 +342,7 @@ contract Vault is
     /**
      * @notice Get vault balance state
      * @return totalCashBalance Total cash balance
-     * @return totalReservesBalance Total reserves balance (part of total cash balance)
+     * @return totalReservesBalance Total reserves balance
      * @return totalLoanBalance Total loan balance
      * @return totalWithdrawalBalance Total withdrawal balance
      */
@@ -533,17 +533,24 @@ contract Vault is
      * @dev Update cash reserves balance
      * @param proceeds Proceeds in currency tokens
      */
-    function _updateReservesBalance(uint256 proceeds) internal {
+    function _updateReservesBalance(uint256 proceeds) internal returns (uint256) {
         /* Calculate target cash reserves balance */
-        uint256 targetReservesBalance = PRBMathUD60x18.mul(_reserveRatio, _totalCashBalance + _totalLoanBalance);
+        uint256 targetReservesBalance = PRBMathUD60x18.mul(
+            _reserveRatio,
+            _totalCashBalance + _totalReservesBalance + _totalLoanBalance + proceeds
+        );
 
-        /* Calculate delta to target cash reserves balance */
-        uint256 delta = targetReservesBalance > _totalReservesBalance
-            ? targetReservesBalance - _totalReservesBalance
-            : 0;
-
-        /* Update cash reserves balance */
-        _totalReservesBalance += Math.min(delta, proceeds);
+        if (targetReservesBalance >= _totalReservesBalance) {
+            /* Increase reserves balance */
+            uint256 delta = Math.min(targetReservesBalance - _totalReservesBalance, proceeds);
+            _totalReservesBalance += delta;
+            return proceeds - delta;
+        } else {
+            /* Decrease reserves balance */
+            uint256 delta = _totalReservesBalance - targetReservesBalance;
+            _totalReservesBalance -= delta;
+            return proceeds + delta;
+        }
     }
 
     /**
@@ -556,10 +563,10 @@ contract Vault is
         proceeds = _processRedemptions(_seniorTranche, proceeds);
         /* Process junior redemptions */
         proceeds = _processRedemptions(_juniorTranche, proceeds);
+        /* Update cash reserves balance */
+        proceeds = _updateReservesBalance(proceeds);
         /* Update undeployed cash balance */
         _totalCashBalance += proceeds;
-        /* Update cash reserves balance */
-        _updateReservesBalance(proceeds);
     }
 
     /**
@@ -629,7 +636,7 @@ contract Vault is
         require(loanInfo.repayment > purchasePrice, "Purchase price exceeds repayment");
 
         /* Validate cash available */
-        require(_totalCashBalance - _totalReservesBalance >= purchasePrice, "Insufficient cash in vault");
+        require(_totalCashBalance >= purchasePrice, "Insufficient cash in vault");
 
         /* Calculate senior tranche contribution based on realized value proportion */
         /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price
@@ -767,7 +774,6 @@ contract Vault is
         /* Process redemptions from cash reserves */
         uint256 immediateRedemptionAmount = Math.min(redemptionAmount, _totalReservesBalance);
         _totalReservesBalance -= immediateRedemptionAmount;
-        _totalCashBalance -= immediateRedemptionAmount;
         _processProceeds(immediateRedemptionAmount);
 
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
