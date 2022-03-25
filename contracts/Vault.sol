@@ -42,16 +42,6 @@ abstract contract VaultStorageV1 {
     }
 
     /**
-     * @notice Tranches
-     * @param senior Senior tranche
-     * @param junior Junior tranche
-     */
-    struct Tranches {
-        Tranche senior;
-        Tranche junior;
-    }
-
-    /**
      * @notice Loan status
      */
     enum LoanStatus {
@@ -110,7 +100,8 @@ abstract contract VaultStorageV1 {
     /* State */
     /**************************************************************************/
 
-    Tranches internal _tranches;
+    Tranche internal _seniorTranche;
+    Tranche internal _juniorTranche;
     uint256 internal _totalLoanBalance;
     uint256 internal _totalCashBalance;
     uint256 internal _totalReservesBalance;
@@ -409,7 +400,7 @@ contract Vault is
      * @dev Get tranche state
      */
     function _trancheState(TrancheId trancheId) internal view returns (Tranche storage) {
-        return (trancheId == TrancheId.Senior) ? _tranches.senior : _tranches.junior;
+        return (trancheId == TrancheId.Senior) ? _seniorTranche : _juniorTranche;
     }
 
     /**
@@ -562,9 +553,9 @@ contract Vault is
      */
     function _processProceeds(uint256 proceeds) internal {
         /* Process senior redemptions */
-        proceeds = _processRedemptions(_tranches.senior, proceeds);
+        proceeds = _processRedemptions(_seniorTranche, proceeds);
         /* Process junior redemptions */
-        proceeds = _processRedemptions(_tranches.junior, proceeds);
+        proceeds = _processRedemptions(_juniorTranche, proceeds);
         /* Update undeployed cash balance */
         _totalCashBalance += proceeds;
         /* Update cash reserves balance */
@@ -645,8 +636,8 @@ contract Vault is
                                        = (D_s * Purchase Price) / (D_s + D_j)
          */
         uint256 seniorTrancheContribution = PRBMathUD60x18.div(
-            PRBMathUD60x18.mul(_tranches.senior.realizedValue, purchasePrice),
-            _tranches.senior.realizedValue + _tranches.junior.realizedValue
+            PRBMathUD60x18.mul(_seniorTranche.realizedValue, purchasePrice),
+            _seniorTranche.realizedValue + _juniorTranche.realizedValue
         );
 
         /* Calculate senior tranche return */
@@ -669,8 +660,8 @@ contract Vault is
         uint64 maturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
 
         /* Schedule pending tranche returns */
-        _tranches.senior.pendingReturns[maturityTimeBucket] += seniorTrancheReturn;
-        _tranches.junior.pendingReturns[maturityTimeBucket] += juniorTrancheReturn;
+        _seniorTranche.pendingReturns[maturityTimeBucket] += seniorTrancheReturn;
+        _juniorTranche.pendingReturns[maturityTimeBucket] += juniorTrancheReturn;
 
         /* Update total cash and loan balances */
         _totalCashBalance -= purchasePrice;
@@ -878,12 +869,12 @@ contract Vault is
         uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
 
         /* Unschedule pending returns */
-        _tranches.senior.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
-        _tranches.junior.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
+        _seniorTranche.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
+        _juniorTranche.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
 
         /* Increase tranche realized values */
-        _tranches.senior.realizedValue += seniorTrancheReturn;
-        _tranches.junior.realizedValue += juniorTrancheReturn;
+        _seniorTranche.realizedValue += seniorTrancheReturn;
+        _juniorTranche.realizedValue += juniorTrancheReturn;
 
         /* Update total loan balance */
         _totalLoanBalance -= loan.purchasePrice;
@@ -921,16 +912,16 @@ contract Vault is
         uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
 
         /* Unschedule pending returns */
-        _tranches.senior.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
-        _tranches.junior.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
+        _seniorTranche.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
+        _juniorTranche.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
 
         /* Compute tranche losses */
-        uint256 juniorTrancheLoss = Math.min(loan.purchasePrice, _tranches.junior.realizedValue);
+        uint256 juniorTrancheLoss = Math.min(loan.purchasePrice, _juniorTranche.realizedValue);
         uint256 seniorTrancheLoss = loan.purchasePrice - juniorTrancheLoss;
 
         /* Decrease tranche realized values */
-        _tranches.senior.realizedValue -= seniorTrancheLoss;
-        _tranches.junior.realizedValue -= juniorTrancheLoss;
+        _seniorTranche.realizedValue -= seniorTrancheLoss;
+        _juniorTranche.realizedValue -= juniorTrancheLoss;
 
         /* Update total loan balance */
         _totalLoanBalance -= loan.purchasePrice;
@@ -963,8 +954,8 @@ contract Vault is
         uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
 
         /* Increase tranche realized values */
-        _tranches.senior.realizedValue += seniorTrancheRepayment;
-        _tranches.junior.realizedValue += juniorTrancheRepayment;
+        _seniorTranche.realizedValue += seniorTrancheRepayment;
+        _juniorTranche.realizedValue += juniorTrancheRepayment;
 
         /* Process proceeds */
         _processProceeds(proceeds);
