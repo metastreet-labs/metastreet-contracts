@@ -48,6 +48,25 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     string public constant IMPLEMENTATION_VERSION = "1.0";
 
     /**************************************************************************/
+    /* Errors */
+    /**************************************************************************/
+
+    /**
+     * @notice Insufficient balance
+     */
+    error InsufficientBalance();
+
+    /**
+     * @notice Redemption in progress
+     */
+    error RedemptionInProgress();
+
+    /**
+     * @notice Invalid amount
+     */
+    error InvalidAmount();
+
+    /**************************************************************************/
     /* Constructor */
     /**************************************************************************/
 
@@ -127,8 +146,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
-        require(balanceOf(account) >= amount, "Insufficient amount");
-        require(redemption.pending == 0, "Redemption in progress");
+        if (balanceOf(account) < amount) revert InsufficientBalance();
+        if (redemption.pending != 0) revert RedemptionInProgress();
 
         redemption.pending = currencyAmount;
         redemption.withdrawn = 0;
@@ -151,7 +170,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     ) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
-        require(redemptionAvailable(account, processedRedemptionQueue) >= currencyAmount, "Invalid amount");
+        if (redemptionAvailable(account, processedRedemptionQueue) < currencyAmount) revert InvalidAmount();
 
         if (redemption.withdrawn + currencyAmount == redemption.pending) {
             delete _redemptions[account];

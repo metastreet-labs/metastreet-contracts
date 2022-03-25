@@ -96,7 +96,7 @@ describe("LPToken", function () {
       /* Try to redeem too many tokens */
       await expect(
         lpToken.redeem(accountDepositor.address, redeemAmount, currencyAmount, redemptionQueueTarget)
-      ).to.be.revertedWith("Insufficient amount");
+      ).to.be.revertedWith("InsufficientBalance()");
     });
     it("fails on outstanding redemption", async function () {
       const redeemAmount = ethers.utils.parseEther("2");
@@ -107,7 +107,7 @@ describe("LPToken", function () {
       /* Try to redeem again */
       await expect(
         lpToken.redeem(accountDepositor.address, redeemAmount, currencyAmount, redemptionQueueTarget)
-      ).to.be.revertedWith("Redemption in progress");
+      ).to.be.revertedWith("RedemptionInProgress()");
     });
     it("fails on invalid caller", async function () {
       await expect(
@@ -173,7 +173,7 @@ describe("LPToken", function () {
       /* Try to withdraw before redemption is ready */
       await expect(
         lpToken.withdraw(accountDepositor.address, ethers.utils.parseEther("1"), ethers.constants.Zero)
-      ).to.be.revertedWith("Invalid amount");
+      ).to.be.revertedWith("InvalidAmount()");
 
       /* Try to withdraw too much from a partially ready redemption */
       await expect(
@@ -182,7 +182,7 @@ describe("LPToken", function () {
           ethers.utils.parseEther("1.5"),
           redemptionQueueTarget.add(ethers.utils.parseEther("1"))
         )
-      ).to.be.revertedWith("Invalid amount");
+      ).to.be.revertedWith("InvalidAmount()");
 
       /* Try to withdraw too much after redemption is ready */
       await expect(
@@ -191,7 +191,7 @@ describe("LPToken", function () {
           currencyAmount.add(ethers.utils.parseEther("1")),
           redemptionQueueTarget.add(currencyAmount)
         )
-      ).to.be.revertedWith("Invalid amount");
+      ).to.be.revertedWith("InvalidAmount()");
     });
     it("fails on invalid caller", async function () {
       await expect(

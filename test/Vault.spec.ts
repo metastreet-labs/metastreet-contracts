@@ -412,7 +412,7 @@ describe("Vault", function () {
             vault.interface.encodeFunctionData("deposit", [0, amount1]),
             vault.interface.encodeFunctionData("redeem", [0, amount2]),
           ])
-      ).to.be.revertedWith("Insufficient amount");
+      ).to.be.reverted;
     });
     it("fails on invalid call", async function () {
       await expect(vault.connect(accountDepositor).multicall(["0xaabbccdd12345678"])).to.be.revertedWith(
@@ -1141,11 +1141,13 @@ describe("Vault", function () {
 
       /* Try to redeem too much */
       await expect(vault.connect(accountDepositor).redeem(0, redemptionAmount)).to.be.revertedWith(
-        "Insufficient amount"
+        "InsufficientBalance()"
       );
 
       /* Try to redeem from wrong tranche */
-      await expect(vault.connect(accountDepositor).redeem(1, depositAmount)).to.be.revertedWith("Insufficient amount");
+      await expect(vault.connect(accountDepositor).redeem(1, depositAmount)).to.be.revertedWith(
+        "InsufficientBalance()"
+      );
     });
     it("fails on outstanding redemption", async function () {
       const depositAmount = ethers.utils.parseEther("1.23");
@@ -1159,7 +1161,7 @@ describe("Vault", function () {
 
       /* Try to redeem remaining deposit */
       await expect(vault.connect(accountDepositor).redeem(0, depositAmount.sub(redemptionAmount))).to.be.revertedWith(
-        "Redemption in progress"
+        "RedemptionInProgress()"
       );
     });
     [1, 0].forEach((trancheId) => {
