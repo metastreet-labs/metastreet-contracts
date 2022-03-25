@@ -18,6 +18,7 @@ import {
 import { expectEvent } from "./helpers/EventUtilities";
 import { FixedPoint } from "./helpers/FixedPointHelpers";
 import {
+  LoanStatus,
   initializeAccounts,
   createLoan,
   cycleLoan,
@@ -485,8 +486,8 @@ describe("Vault", function () {
       expect((await vault.loanState(noteToken.address, loanId)).collateralToken).to.equal(nft1.address);
       expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(principal);
       expect((await vault.loanState(noteToken.address, loanId)).repayment).to.equal(repayment);
-      expect((await vault.loanState(noteToken.address, loanId)).maturity).to.be.gt(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).maturityTimeBucket).to.be.gt(ethers.constants.Zero);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
     });
     it("fails on unsupported note token", async function () {
       await expect(
@@ -1471,7 +1472,7 @@ describe("Vault", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
 
@@ -1486,7 +1487,7 @@ describe("Vault", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Liquidated);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1].sub(principal));
     });
@@ -1601,7 +1602,7 @@ describe("Vault", function () {
       await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
 
       await expect(vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId)).to.be.revertedWith(
-        "Loan not liquidated"
+        "Invalid loan status"
       );
     });
     it("fails on already withdrawn collateral", async function () {
@@ -1634,7 +1635,7 @@ describe("Vault", function () {
     });
     it("fails on unknown loan", async function () {
       await expect(vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, 12345)).to.be.revertedWith(
-        "Unknown loan"
+        "Invalid loan status"
       );
     });
     it("fails on invalid caller", async function () {
@@ -1683,7 +1684,7 @@ describe("Vault", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
-      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
       expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(principal);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
@@ -1703,7 +1704,7 @@ describe("Vault", function () {
         FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Complete);
       expect((await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
@@ -1759,7 +1760,7 @@ describe("Vault", function () {
         true
       );
 
-      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated loan", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -1807,7 +1808,7 @@ describe("Vault", function () {
         true
       );
 
-      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Loan liquidated");
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated loan with callback processed and collateral withdrawn", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -1834,7 +1835,7 @@ describe("Vault", function () {
       /* Withdraw the collateral */
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
 
-      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Loan liquidated");
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated collateral with callback processed", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -1864,10 +1865,10 @@ describe("Vault", function () {
       /* Callback vault */
       await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
 
-      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+      await expect(vault.onLoanRepaid(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on unknown loan", async function () {
-      await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Unknown loan");
+      await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on unsupported note", async function () {
       await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith(
@@ -1918,7 +1919,7 @@ describe("Vault", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(principal);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
 
@@ -1937,7 +1938,7 @@ describe("Vault", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Liquidated);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1].sub(principal));
     });
@@ -2016,7 +2017,7 @@ describe("Vault", function () {
         true
       );
 
-      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated loan with callback processed", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -2040,7 +2041,7 @@ describe("Vault", function () {
         true
       );
 
-      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan liquidation processed");
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated loan with callback processed and collateral withdrawn", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -2067,7 +2068,7 @@ describe("Vault", function () {
       /* Withdraw the collateral */
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
 
-      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Loan liquidation processed");
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated collateral with callback processed", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -2097,10 +2098,10 @@ describe("Vault", function () {
       /* Callback vault */
       await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
 
-      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Unknown loan");
+      await expect(vault.onLoanLiquidated(noteToken.address, loanId)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on unknown loan", async function () {
-      await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Unknown loan");
+      await expect(vault.onLoanRepaid(noteToken.address, 12345)).to.be.revertedWith("Invalid loan status");
     });
     it("fails on unsupported note", async function () {
       await expect(vault.onLoanRepaid(ethers.constants.AddressZero, 12345)).to.be.revertedWith(
@@ -2142,8 +2143,7 @@ describe("Vault", function () {
         FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
-      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(true);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Liquidated);
       expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
       expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1].sub(principal));
 
@@ -2169,8 +2169,7 @@ describe("Vault", function () {
         FixedPoint.mul((await vault.balanceState()).totalCashBalance, await vault.reserveRatio())
       );
       expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).liquidated).to.equal(true);
-      expect((await vault.loanState(noteToken.address, loanId)).active).to.equal(false);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Complete);
       expect((await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)).to.equal(
         depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(principal))
       );
@@ -2204,7 +2203,7 @@ describe("Vault", function () {
 
       await expect(
         vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
-      ).to.be.revertedWith("Loan not liquidated");
+      ).to.be.revertedWith("Invalid loan status");
     });
     it("fails on repaid loan", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -2230,7 +2229,7 @@ describe("Vault", function () {
 
       await expect(
         vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
-      ).to.be.revertedWith("Loan not liquidated");
+      ).to.be.revertedWith("Invalid loan status");
     });
     it("fails on repaid loan with callback processed", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -2256,7 +2255,7 @@ describe("Vault", function () {
 
       await expect(
         vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
-      ).to.be.revertedWith("Unknown loan");
+      ).to.be.revertedWith("Invalid loan status");
     });
     it("fails on liquidated collateral with callback processed", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -2287,14 +2286,14 @@ describe("Vault", function () {
 
       await expect(
         vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment)
-      ).to.be.revertedWith("Unknown loan");
+      ).to.be.revertedWith("Invalid loan status");
     });
     it("fails on unknown loan", async function () {
       await expect(
         vault
           .connect(accountLiquidator)
           .onCollateralLiquidated(noteToken.address, 12345, ethers.utils.parseEther("2.2"))
-      ).to.be.revertedWith("Unknown loan");
+      ).to.be.revertedWith("Invalid loan status");
     });
     it("fails on invalid caller", async function () {
       await expect(

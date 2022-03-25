@@ -169,11 +169,8 @@ describe("Vault Accounting", function () {
       );
 
       /* Check tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).trancheReturns[0]).to.equal(
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
         ethers.utils.parseEther("0.008219171739257604")
-      );
-      expect((await vault.loanState(noteToken.address, loanId)).trancheReturns[1]).to.equal(
-        ethers.utils.parseEther("0.191780828260742396")
       );
 
       /* Check vault realized value and share price after */
@@ -213,10 +210,7 @@ describe("Vault Accounting", function () {
       );
 
       /* Check tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).trancheReturns[0]).to.equal(ethers.constants.Zero);
-      expect((await vault.loanState(noteToken.address, loanId)).trancheReturns[1]).to.equal(
-        ethers.utils.parseEther("0.2")
-      );
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(ethers.constants.Zero);
 
       /* Check vault realized value and share price after */
       expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.constants.Zero);
@@ -256,11 +250,8 @@ describe("Vault Accounting", function () {
       );
 
       /* Check tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).trancheReturns[0]).to.equal(
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
         ethers.utils.parseEther("0.005479447826171736")
-      );
-      expect((await vault.loanState(noteToken.address, loanId)).trancheReturns[1]).to.equal(
-        ethers.utils.parseEther("0.194520552173828264")
       );
 
       /* Check vault realized value and share price after */
@@ -552,9 +543,13 @@ describe("Vault Accounting", function () {
 
       /* Look up pending returns */
       const loanState = await vault.loanState(noteToken.address, loanId);
-      const timeBucket = loanState.maturity.div(await vault.TIME_BUCKET_DURATION()).toNumber();
-      const pendingReturns = {
-        [timeBucket]: loanState.trancheReturns,
+      const loanInfo = await testNoteAdapter.getLoanInfo(loanId);
+      const timeBucket = loanInfo.maturity.div(await vault.TIME_BUCKET_DURATION()).toNumber();
+      const pendingReturns: { [key: number]: [BigNumber, BigNumber] } = {
+        [timeBucket]: [
+          loanState.seniorTrancheReturn,
+          loanState.repayment.sub(loanState.purchasePrice).sub(loanState.seniorTrancheReturn),
+        ],
       };
 
       /* Check share price leading up to and after maturity */
@@ -613,11 +608,22 @@ describe("Vault Accounting", function () {
       }
 
       /* Look up pending returns */
-      const pendingReturns = await loanIds.reduce(async function (o, loanId) {
+      const pendingReturns: { [key: number]: [BigNumber, BigNumber] } = await loanIds.reduce(async function (
+        o,
+        loanId
+      ) {
         const loanState = await vault.loanState(noteToken.address, loanId);
-        const timeBucket = loanState.maturity.div(await vault.TIME_BUCKET_DURATION()).toNumber();
-        return { ...(await o), [timeBucket]: loanState.trancheReturns };
-      }, {});
+        const loanInfo = await testNoteAdapter.getLoanInfo(loanId);
+        const timeBucket = loanInfo.maturity.div(await vault.TIME_BUCKET_DURATION()).toNumber();
+        return {
+          ...(await o),
+          [timeBucket]: [
+            loanState.seniorTrancheReturn,
+            loanState.repayment.sub(loanState.purchasePrice).sub(loanState.seniorTrancheReturn),
+          ],
+        };
+      },
+      {});
 
       /* Check share price leading up to and after maturities */
 

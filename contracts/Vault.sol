@@ -52,25 +52,33 @@ abstract contract VaultStorageV1 {
     }
 
     /**
+     * @notice Loan status
+     */
+    enum LoanStatus {
+        Uninitialized,
+        Active,
+        Liquidated,
+        Complete
+    }
+
+    /**
      * @notice Loan state
-     * @param active Loan is active
+     * @param status Loan status
+     * @param maturityTimeBucket Maturity time bucket
      * @param collateralToken Collateral token contract
      * @param collateralTokenId Collateral token ID
      * @param purchasePrice Purchase price in currency tokens
      * @param repayment Repayment in currency tokens
-     * @param maturity Maturity in seconds since Unix epoch
-     * @param liquidated Loan is liquidated
-     * @param trancheReturns Tranche returns in currency tokens
+     * @param seniorTrancheReturn Senior tranche return in currency tokens
      */
     struct Loan {
-        bool active;
+        LoanStatus status;
+        uint64 maturityTimeBucket;
         IERC721 collateralToken;
         uint256 collateralTokenId;
         uint256 purchasePrice;
         uint256 repayment;
-        uint64 maturity;
-        bool liquidated;
-        uint256[2] trancheReturns;
+        uint256 seniorTrancheReturn;
     }
 
     /**************************************************************************/
@@ -630,19 +638,22 @@ contract Vault is
         require(_totalCashBalance - _totalReservesBalance >= purchasePrice, "Insufficient cash in vault");
 
         /* Calculate senior tranche contribution based on realized value proportion */
-        /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price */
+        /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price
+                                       = (D_s * Purchase Price) / (D_s + D_j)
+         */
         uint256 seniorTrancheContribution = PRBMathUD60x18.div(
             PRBMathUD60x18.mul(_tranches.senior.realizedValue, purchasePrice),
             _tranches.senior.realizedValue + _tranches.junior.realizedValue
         );
 
         /* Calculate senior tranche return */
-        /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) */
+        /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) - Senior Tranche Contribution
+                                 = Senior Tranche Contribution * r * t
+         */
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
-            ONE_UD60X18 +
-                PRBMathUD60x18.mul(_seniorTrancheRate, PRBMathUD60x18.fromUint(loanInfo.maturity - block.timestamp))
-        ) - seniorTrancheContribution;
+            PRBMathUD60x18.mul(_seniorTrancheRate, PRBMathUD60x18.fromUint(loanInfo.maturity - block.timestamp))
+        );
 
         /* Validate senior tranche return */
         require(seniorTrancheReturn < (loanInfo.repayment - purchasePrice), "Interest rate too low");
@@ -652,11 +663,11 @@ contract Vault is
         uint256 juniorTrancheReturn = loanInfo.repayment - purchasePrice - seniorTrancheReturn;
 
         /* Compute loan maturity time bucket */
-        uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
+        uint64 maturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
 
         /* Schedule pending tranche returns */
-        _tranches.senior.pendingReturns[loanMaturityTimeBucket] += seniorTrancheReturn;
-        _tranches.junior.pendingReturns[loanMaturityTimeBucket] += juniorTrancheReturn;
+        _tranches.senior.pendingReturns[maturityTimeBucket] += seniorTrancheReturn;
+        _tranches.junior.pendingReturns[maturityTimeBucket] += juniorTrancheReturn;
 
         /* Update total cash and loan balances */
         _totalCashBalance -= purchasePrice;
@@ -664,14 +675,13 @@ contract Vault is
 
         /* Store loan state */
         Loan storage loan = _loans[noteToken][noteTokenId];
-        loan.active = true;
+        loan.status = LoanStatus.Active;
+        loan.maturityTimeBucket = maturityTimeBucket;
         loan.collateralToken = IERC721(loanInfo.collateralToken);
         loan.collateralTokenId = loanInfo.collateralTokenId;
         loan.purchasePrice = purchasePrice;
         loan.repayment = loanInfo.repayment;
-        loan.maturity = loanInfo.maturity;
-        loan.liquidated = false;
-        loan.trancheReturns = [seniorTrancheReturn, juniorTrancheReturn];
+        loan.seniorTrancheReturn = seniorTrancheReturn;
 
         emit NotePurchased(msg.sender, noteToken, noteTokenId, purchasePrice);
 
@@ -821,11 +831,8 @@ contract Vault is
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
-        /* Validate loan exists with contract */
-        require(loan.active, "Unknown loan");
-
-        /* Validate loan was liquidated */
-        require(loan.liquidated, "Loan not liquidated");
+        /* Validate loan is liquidated */
+        require(loan.status == LoanStatus.Liquidated, "Invalid loan status");
 
         /* Transfer collateral to liquidator */
         loan.collateralToken.safeTransferFrom(address(this), msg.sender, loan.collateralTokenId);
@@ -853,11 +860,8 @@ contract Vault is
         /* Lookup loan state */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
-        /* Validate loan exists with contract */
-        require(loan.active, "Unknown loan");
-
-        /* Validate loan wasn't liquidated */
-        require(!loan.liquidated, "Loan liquidated");
+        /* Validate loan is active */
+        require(loan.status == LoanStatus.Active, "Invalid loan status");
 
         /* Validate loan was repaid, by checking the loan is complete and the
          * collateral is not in contract's possession */
@@ -865,16 +869,17 @@ contract Vault is
             loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
         require(loanRepaid, "Loan not repaid");
 
-        /* Compute loan maturity time bucket */
-        uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loan.maturity);
+        /* Calculate tranche returns */
+        uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
+        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
 
         /* Unschedule pending returns */
-        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Senior)];
-        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
+        _tranches.senior.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
+        _tranches.junior.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
 
         /* Increase tranche realized values */
-        _tranches.senior.realizedValue += loan.trancheReturns[uint256(TrancheId.Senior)];
-        _tranches.junior.realizedValue += loan.trancheReturns[uint256(TrancheId.Junior)];
+        _tranches.senior.realizedValue += seniorTrancheReturn;
+        _tranches.junior.realizedValue += juniorTrancheReturn;
 
         /* Update total loan and cash balances */
         _totalLoanBalance -= loan.purchasePrice;
@@ -883,14 +888,10 @@ contract Vault is
         /* Process redemptions and update reserves with proceeds */
         _processRedemptionsAndUpdateReserves(loan.repayment);
 
-        /* Disable loan */
-        loan.active = false;
+        /* Mark loan complete */
+        loan.status = LoanStatus.Complete;
 
-        emit LoanRepaid(
-            noteToken,
-            noteTokenId,
-            [loan.trancheReturns[uint256(TrancheId.Senior)], loan.trancheReturns[uint256(TrancheId.Junior)]]
-        );
+        emit LoanRepaid(noteToken, noteTokenId, [seniorTrancheReturn, juniorTrancheReturn]);
     }
 
     /**
@@ -903,24 +904,22 @@ contract Vault is
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
-        /* Validate loan exists with contract */
-        require(loan.active, "Unknown loan");
-
-        /* Validate loan liquidation wasn't already processed */
-        require(!loan.liquidated, "Loan liquidation processed");
+        /* Validate loan is active */
+        require(loan.status == LoanStatus.Active, "Invalid loan status");
 
         /* Validate loan was liquidated, by checking the loan is complete and
          * the collateral is in the contract's possession */
         bool loanLiquidated = (noteAdapter.isComplete(noteTokenId) &&
-            loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
+            IERC721(loan.collateralToken).ownerOf(loan.collateralTokenId) == address(this));
         require(loanLiquidated, "Loan not liquidated");
 
-        /* Compute loan maturity time bucket */
-        uint64 loanMaturityTimeBucket = _timestampToTimeBucket(loan.maturity);
+        /* Calculate tranche returns */
+        uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
+        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
 
         /* Unschedule pending returns */
-        _tranches.senior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Senior)];
-        _tranches.junior.pendingReturns[loanMaturityTimeBucket] -= loan.trancheReturns[uint256(TrancheId.Junior)];
+        _tranches.senior.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
+        _tranches.junior.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
 
         /* Compute tranche losses */
         uint256 juniorTrancheLoss = Math.min(loan.purchasePrice, _tranches.junior.realizedValue);
@@ -933,12 +932,11 @@ contract Vault is
         /* Decrease total loan balance */
         _totalLoanBalance -= loan.purchasePrice;
 
-        /* Update tranche returns for collateral liquidation */
-        loan.trancheReturns[uint256(TrancheId.Senior)] += seniorTrancheLoss;
-        loan.trancheReturns[uint256(TrancheId.Junior)] = 0;
+        /* Update senior tranche return for collateral liquidation */
+        loan.seniorTrancheReturn += seniorTrancheLoss;
 
         /* Mark loan liquidated in loan state */
-        loan.liquidated = true;
+        loan.status = LoanStatus.Liquidated;
 
         emit LoanLiquidated(noteToken, noteTokenId, [seniorTrancheLoss, juniorTrancheLoss]);
     }
@@ -954,14 +952,11 @@ contract Vault is
         /* Lookup loan metadata */
         Loan storage loan = _loans[noteToken][noteTokenId];
 
-        /* Validate loan exists with contract */
-        require(loan.active, "Unknown loan");
-
-        /* Validate loan was liquidated */
-        require(loan.liquidated, "Loan not liquidated");
+        /* Validate loan is liquidated */
+        require(loan.status == LoanStatus.Liquidated, "Invalid loan status");
 
         /* Compute tranche repayments */
-        uint256 seniorTrancheRepayment = Math.min(proceeds, loan.trancheReturns[uint256(TrancheId.Senior)]);
+        uint256 seniorTrancheRepayment = Math.min(proceeds, loan.seniorTrancheReturn);
         uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
 
         /* Increase tranche realized values */
@@ -974,8 +969,8 @@ contract Vault is
         /* Process redemptions and update reserves with proceeds */
         _processRedemptionsAndUpdateReserves(proceeds);
 
-        /* Disable loan */
-        loan.active = false;
+        /* Mark loan complete */
+        loan.status = LoanStatus.Complete;
 
         /* Transfer cash from liquidator to vault */
         _currencyToken.safeTransferFrom(msg.sender, address(this), proceeds);

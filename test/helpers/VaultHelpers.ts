@@ -9,6 +9,13 @@ import { IERC721, TestERC20, TestERC721, TestLendingPlatform, MockLoanPriceOracl
 
 let _collateralTokenId = 1;
 
+export enum LoanStatus {
+  Uninitialized,
+  Active,
+  Liquidated,
+  Complete,
+}
+
 export async function initializeAccounts(
   borrower: SignerWithAddress,
   lender: SignerWithAddress,
