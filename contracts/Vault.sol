@@ -859,12 +859,10 @@ contract Vault is
         /* Validate loan wasn't liquidated */
         require(!loan.liquidated, "Loan liquidated");
 
-        /* Validate loan was repaid, either because caller is the lending
-         * platform (trusted), or by checking the loan is complete and the
-         * collateral is not in contract's possession (trustless) */
-        bool loanRepaid = (msg.sender == noteAdapter.lendingPlatform()) ||
-            (noteAdapter.isComplete(noteTokenId) &&
-                loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
+        /* Validate loan was repaid, by checking the loan is complete and the
+         * collateral is not in contract's possession */
+        bool loanRepaid = (noteAdapter.isComplete(noteTokenId) &&
+            loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
         require(loanRepaid, "Loan not repaid");
 
         /* Compute loan maturity time bucket */
@@ -911,12 +909,10 @@ contract Vault is
         /* Validate loan liquidation wasn't already processed */
         require(!loan.liquidated, "Loan liquidation processed");
 
-        /* Validate loan was liquidated, either because caller is the lending
-         * platform (trusted), or by checking the loan is complete and the
-         * collateral is in the contract's possession (trustless) */
-        bool loanLiquidated = (msg.sender == noteAdapter.lendingPlatform()) ||
-            (noteAdapter.isComplete(noteTokenId) &&
-                loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
+        /* Validate loan was liquidated, by checking the loan is complete and
+         * the collateral is in the contract's possession */
+        bool loanLiquidated = (noteAdapter.isComplete(noteTokenId) &&
+            loan.collateralToken.ownerOf(loan.collateralTokenId) == address(this));
         require(loanLiquidated, "Loan not liquidated");
 
         /* Compute loan maturity time bucket */
