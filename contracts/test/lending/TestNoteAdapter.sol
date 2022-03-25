@@ -16,10 +16,6 @@ contract TestNoteAdapter is INoteAdapter {
         return IERC721(_lendingPlatform.noteToken());
     }
 
-    function lendingPlatform() public view returns (address) {
-        return address(_lendingPlatform);
-    }
-
     function getLoanInfo(uint256 noteTokenId) public view returns (LoanInfo memory) {
         /* Get loan from lending platform */
         (

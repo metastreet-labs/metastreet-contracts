@@ -45,12 +45,6 @@ interface INoteAdapter {
     function noteToken() external view returns (IERC721);
 
     /**
-     * @notice Get address of lending platform
-     * @return Lending platform address
-     */
-    function lendingPlatform() external view returns (address);
-
-    /**
      * @notice Get loan information
      * @param noteTokenId Note token ID
      * @return Loan information
