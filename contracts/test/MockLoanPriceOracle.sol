@@ -37,11 +37,11 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         utilization;
 
         if (_error == MockError.UnsupportedCollateral) {
-            revert PriceError_UnsupportedCollateral();
+            revert UnsupportedCollateral();
         } else if (_error == MockError.InsufficientTimeRemaining) {
-            revert PriceError_InsufficientTimeRemaining();
+            revert InsufficientTimeRemaining();
         } else if (_error == MockError.ParameterOutOfBounds) {
-            revert PriceError_ParameterOutOfBounds(0);
+            revert ParameterOutOfBounds(0);
         }
 
         return _price;

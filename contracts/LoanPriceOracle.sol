@@ -128,7 +128,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         uint256 index
     ) internal view returns (uint256) {
         if (x > model.max) {
-            revert PriceError_ParameterOutOfBounds(index);
+            revert ParameterOutOfBounds(index);
         }
         return
             (x <= model.target)
@@ -181,13 +181,13 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         /* Calculate loan time remaining */
         uint256 loanTimeRemaining = maturity - block.timestamp;
         if (loanTimeRemaining < minimumLoanDuration) {
-            revert PriceError_InsufficientTimeRemaining();
+            revert InsufficientTimeRemaining();
         }
 
         /* Look up collateral parameters */
         CollateralParameters storage collateralParameters = _parameters[collateralToken];
         if (collateralParameters.collateralValue == 0) {
-            revert PriceError_UnsupportedCollateral();
+            revert UnsupportedCollateral();
         }
 
         /* Convert loan time remaining */

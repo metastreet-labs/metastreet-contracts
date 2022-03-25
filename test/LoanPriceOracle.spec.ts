@@ -187,7 +187,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("PriceError_InsufficientTimeRemaining()");
+      ).to.be.revertedWith("InsufficientTimeRemaining()");
     });
     it("fails on unsupported token contract", async function () {
       const principal = ethers.utils.parseEther("20");
@@ -198,7 +198,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(tok1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("PriceError_UnsupportedCollateral()");
+      ).to.be.revertedWith("UnsupportedCollateral()");
     });
     it("fails on parameter out of bounds (utilization)", async function () {
       const principal = ethers.utils.parseEther("20");
@@ -209,7 +209,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("PriceError_ParameterOutOfBounds(0)");
+      ).to.be.revertedWith("ParameterOutOfBounds(0)");
     });
     it("fails on parameters out of bounds (loan to value)", async function () {
       const principal = ethers.utils.parseEther("100");
@@ -220,7 +220,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("PriceError_ParameterOutOfBounds(1)");
+      ).to.be.revertedWith("ParameterOutOfBounds(1)");
     });
     it("fails on parameter out of bounds (duration)", async function () {
       const principal = ethers.utils.parseEther("20");
@@ -231,7 +231,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("PriceError_ParameterOutOfBounds(2)");
+      ).to.be.revertedWith("ParameterOutOfBounds(2)");
     });
   });
 

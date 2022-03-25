@@ -14,16 +14,16 @@ interface ILoanPriceOracle {
     /**
      * @notice Unsupported collateral token contract
      */
-    error PriceError_UnsupportedCollateral();
+    error UnsupportedCollateral();
     /**
      * @notice Insufficient time remaining for loan
      */
-    error PriceError_InsufficientTimeRemaining();
+    error InsufficientTimeRemaining();
     /**
      * @notice Loan parameter out of bounds
      * @param index Index of out of bound parameter
      */
-    error PriceError_ParameterOutOfBounds(uint256 index);
+    error ParameterOutOfBounds(uint256 index);
 
     /**************************************************************************/
     /* Getters */
