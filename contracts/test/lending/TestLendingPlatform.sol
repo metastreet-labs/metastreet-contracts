@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "contracts/interfaces/ILoanReceiver.sol";
 
@@ -96,7 +96,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         IERC721(loan.collateralToken).safeTransferFrom(address(this), loan.borrower, loan.collateralTokenId);
         noteToken.burn(loanId);
 
-        if (callback && Address.isContract(noteOwner))
+        if (callback && ERC165Checker.supportsInterface(noteOwner, type(ILoanReceiver).interfaceId))
             ILoanReceiver(noteOwner).onLoanRepaid(address(noteToken), loanId);
 
         emit LoanRepaid(loanId);
