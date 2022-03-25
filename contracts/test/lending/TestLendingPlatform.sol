@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -10,7 +11,7 @@ import "contracts/interfaces/ILoanReceiver.sol";
 
 import "./TestNoteToken.sol";
 
-contract TestLendingPlatform is Ownable, ERC721Holder, IERC165 {
+contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     using SafeERC20 for IERC20;
 
     /**************************************************************************/
@@ -126,9 +127,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, IERC165 {
     /* ERC165 interface */
     /******************************************************/
 
-    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
-
-    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return (interfaceId == _INTERFACE_ID_ERC165) || (interfaceId == IERC721Receiver.onERC721Received.selector);
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 }
