@@ -13,8 +13,9 @@ describe("TestLendingPlatform", function () {
   let nft1: TestERC721;
   let lendingPlatform: TestLendingPlatform;
   let noteToken: TestNoteToken;
+  let snapshotId: string;
 
-  beforeEach("create factories and deploy test tokens", async () => {
+  before("deploy fixture", async () => {
     accounts = await ethers.getSigners();
 
     const testERC20Factory = await ethers.getContractFactory("TestERC20");
@@ -35,6 +36,14 @@ describe("TestLendingPlatform", function () {
       await lendingPlatform.noteToken(),
       accounts[0]
     )) as TestNoteToken;
+  });
+
+  beforeEach("snapshot blockchain", async () => {
+    snapshotId = await network.provider.send("evm_snapshot", []);
+  });
+
+  afterEach("restore blockchain snapshot", async () => {
+    await network.provider.send("evm_revert", [snapshotId]);
   });
 
   it("lend and repay", async function () {
