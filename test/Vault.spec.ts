@@ -975,6 +975,108 @@ describe("Vault", function () {
         )
       ).to.equal(ethers.constants.Zero);
     });
+    it("immediate redemption causing insolvent tranche succeeds", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("5"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("4");
+      const repayment = ethers.utils.parseEther("5");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan, wiping out junior tranche and part of senior tranche */
+      await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check vault balances */
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("5"));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(ethers.utils.parseEther("1"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("5"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("1"));
+
+      /* Redeem reserves from junior tranche */
+      await vault.connect(accountDepositor).redeem(1, FixedPoint.div(reserves, await vault.redemptionSharePrice(1)));
+      expect((await juniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(
+        ethers.utils.parseEther("1")
+      );
+
+      /* Redemption should be partially ready */
+      expect(
+        await juniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(1)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(ethers.utils.parseEther("1"));
+
+      /* Check vault balances */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("5"));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("5"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.constants.Zero);
+    });
+    it("immediate redemption alongside insolvent tranche succeeds", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("10");
+      const repayment = ethers.utils.parseEther("11");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a defaulted loan, wiping out junior tranche and part of senior tranche */
+      await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check vault balances */
+      const reserves = FixedPoint.mul(depositAmounts[0].add(depositAmounts[1]), await vault.reserveRatio());
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("3.5"));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(ethers.utils.parseEther("1.5"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("5"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.constants.Zero);
+
+      /* Attempt to redeem reserves from junior tranche */
+      await expect(vault.connect(accountDepositor).redeem(1, ethers.constants.One)).to.be.revertedWith(
+        "Tranche is currently insolvent"
+      );
+
+      /* Redeem reserves from senior tranche */
+      await vault.connect(accountDepositor).redeem(0, FixedPoint.div(reserves, await vault.redemptionSharePrice(0)));
+
+      /* Redemption should be ready */
+      expect(
+        await seniorLPToken.redemptionAvailable(
+          accountDepositor.address,
+          (
+            await vault.trancheState(0)
+          ).processedRedemptionQueue
+        )
+      ).to.equal(reserves);
+
+      /* Check vault balances */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("3.5"));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("3.5"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.constants.Zero);
+    });
     it("redemptions processed from new deposit", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const redemptionAmount = ethers.utils.parseEther("2.5");
