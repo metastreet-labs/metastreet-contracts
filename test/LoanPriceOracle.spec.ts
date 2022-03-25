@@ -294,7 +294,7 @@ describe("LoanPriceOracle", function () {
           ethers.constants.AddressZero,
           encodeCollateralParameters(collateralParameters)
         )
-      ).to.be.revertedWith("Invalid address");
+      ).to.be.revertedWith("InvalidAddress()");
     });
     it("fails on invalid caller", async function () {
       await expect(

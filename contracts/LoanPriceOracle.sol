@@ -21,6 +21,20 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     string public constant IMPLEMENTATION_VERSION = "1.0";
 
     /**************************************************************************/
+    /* Errors */
+    /**************************************************************************/
+
+    /**
+     * @notice Unsupported token decimals
+     */
+    error UnsupportedTokenDecimals();
+
+    /**
+     * @notice Invalid address (e.g. zero address)
+     */
+    error InvalidAddress();
+
+    /**************************************************************************/
     /* State */
     /**************************************************************************/
 
@@ -105,7 +119,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      * @param currencyToken_ Currency token used for pricing
      */
     constructor(IERC20 currencyToken_) {
-        require(IERC20Metadata(address(currencyToken_)).decimals() == 18, "Unsupported token decimals");
+        if (IERC20Metadata(address(currencyToken_)).decimals() != 18) revert UnsupportedTokenDecimals();
 
         currencyToken = currencyToken_;
     }
@@ -271,7 +285,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         external
         onlyOwner
     {
-        require(collateralToken != address(0), "Invalid address");
+        if (collateralToken == address(0)) revert InvalidAddress();
 
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
 
