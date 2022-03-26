@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/LPToken.sol";
 
 /**
- * @title Test contract for LPToken upgrades:
+ * @title Test contract for LPToken upgrades
  */
 contract TestLPTokenUpgrade is LPToken {
     /* New dummy method */

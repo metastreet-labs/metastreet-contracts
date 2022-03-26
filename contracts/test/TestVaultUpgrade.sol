@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/Vault.sol";
 
 /**
- * @title Test contract for Vault upgrades:
+ * @title Test contract for Vault upgrades
  */
 contract TestVaultUpgrade is Vault {
     /* New dummy method */
