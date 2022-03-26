@@ -67,7 +67,6 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
     - [`MockLoanPriceOracle.sol`](contracts/test/MockLoanPriceOracle.sol) - Mock LoanPriceOracle
     - [`TestLPTokenUpgrade.sol`](contracts/test/TestLPTokenUpgrade.sol) - Test LPToken upgrade
     - [`TestVaultUpgrade.sol`](contracts/test/TestVaultUpgrade.sol) - Test Vault upgrade
-    - [`thirdparty/`](contracts/test/thirdparty/) - External integrations
 - [`test/`](test/) - Unit tests
   - [`TestLendingPlatform.spec.ts`](test/TestLendingPlatform.spec.ts) - TestLendingPlatform unit tests
   - [`LoanPriceOracle.spec.ts`](test/LoanPriceOracle.spec.ts) - LoanPriceOracle unit tests
