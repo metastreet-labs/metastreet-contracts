@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
+import type { Contract } from "ethers";
 import {
   TestERC20,
   TestERC721,
@@ -33,6 +34,8 @@ describe("Integration", function () {
   let noteToken: TestNoteToken;
   let loanPriceOracle: LoanPriceOracle;
   let testNoteAdapter: TestNoteAdapter;
+  let lpTokenBeacon: Contract;
+  let vaultBeacon: Contract;
   let vault: Vault;
   let seniorLPToken: LPToken;
   let juniorLPToken: LPToken;
@@ -111,26 +114,35 @@ describe("Integration", function () {
     loanPriceOracle = (await loanPriceOracleFactory.deploy(tok1.address)) as LoanPriceOracle;
     await loanPriceOracle.deployed();
 
-    /* Deploy Senior LP token */
-    seniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
+    /* Deploy LPToken Beacon */
+    lpTokenBeacon = await upgrades.deployBeacon(lpTokenFactory);
+    await lpTokenBeacon.deployed();
+
+    /* Deploy Senior LP Token */
+    seniorLPToken = (await upgrades.deployBeaconProxy(lpTokenBeacon.address, lpTokenFactory, [
+      "Senior LP Token",
+      "msLP-TEST-WETH",
+    ])) as LPToken;
     await seniorLPToken.deployed();
-    await seniorLPToken.initialize("Senior LP Token", "msLP-TEST-WETH");
 
-    /* Deploy Junior LP token */
-    juniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
+    /* Deploy Junior LP Token */
+    juniorLPToken = (await upgrades.deployBeaconProxy(lpTokenBeacon.address, lpTokenFactory, [
+      "Junior LP Token",
+      "mjLP-TEST-WETH",
+    ])) as LPToken;
     await juniorLPToken.deployed();
-    await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
 
-    /* Deploy vault */
-    vault = (await vaultFactory.deploy()) as Vault;
-    await vault.deployed();
-    await vault.initialize(
+    /* Deploy Vault */
+    vaultBeacon = await upgrades.deployBeacon(vaultFactory, { unsafeAllow: ["delegatecall"] });
+    await vaultBeacon.deployed();
+    vault = (await upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
       "Test Vault",
       tok1.address,
       loanPriceOracle.address,
       seniorLPToken.address,
-      juniorLPToken.address
-    );
+      juniorLPToken.address,
+    ])) as Vault;
+    await vault.deployed();
 
     /* Transfer ownership of LP tokens to Vault */
     await seniorLPToken.transferOwnership(vault.address);
