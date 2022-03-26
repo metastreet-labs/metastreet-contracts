@@ -65,6 +65,8 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
     - [`TestERC20.sol`](contracts/test/TestERC20.sol) - Test ERC20 token
     - [`TestERC721.sol`](contracts/test/TestERC721.sol) - Test ERC721 token
     - [`MockLoanPriceOracle.sol`](contracts/test/MockLoanPriceOracle.sol) - Mock LoanPriceOracle
+    - [`TestLPTokenUpgrade.sol`](contracts/test/TestLPTokenUpgrade.sol) - Test LPToken upgrade
+    - [`TestVaultUpgrade.sol`](contracts/test/TestVaultUpgrade.sol) - Test Vault upgrade
     - [`thirdparty/`](contracts/test/thirdparty/) - External integrations
 - [`test/`](test/) - Unit tests
   - [`TestLendingPlatform.spec.ts`](test/TestLendingPlatform.spec.ts) - TestLendingPlatform unit tests
@@ -81,7 +83,8 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
     - [`VaultHelpers.ts`](test/helpers/VaultHelpers.ts) - Vault helper functions
 - [`scripts/`](scripts/) - Scripts
   - [`deploy-simulation.ts`](scripts/deploy-simulation.ts) - Simulation deployment
-  - [`estimate-gas-costs.ts`](scripts/estimate-gas-costs.ts) - Gas cost estimator
+- [`docs/`](docs/) - Documentation
+  - [`SECURITY.md`](docs/SECURITY.md) - Security notes
 - [`hardhat.config.ts`](hardhat.config.ts) - Hardhat configuration
 - [`tsconfig.json`](tsconfig.json) - TypeScript configuration
 - [`package.json`](package.json) - npm package metadata
