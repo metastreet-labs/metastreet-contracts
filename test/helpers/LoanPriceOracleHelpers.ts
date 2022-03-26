@@ -11,10 +11,10 @@ export type PiecewiseLinearModel = {
 
 export type CollateralParameters = {
   collateralValue: BigNumber;
-  rateUtilizationSensitivity: PiecewiseLinearModel;
-  rateLoanToValueSensitivity: PiecewiseLinearModel;
-  rateDurationSensitivity: PiecewiseLinearModel;
-  sensitivityWeights: [number, number, number];
+  utilizationRateComponent: PiecewiseLinearModel;
+  loanToValueRateComponent: PiecewiseLinearModel;
+  durationRateComponent: PiecewiseLinearModel;
+  rateComponentWeights: [number, number, number];
 };
 
 export function encodeCollateralParameters(collateralParameters: CollateralParameters): string {
@@ -26,24 +26,24 @@ export function encodeCollateralParameters(collateralParameters: CollateralParam
       [
         collateralParameters.collateralValue,
         [
-          collateralParameters.rateUtilizationSensitivity.slope1,
-          collateralParameters.rateUtilizationSensitivity.slope2,
-          collateralParameters.rateUtilizationSensitivity.target,
-          collateralParameters.rateUtilizationSensitivity.max,
+          collateralParameters.utilizationRateComponent.slope1,
+          collateralParameters.utilizationRateComponent.slope2,
+          collateralParameters.utilizationRateComponent.target,
+          collateralParameters.utilizationRateComponent.max,
         ],
         [
-          collateralParameters.rateLoanToValueSensitivity.slope1,
-          collateralParameters.rateLoanToValueSensitivity.slope2,
-          collateralParameters.rateLoanToValueSensitivity.target,
-          collateralParameters.rateLoanToValueSensitivity.max,
+          collateralParameters.loanToValueRateComponent.slope1,
+          collateralParameters.loanToValueRateComponent.slope2,
+          collateralParameters.loanToValueRateComponent.target,
+          collateralParameters.loanToValueRateComponent.max,
         ],
         [
-          collateralParameters.rateDurationSensitivity.slope1,
-          collateralParameters.rateDurationSensitivity.slope2,
-          collateralParameters.rateDurationSensitivity.target,
-          collateralParameters.rateDurationSensitivity.max,
+          collateralParameters.durationRateComponent.slope1,
+          collateralParameters.durationRateComponent.slope2,
+          collateralParameters.durationRateComponent.target,
+          collateralParameters.durationRateComponent.max,
         ],
-        collateralParameters.sensitivityWeights,
+        collateralParameters.rateComponentWeights,
       ],
     ]
   );

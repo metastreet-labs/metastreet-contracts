@@ -52,28 +52,28 @@ describe("Integration", function () {
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    rateUtilizationSensitivity: computePiecewiseLinearModel({
+    utilizationRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.90"),
       max: FixedPoint.from("1.00"),
     }),
-    rateLoanToValueSensitivity: computePiecewiseLinearModel({
+    loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.30"),
       max: FixedPoint.from("0.60"),
     }),
-    rateDurationSensitivity: computePiecewiseLinearModel({
+    durationRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from(30 * 86400),
       max: FixedPoint.from(90 * 86400),
     }),
-    sensitivityWeights: [50, 25, 25],
+    rateComponentWeights: [50, 25, 25],
   };
 
   before("deploy fixture", async () => {

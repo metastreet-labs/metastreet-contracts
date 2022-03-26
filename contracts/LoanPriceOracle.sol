@@ -55,17 +55,17 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     /**
      * @notice Collateral parameters
      * @param collateralValue Collateral value in UD60x18
-     * @param rateUtilizationSensitivity Model for rate vs utilization
-     * @param rateLoanToValueSensitivity Model for rate vs loan to value
-     * @param rateDurationSensitivity Model for rate vs duration
-     * @param sensitivityWeights Weights for linear models, each 0 to 100
+     * @param utilizationRateComponent Rate component model for utilization
+     * @param loanToValueRateComponent Rate component model for loan to value
+     * @param durationRateComponent Rate component model for duration
+     * @param rateComponentWeights Weights for rate components, each 0 to 100
      */
     struct CollateralParameters {
         uint256 collateralValue; /* UD60x18 */
-        PiecewiseLinearModel rateUtilizationSensitivity;
-        PiecewiseLinearModel rateLoanToValueSensitivity;
-        PiecewiseLinearModel rateDurationSensitivity;
-        uint8[3] sensitivityWeights; /* 0-100 */
+        PiecewiseLinearModel utilizationRateComponent;
+        PiecewiseLinearModel loanToValueRateComponent;
+        PiecewiseLinearModel durationRateComponent;
+        uint8[3] rateComponentWeights; /* 0-100 */
     }
 
     /**
@@ -212,13 +212,13 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
 
         /* Compute discount rate components for utilization, loan-to-value, and duration */
         uint256[3] memory rateComponents = [
-            _computeRateComponent(collateralParameters.rateUtilizationSensitivity, utilization, 0),
-            _computeRateComponent(collateralParameters.rateLoanToValueSensitivity, loanToValue, 1),
-            _computeRateComponent(collateralParameters.rateDurationSensitivity, loanTimeRemaining, 2)
+            _computeRateComponent(collateralParameters.utilizationRateComponent, utilization, 0),
+            _computeRateComponent(collateralParameters.loanToValueRateComponent, loanToValue, 1),
+            _computeRateComponent(collateralParameters.durationRateComponent, loanTimeRemaining, 2)
         ];
 
         /* Calculate discount rate from components */
-        uint256 discountRate = _computeWeightedRate(collateralParameters.sensitivityWeights, rateComponents);
+        uint256 discountRate = _computeWeightedRate(collateralParameters.rateComponentWeights, rateComponents);
 
         /* Calculate purchase price */
         /* Purchase Price = Loan Repayment Value / (1 + Discount Rate * t) */

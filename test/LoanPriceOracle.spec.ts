@@ -51,28 +51,28 @@ describe("LoanPriceOracle", function () {
 
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    rateUtilizationSensitivity: computePiecewiseLinearModel({
+    utilizationRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.90"),
       max: FixedPoint.from("1.00"),
     }),
-    rateLoanToValueSensitivity: computePiecewiseLinearModel({
+    loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from("0.30"),
       max: FixedPoint.from("0.60"),
     }),
-    rateDurationSensitivity: computePiecewiseLinearModel({
+    durationRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
       target: FixedPoint.from(30 * 86400),
       max: FixedPoint.from(90 * 86400),
     }),
-    sensitivityWeights: [50, 25, 25],
+    rateComponentWeights: [50, 25, 25],
   };
 
   describe("constants", async function () {
@@ -99,7 +99,7 @@ describe("LoanPriceOracle", function () {
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
         nft1.address,
-        encodeCollateralParameters({ ...collateralParameters, sensitivityWeights: [100, 0, 0] })
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [100, 0, 0] })
       );
 
       expect(
@@ -122,7 +122,7 @@ describe("LoanPriceOracle", function () {
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
         nft1.address,
-        encodeCollateralParameters({ ...collateralParameters, sensitivityWeights: [0, 100, 0] })
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 100, 0] })
       );
 
       expect(
@@ -145,7 +145,7 @@ describe("LoanPriceOracle", function () {
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
         nft1.address,
-        encodeCollateralParameters({ ...collateralParameters, sensitivityWeights: [0, 0, 100] })
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 0, 100] })
       );
 
       expect(
@@ -248,17 +248,17 @@ describe("LoanPriceOracle", function () {
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParameters.collateralValue
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateUtilizationSensitivity).to.deep.equal(
-        Object.values(collateralParameters.rateUtilizationSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).utilizationRateComponent).to.deep.equal(
+        Object.values(collateralParameters.utilizationRateComponent)
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateLoanToValueSensitivity).to.deep.equal(
-        Object.values(collateralParameters.rateLoanToValueSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).loanToValueRateComponent).to.deep.equal(
+        Object.values(collateralParameters.loanToValueRateComponent)
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateDurationSensitivity).to.deep.equal(
-        Object.values(collateralParameters.rateDurationSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).durationRateComponent).to.deep.equal(
+        Object.values(collateralParameters.durationRateComponent)
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).sensitivityWeights).to.deep.equal(
-        collateralParameters.sensitivityWeights
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateComponentWeights).to.deep.equal(
+        collateralParameters.rateComponentWeights
       );
     });
     it("replaces collateral parameters successfully", async function () {
@@ -267,7 +267,7 @@ describe("LoanPriceOracle", function () {
       const collateralParametersUpdate: CollateralParameters = {
         ...collateralParameters,
         collateralValue: ethers.utils.parseEther("125"),
-        rateDurationSensitivity: computePiecewiseLinearModel({
+        durationRateComponent: computePiecewiseLinearModel({
           minRate: FixedPoint.normalizeRate("0.05"),
           targetRate: FixedPoint.normalizeRate("0.15"),
           maxRate: FixedPoint.normalizeRate("2.00"),
@@ -284,8 +284,8 @@ describe("LoanPriceOracle", function () {
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParametersUpdate.collateralValue
       );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).rateDurationSensitivity).to.deep.equal(
-        Object.values(collateralParametersUpdate.rateDurationSensitivity)
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).durationRateComponent).to.deep.equal(
+        Object.values(collateralParametersUpdate.durationRateComponent)
       );
     });
     it("fails on invalid address", async function () {
