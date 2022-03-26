@@ -630,4 +630,152 @@ describe("Integration", function () {
       );
     });
   });
+
+  describe("proxy deployment", async function () {
+    it("multicall succeeds", async function () {
+      const amount1 = ethers.utils.parseEther("1.23");
+      const amount2 = ethers.utils.parseEther("2.34");
+
+      /* Deposit into vault */
+      await vault
+        .connect(accountDepositor)
+        .multicall([
+          vault.interface.encodeFunctionData("deposit", [0, amount1]),
+          vault.interface.encodeFunctionData("deposit", [1, amount2]),
+        ]);
+
+      /* Check state after deposit */
+      const reserves = FixedPoint.mul(amount1.add(amount2), await vault.reserveRatio());
+      expect(await seniorLPToken.balanceOf(accountDepositor.address)).to.equal(amount1);
+      expect(await juniorLPToken.balanceOf(accountDepositor.address)).to.equal(amount2);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(amount1);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(amount2);
+      expect((await vault.balanceState()).totalCashBalance).to.equal(amount1.add(amount2).sub(reserves));
+      expect((await vault.balanceState()).totalReservesBalance).to.equal(reserves);
+    });
+    it("tests LPToken upgrade", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Redeem deposits */
+      await vault.connect(accountDepositor).redeem(0, ethers.utils.parseEther("1"));
+      await vault.connect(accountDepositor).redeem(1, ethers.utils.parseEther("2"));
+
+      /* Check token balances and redemptions */
+      expect(await seniorLPToken.balanceOf(accountDepositor.address)).to.equal(
+        depositAmounts[0].sub(ethers.utils.parseEther("1"))
+      );
+      expect(await juniorLPToken.balanceOf(accountDepositor.address)).to.equal(
+        depositAmounts[1].sub(ethers.utils.parseEther("2"))
+      );
+      expect((await seniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(
+        ethers.utils.parseEther("1")
+      );
+      expect((await juniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(
+        ethers.utils.parseEther("2")
+      );
+
+      /* Upgrade LPToken */
+      const testLPTokenUpgradeFactory = await ethers.getContractFactory("TestLPTokenUpgrade");
+      await upgrades.upgradeBeacon(lpTokenBeacon, testLPTokenUpgradeFactory);
+
+      /* Check token balances and redemptions */
+      expect(await seniorLPToken.balanceOf(accountDepositor.address)).to.equal(
+        depositAmounts[0].sub(ethers.utils.parseEther("1"))
+      );
+      expect(await juniorLPToken.balanceOf(accountDepositor.address)).to.equal(
+        depositAmounts[1].sub(ethers.utils.parseEther("2"))
+      );
+      expect((await seniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(
+        ethers.utils.parseEther("1")
+      );
+      expect((await juniorLPToken.redemptions(accountDepositor.address)).pending).to.equal(
+        ethers.utils.parseEther("2")
+      );
+
+      /* Test new dummy method */
+      const upgradedSeniorLPToken = testLPTokenUpgradeFactory.attach(seniorLPToken.address);
+      const upgradedJuniorLPToken = testLPTokenUpgradeFactory.attach(juniorLPToken.address);
+      expect(await upgradedSeniorLPToken.redemptionPending(accountDepositor.address)).to.equal(
+        ethers.utils.parseEther("1")
+      );
+      expect(await upgradedJuniorLPToken.redemptionPending(accountDepositor.address)).to.equal(
+        ethers.utils.parseEther("2")
+      );
+    });
+    it("tests Vault upgrade", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("10.0");
+      const repayment = ethers.utils.parseEther("10.1");
+      const duration = 30 * 86400;
+      const maturity = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp + duration;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Calculate loan price */
+      const purchasePrice = await loanPriceOracle.priceLoan(
+        nft1.address,
+        1234,
+        principal,
+        repayment,
+        duration,
+        maturity,
+        await vault.utilization()
+      );
+
+      /* Add margin for min purchase price */
+      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
+
+      /* Sell note to vault */
+      const sellTx = await vault
+        .connect(accountLender)
+        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
+      const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
+
+      /* Check vault realized value and loan balance after sale */
+      expect((await vault.trancheState(0)).realizedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.equal(depositAmounts[1]);
+      expect((await vault.balanceState()).totalLoanBalance).to.equal(actualPurchasePrice);
+
+      /* Upgrade vault */
+      const testVaultUpgradeFactory = await ethers.getContractFactory("TestVaultUpgrade");
+      await upgrades.upgradeBeacon(vaultBeacon, testVaultUpgradeFactory, { unsafeAllow: ["delegatecall"] });
+
+      /* Elapse time */
+      await elapseTime(duration - 86400);
+
+      /* Repay loan */
+      await lendingPlatform.connect(accountBorrower).repay(loanId, false);
+
+      /* Callback vault */
+      await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId);
+
+      /* Check vault realized value and loan balance after repayment */
+      expect((await vault.trancheState(0)).realizedValue).to.be.gt(depositAmounts[0]);
+      expect((await vault.trancheState(1)).realizedValue).to.be.gt(depositAmounts[1]);
+      expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
+
+      /* Test new dummy method */
+      const upgradedVault = testVaultUpgradeFactory.attach(vault.address);
+      expect(await upgradedVault.totalRealizedValue()).to.equal(
+        depositAmounts[0].add(depositAmounts[1]).add(repayment.sub(actualPurchasePrice))
+      );
+    });
+  });
 });
