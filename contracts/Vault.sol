@@ -102,8 +102,8 @@ abstract contract VaultStorageV1 {
 
     Tranche internal _seniorTranche;
     Tranche internal _juniorTranche;
-    uint256 internal _totalLoanBalance;
     uint256 internal _totalCashBalance;
+    /* _totalLoanBalance is computed at runtime */
     uint256 internal _totalReservesBalance;
     uint256 internal _totalWithdrawalBalance;
 
@@ -430,7 +430,7 @@ contract Vault is
             uint256 totalWithdrawalBalance
         )
     {
-        return (_totalCashBalance, _totalReservesBalance, _totalLoanBalance, _totalWithdrawalBalance);
+        return (_totalCashBalance, _totalReservesBalance, _totalLoanBalance(), _totalWithdrawalBalance);
     }
 
     /**
@@ -475,6 +475,15 @@ contract Vault is
      */
     function _trancheState(TrancheId trancheId) internal view returns (Tranche storage) {
         return (trancheId == TrancheId.Senior) ? _seniorTranche : _juniorTranche;
+    }
+
+    /**
+     * @dev Get the total loan balance, computed indirectly from tranche
+     * realized values and cash balances
+     * @return Total loan balance in UD60x18
+     */
+    function _totalLoanBalance() internal view returns (uint256) {
+        return _seniorTranche.realizedValue + _juniorTranche.realizedValue - _totalCashBalance - _totalReservesBalance;
     }
 
     /**
@@ -578,8 +587,9 @@ contract Vault is
      * @return Utilization in UD60x18, between 0 and 1
      */
     function _computeUtilization() internal view returns (uint256) {
-        uint256 totalBalance = _totalCashBalance + _totalLoanBalance;
-        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(_totalLoanBalance, totalBalance);
+        uint256 totalLoanBalance = _totalLoanBalance();
+        uint256 totalBalance = _totalCashBalance + totalLoanBalance;
+        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(totalLoanBalance, totalBalance);
     }
 
     /**
@@ -611,7 +621,7 @@ contract Vault is
         /* Calculate target cash reserves balance */
         uint256 targetReservesBalance = PRBMathUD60x18.mul(
             _reserveRatio,
-            _totalCashBalance + _totalReservesBalance + _totalLoanBalance + proceeds
+            _totalCashBalance + _totalReservesBalance + _totalLoanBalance()
         );
 
         if (targetReservesBalance >= _totalReservesBalance) {
@@ -744,9 +754,8 @@ contract Vault is
         _seniorTranche.pendingReturns[maturityTimeBucket] += seniorTrancheReturn;
         _juniorTranche.pendingReturns[maturityTimeBucket] += juniorTrancheReturn;
 
-        /* Update total cash and loan balances */
+        /* Update total cash balance */
         _totalCashBalance -= purchasePrice;
-        _totalLoanBalance += purchasePrice;
 
         /* Store loan state */
         Loan storage loan = _loans[noteToken][noteTokenId];
@@ -956,9 +965,6 @@ contract Vault is
         _seniorTranche.realizedValue += seniorTrancheReturn;
         _juniorTranche.realizedValue += juniorTrancheReturn;
 
-        /* Update total loan balance */
-        _totalLoanBalance -= loan.purchasePrice;
-
         /* Process new proceeds */
         _processProceeds(loan.repayment);
 
@@ -1002,9 +1008,6 @@ contract Vault is
         /* Decrease tranche realized values */
         _seniorTranche.realizedValue -= seniorTrancheLoss;
         _juniorTranche.realizedValue -= juniorTrancheLoss;
-
-        /* Update total loan balance */
-        _totalLoanBalance -= loan.purchasePrice;
 
         /* Update senior tranche return for collateral liquidation */
         loan.seniorTrancheReturn += seniorTrancheLoss;
