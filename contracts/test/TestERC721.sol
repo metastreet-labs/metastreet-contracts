@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TestERC721 is ERC721 {
-    address public immutable owner;
+contract TestERC721 is ERC721, Ownable {
     string private _baseTokenURI;
 
     constructor(
@@ -12,7 +12,6 @@ contract TestERC721 is ERC721 {
         string memory symbol,
         string memory baseURI
     ) ERC721(name, symbol) {
-        owner = msg.sender;
         _baseTokenURI = baseURI;
     }
 
@@ -20,8 +19,7 @@ contract TestERC721 is ERC721 {
         return _baseTokenURI;
     }
 
-    function mint(address to, uint256 tokenId) public virtual {
-        require(msg.sender == owner, "Caller is not the owner");
+    function mint(address to, uint256 tokenId) external virtual onlyOwner {
         _safeMint(to, tokenId);
     }
 }
