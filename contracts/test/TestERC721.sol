@@ -19,7 +19,15 @@ contract TestERC721 is ERC721, Ownable {
         return _baseTokenURI;
     }
 
+    function setBaseURI(string memory baseURI) external onlyOwner {
+        _baseTokenURI = baseURI;
+    }
+
     function mint(address to, uint256 tokenId) external virtual onlyOwner {
         _safeMint(to, tokenId);
+    }
+
+    function burn(uint256 tokenId) external onlyOwner {
+        _burn(tokenId);
     }
 }
