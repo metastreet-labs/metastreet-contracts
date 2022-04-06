@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 import "./interfaces/IVault.sol";
 import "./LPToken.sol";
@@ -111,6 +112,11 @@ abstract contract VaultStorageV1 {
      * @dev Mapping of note token contract to loan ID to loan
      */
     mapping(address => mapping(uint256 => Loan)) internal _loans;
+
+    /**
+     * @dev Mapping of maturity time bucket to note token contract to list of loan IDs
+     */
+    mapping(uint64 => mapping(address => uint256[])) internal _pendingLoans;
 }
 
 /**
@@ -132,6 +138,7 @@ contract Vault is
     ERC721Holder,
     ERC165,
     Multicall,
+    KeeperCompatibleInterface,
     IVault
 {
     using SafeERC20 for IERC20;
@@ -767,6 +774,9 @@ contract Vault is
         loan.repayment = loanInfo.repayment;
         loan.seniorTrancheReturn = seniorTrancheReturn;
 
+        /* Add loan to pending loan ids */
+        _pendingLoans[maturityTimeBucket][noteToken].push(loanInfo.loanId);
+
         emit NotePurchased(msg.sender, noteToken, noteTokenId, loanInfo.loanId, purchasePrice);
 
         return purchasePrice;
@@ -913,7 +923,7 @@ contract Vault is
     /**
      * @inheritdoc ILoanReceiver
      */
-    function onLoanRepaid(address noteToken, uint256 loanId) external {
+    function onLoanRepaid(address noteToken, uint256 loanId) public {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
@@ -1038,6 +1048,75 @@ contract Vault is
         _currencyToken.safeTransferFrom(msg.sender, address(this), proceeds);
 
         emit CollateralLiquidated(noteToken, loanId, [seniorTrancheRepayment, juniorTrancheRepayment]);
+    }
+
+    /**************************************************************************/
+    /* Keeper Integration */
+    /**************************************************************************/
+
+    /**
+     * @inheritdoc KeeperCompatibleInterface
+     */
+    function checkUpkeep(bytes calldata checkData) external view returns (bool, bytes memory) {
+        address[] memory noteTokens = abi.decode(checkData, (address[]));
+
+        /* Compute current time bucket */
+        uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
+
+        /* For each note token */
+        for (uint256 i = 0; i < noteTokens.length; i++) {
+            /* Get note token */
+            address noteToken = noteTokens[i];
+
+            /* Lookup note adapter */
+            INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
+
+            /* Check previous time bucket and current time bucket */
+            for (uint64 timeBucket = currentTimeBucket - 1; timeBucket < currentTimeBucket + 1; timeBucket++) {
+                /* For each loan ID */
+                for (uint256 j = 0; j < _pendingLoans[timeBucket][noteToken].length; j++) {
+                    /* Get loan ID */
+                    uint256 loanId = _pendingLoans[timeBucket][noteToken][j];
+
+                    /* Lookup loan state */
+                    Loan memory loan = _loans[noteToken][loanId];
+
+                    /* Make sure loan is active */
+                    if (loan.status != LoanStatus.Active) {
+                        continue;
+                    } else if (noteAdapter.isRepaid(loanId)) {
+                        /* Call onLoanRepaid() */
+                        return (true, abi.encode(uint8(0), noteToken, loanId));
+                    } else if (noteAdapter.isLiquidated(loanId)) {
+                        /* Call onLoanLiquidated() */
+                        return (true, abi.encode(uint8(1), noteToken, loanId));
+                    } else if (noteAdapter.isExpired(loanId)) {
+                        /* Call onLoanExpired() */
+                        return (true, abi.encode(uint8(2), noteToken, loanId));
+                    }
+                }
+            }
+        }
+
+        return (false, "");
+    }
+
+    /**
+     * @inheritdoc KeeperCompatibleInterface
+     */
+    function performUpkeep(bytes calldata performData) external {
+        (uint8 code, address noteToken, uint256 loanId) = abi.decode(performData, (uint8, address, uint256));
+
+        /* Call appropriate callback based on code */
+        if (code == 0) {
+            onLoanRepaid(noteToken, loanId);
+        } else if (code == 1) {
+            onLoanLiquidated(noteToken, loanId);
+        } else if (code == 2) {
+            onLoanExpired(noteToken, loanId);
+        } else {
+            revert ParameterOutOfBounds();
+        }
     }
 
     /**************************************************************************/
