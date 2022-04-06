@@ -112,6 +112,7 @@ describe("TestLendingPlatform", function () {
 
     /* Validate loan details */
     const loanTerms = await lendingPlatform.loans(loanId);
+    expect(loanTerms.status).to.equal(1);
     expect(loanTerms.borrower).to.equal(borrower.address);
     expect(loanTerms.principal).to.equal(principal);
     expect(loanTerms.repayment).to.equal(repayment);
@@ -151,6 +152,7 @@ describe("TestLendingPlatform", function () {
     expect(await noteToken.exists(loanId)).to.equal(false);
 
     /* Check loan is complete */
+    expect((await lendingPlatform.loans(loanId)).status).to.equal(2);
     expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent repayment fails */
@@ -222,6 +224,7 @@ describe("TestLendingPlatform", function () {
     expect(await noteToken.exists(loanId)).to.equal(false);
 
     /* Check loan is complete */
+    expect((await lendingPlatform.loans(loanId)).status).to.equal(3);
     expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent liquidate fails */

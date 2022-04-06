@@ -26,7 +26,15 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     /* State */
     /**************************************************************************/
 
+    enum LoanStatus {
+        Unknown,
+        Active,
+        Repaid,
+        Liquidated
+    }
+
     struct LoanTerms {
+        LoanStatus status;
         address borrower;
         uint256 principal;
         uint256 repayment;
@@ -66,6 +74,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         uint256 loanId = _loanId++;
 
         LoanTerms storage loan = loans[loanId];
+        loan.status = LoanStatus.Active;
         loan.borrower = borrower;
         loan.principal = principal;
         loan.repayment = repayment;
@@ -88,6 +97,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         require(!loansComplete[loanId], "Loan already complete");
         require(loan.borrower == msg.sender, "Invalid caller");
 
+        loan.status = LoanStatus.Repaid;
         loansComplete[loanId] = true;
 
         address noteOwner = noteToken.ownerOf(loanId);
@@ -109,6 +119,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         require(!loansComplete[loanId], "Loan already complete");
         require(block.timestamp > loan.startTime + loan.duration, "Loan not expired");
 
+        loan.status = LoanStatus.Liquidated;
         loansComplete[loanId] = true;
 
         IERC721(loan.collateralToken).safeTransferFrom(

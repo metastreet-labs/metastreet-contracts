@@ -19,6 +19,7 @@ contract TestNoteAdapter is INoteAdapter {
     function getLoanInfo(uint256 noteTokenId) public view returns (LoanInfo memory) {
         /* Get loan from lending platform */
         (
+            TestLendingPlatform.LoanStatus status,
             address borrower,
             uint256 principal,
             uint256 repayment,
@@ -29,7 +30,7 @@ contract TestNoteAdapter is INoteAdapter {
         ) = _lendingPlatform.loans(noteTokenId);
 
         /* Check loan exists */
-        require(borrower != address(0x0), "Unknown loan");
+        require(status != TestLendingPlatform.LoanStatus.Unknown, "Unknown loan");
 
         /* Arrange into LoanInfo structure */
         LoanInfo memory loanInfo;
