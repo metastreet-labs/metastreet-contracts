@@ -136,10 +136,10 @@ export async function cycleLoan(
   lender: SignerWithAddress,
   principal: BigNumber,
   repayment: BigNumber,
-  callback: boolean = true
+  callback: boolean = true,
+  duration: number = 30 * 86400
 ): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
-  const duration = 30 * 86400;
 
   /* Mint NFT to borrower */
   await nft.mint(borrower.address, collateralTokenId);
@@ -180,10 +180,11 @@ export async function cycleLoanDefault(
   lender: SignerWithAddress,
   principal: BigNumber,
   repayment: BigNumber,
-  callback: boolean = true
+  callback: boolean = true,
+  liquidate: boolean = true,
+  duration: number = 30 * 86400
 ): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
-  const duration = 30 * 86400;
 
   /* Mint NFT to borrower */
   await nft.mint(borrower.address, collateralTokenId);
@@ -210,7 +211,7 @@ export async function cycleLoanDefault(
   await elapseTime(duration);
 
   /* Liquidate the loan */
-  await lendingPlatform.liquidate(loanId);
+  if (liquidate) await lendingPlatform.liquidate(loanId);
 
   /* Callback vault */
   if (callback) await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loanId);
