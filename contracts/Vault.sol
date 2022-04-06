@@ -451,6 +451,16 @@ contract Vault is
     }
 
     /**
+     * @notice Get Pending Loans
+     * @param timeBucket Time bucket
+     * @param noteToken Note token contract
+     * @return Loan IDs
+     */
+    function pendingLoans(uint64 timeBucket, address noteToken) external view returns (uint256[] memory) {
+        return _pendingLoans[timeBucket][noteToken];
+    }
+
+    /**
      * @notice Get senior tranche rate
      * @return Senior tranche rate in UD60x18 amount per second
      */

@@ -21,9 +21,11 @@ import {
   LoanStatus,
   initializeAccounts,
   createLoan,
+  createAndSellLoan,
   cycleLoan,
   cycleLoanDefault,
   randomAddress,
+  getBlockTimestamp,
   elapseTime,
 } from "./helpers/VaultHelpers";
 
@@ -2439,6 +2441,79 @@ describe("Vault", function () {
 
         expect(await vault.utilization()).to.equal(FixedPoint.from(utilization).div(100));
       });
+    });
+  });
+
+  describe("#pendingLoans", async function () {
+    async function elapseTimeBucket() {
+      const currentTimestamp = await getBlockTimestamp();
+      const targetTimeBucket = Math.floor(currentTimestamp / (await vault.TIME_BUCKET_DURATION()).toNumber()) + 1;
+      const targetTimestamp = (await vault.TIME_BUCKET_DURATION()).toNumber() * targetTimeBucket;
+      await elapseTime(targetTimestamp - currentTimestamp + 1);
+    }
+
+    it("returns loans pending across two time buckets", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Fast forward to beginning of next time bucket */
+      await elapseTimeBucket();
+
+      const loanId1 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("2.0"),
+        ethers.utils.parseEther("2.2"),
+        2 * 86400
+      );
+
+      const loanId2 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("2.0"),
+        ethers.utils.parseEther("2.2"),
+        3 * 86400
+      );
+
+      /* Fast forward to beginning of next time bucket */
+      await elapseTimeBucket();
+
+      const loanId3 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("2.0"),
+        ethers.utils.parseEther("2.2"),
+        3 * 86400
+      );
+
+      /* Get current time bucket */
+      const currentTimeBucket = Math.floor(
+        (await getBlockTimestamp()) / (await vault.TIME_BUCKET_DURATION()).toNumber()
+      );
+
+      /* Check pending loans of previous time bucket */
+      expect(await vault.pendingLoans(currentTimeBucket - 1, noteToken.address)).to.deep.equal([loanId1, loanId2]);
+
+      /* Check pending loans of current time bucket */
+      expect(await vault.pendingLoans(currentTimeBucket, noteToken.address)).to.deep.equal([loanId3]);
+
+      /* Check pending loans of future time bucket */
+      expect(await vault.pendingLoans(currentTimeBucket + 1, noteToken.address)).to.deep.equal([]);
     });
   });
 
