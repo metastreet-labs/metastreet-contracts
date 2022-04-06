@@ -947,11 +947,8 @@ contract Vault is
         /* Validate loan is active */
         if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
-        /* Validate loan was repaid, by checking the loan is complete and the
-         * collateral is not in contract's possession */
-        bool loanRepaid = (noteAdapter.isComplete(noteTokenId) &&
-            loan.collateralToken.ownerOf(loan.collateralTokenId) != address(this));
-        if (!loanRepaid) revert LoanNotRepaid();
+        /* Validate loan was repaid */
+        if (!noteAdapter.isRepaid(noteTokenId)) revert LoanNotRepaid();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
@@ -987,11 +984,8 @@ contract Vault is
         /* Validate loan is active */
         if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
-        /* Validate loan was liquidated, by checking the loan is complete and
-         * the collateral is in the contract's possession */
-        bool loanLiquidated = (noteAdapter.isComplete(noteTokenId) &&
-            IERC721(loan.collateralToken).ownerOf(loan.collateralTokenId) == address(this));
-        if (!loanLiquidated) revert LoanNotLiquidated();
+        /* Validate loan was liquidated */
+        if (!noteAdapter.isLiquidated(noteTokenId)) revert LoanNotLiquidated();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;

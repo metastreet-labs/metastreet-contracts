@@ -68,9 +68,23 @@ interface INoteAdapter {
     function isSupported(uint256 noteTokenId, address currencyToken) external view returns (bool);
 
     /**
-     * @notice Check if loan is complete (repaid or liquidated)
+     * @notice Check if loan is repaid
      * @param noteTokenId Note token ID
-     * @return True if complete, otherwise false
+     * @return True if repaid, otherwise false
      */
-    function isComplete(uint256 noteTokenId) external view returns (bool);
+    function isRepaid(uint256 noteTokenId) external view returns (bool);
+
+    /**
+     * @notice Check if loan is liquidated
+     * @param noteTokenId Note token ID
+     * @return True if liquidated, otherwise false
+     */
+    function isLiquidated(uint256 noteTokenId) external view returns (bool);
+
+    /**
+     * @notice Check if loan is expired
+     * @param noteTokenId Note token ID
+     * @return True if expired, otherwise false
+     */
+    function isExpired(uint256 noteTokenId) external view returns (bool);
 }

@@ -58,7 +58,21 @@ contract TestNoteAdapter is INoteAdapter {
             address(_lendingPlatform.currencyToken()) == currencyToken;
     }
 
-    function isComplete(uint256 noteTokenId) public view returns (bool) {
-        return _lendingPlatform.loansComplete(noteTokenId);
+    function isRepaid(uint256 noteTokenId) public view returns (bool) {
+        /* Get loan status from lending platform */
+        (TestLendingPlatform.LoanStatus status, , , , , , , ) = _lendingPlatform.loans(noteTokenId);
+        return status == TestLendingPlatform.LoanStatus.Repaid;
+    }
+
+    function isLiquidated(uint256 noteTokenId) public view returns (bool) {
+        /* Get loan status from lending platform */
+        (TestLendingPlatform.LoanStatus status, , , , , , , ) = _lendingPlatform.loans(noteTokenId);
+        return status == TestLendingPlatform.LoanStatus.Liquidated;
+    }
+
+    function isExpired(uint256 noteTokenId) public view returns (bool) {
+        /* Get loan maturity from lending platform */
+        (, , , , uint64 startTime, uint32 duration, , ) = _lendingPlatform.loans(noteTokenId);
+        return block.timestamp > startTime + duration;
     }
 }
