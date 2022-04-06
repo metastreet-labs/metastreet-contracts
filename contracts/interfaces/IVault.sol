@@ -151,18 +151,8 @@ interface IVault is ILoanReceiver {
     function withdraw(TrancheId trancheId, uint256 maxAmount) external;
 
     /**************************************************************************/
-    /* Liquidation API */
+    /* Collateral API */
     /**************************************************************************/
-
-    /**
-     * @notice Liquidate an expired loan
-     *
-     * Emits a {LoanLiquidated} event.
-     *
-     * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
-     */
-    function liquidateLoan(address noteToken, uint256 noteTokenId) external;
 
     /**
      * @notice Withdraw the collateral of a liquidated loan
@@ -179,6 +169,16 @@ interface IVault is ILoanReceiver {
     /**************************************************************************/
 
     /* See ILoanReceiver */
+
+    /**
+     * @notice Callback on loan expired
+     *
+     * Emits a {LoanLiquidated} event.
+     *
+     * @param noteToken Note token contract
+     * @param noteTokenId Note token ID
+     */
+    function onLoanExpired(address noteToken, uint256 noteTokenId) external;
 
     /**
      * @notice Callback on collateral liquidated

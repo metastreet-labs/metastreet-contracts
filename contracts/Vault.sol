@@ -887,26 +887,8 @@ contract Vault is
     }
 
     /**************************************************************************/
-    /* Liquidation API */
+    /* Collateral API */
     /**************************************************************************/
-
-    /**
-     * @inheritdoc IVault
-     */
-    function liquidateLoan(address noteToken, uint256 noteTokenId) external nonReentrant {
-        /* Lookup note adapter */
-        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
-
-        /* Get liquidate target and calldata */
-        (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(noteTokenId);
-
-        /* Call liquidate on lending platform */
-        (bool success, ) = target.call(data);
-        if (!success) revert LiquidateFailed();
-
-        /* Process loan liquidation */
-        onLoanLiquidated(noteToken, noteTokenId);
-    }
 
     /**
      * @inheritdoc IVault
@@ -1010,6 +992,24 @@ contract Vault is
         loan.status = LoanStatus.Liquidated;
 
         emit LoanLiquidated(noteToken, noteTokenId, [seniorTrancheLoss, juniorTrancheLoss]);
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function onLoanExpired(address noteToken, uint256 noteTokenId) public nonReentrant {
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
+
+        /* Get liquidate target and calldata */
+        (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(noteTokenId);
+
+        /* Call liquidate on lending platform */
+        (bool success, ) = target.call(data);
+        if (!success) revert LiquidateFailed();
+
+        /* Process loan liquidation */
+        onLoanLiquidated(noteToken, noteTokenId);
     }
 
     /**
