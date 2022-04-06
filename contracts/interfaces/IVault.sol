@@ -160,9 +160,9 @@ interface IVault is ILoanReceiver {
      * Emits a {CollateralWithdrawn} event.
      *
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      */
-    function withdrawCollateral(address noteToken, uint256 noteTokenId) external;
+    function withdrawCollateral(address noteToken, uint256 loanId) external;
 
     /**************************************************************************/
     /* Callbacks */
@@ -176,9 +176,9 @@ interface IVault is ILoanReceiver {
      * Emits a {LoanLiquidated} event.
      *
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      */
-    function onLoanExpired(address noteToken, uint256 noteTokenId) external;
+    function onLoanExpired(address noteToken, uint256 loanId) external;
 
     /**
      * @notice Callback on collateral liquidated
@@ -186,12 +186,12 @@ interface IVault is ILoanReceiver {
      * Emits a {CollateralLiquidated} event.
      *
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @param proceeds Proceeds from collateral liquidation in currency tokens
      */
     function onCollateralLiquidated(
         address noteToken,
-        uint256 noteTokenId,
+        uint256 loanId,
         uint256 proceeds
     ) external;
 
@@ -213,9 +213,16 @@ interface IVault is ILoanReceiver {
      * @param account Selling account
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @param purchasePrice Purchase price in currency tokens
      */
-    event NotePurchased(address indexed account, address noteToken, uint256 noteTokenId, uint256 purchasePrice);
+    event NotePurchased(
+        address indexed account,
+        address noteToken,
+        uint256 noteTokenId,
+        uint256 loanId,
+        uint256 purchasePrice
+    );
 
     /**
      * @notice Emitted when LP tokens are redeemed
@@ -237,14 +244,14 @@ interface IVault is ILoanReceiver {
     /**
      * @notice Emitted when liquidated loan collateral is withdrawn
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @param collateralToken Collateral token contract
      * @param collateralTokenId Collateral token ID
      * @param collateralLiquidator Collateral liquidator contract
      */
     event CollateralWithdrawn(
         address noteToken,
-        uint256 noteTokenId,
+        uint256 loanId,
         address collateralToken,
         uint256 collateralTokenId,
         address collateralLiquidator
@@ -253,24 +260,24 @@ interface IVault is ILoanReceiver {
     /**
      * @notice Emitted when loan is repaid
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @param trancheReturns Tranches returns in currency tokens
      */
-    event LoanRepaid(address noteToken, uint256 noteTokenId, uint256[2] trancheReturns);
+    event LoanRepaid(address noteToken, uint256 loanId, uint256[2] trancheReturns);
 
     /**
      * @notice Emitted when loan is liquidated
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @param trancheLosses Tranche losses in currency tokens
      */
-    event LoanLiquidated(address noteToken, uint256 noteTokenId, uint256[2] trancheLosses);
+    event LoanLiquidated(address noteToken, uint256 loanId, uint256[2] trancheLosses);
 
     /**
      * @notice Emitted when collateral is liquidated
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @param trancheReturns Tranches returns in currency tokens
      */
-    event CollateralLiquidated(address noteToken, uint256 noteTokenId, uint256[2] trancheReturns);
+    event CollateralLiquidated(address noteToken, uint256 loanId, uint256[2] trancheReturns);
 }

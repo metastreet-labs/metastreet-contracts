@@ -472,6 +472,7 @@ describe("Vault", function () {
         account: accountLender.address,
         noteToken: noteToken.address,
         noteTokenId: loanId,
+        loanId: loanId,
         purchasePrice: principal,
       });
 
@@ -648,6 +649,7 @@ describe("Vault", function () {
         account: accountLender.address,
         noteToken: noteToken.address,
         noteTokenId: loanId,
+        loanId: loanId,
         purchasePrice,
       });
       await expectEvent(sellTx, seniorLPToken, "Transfer", {
@@ -711,6 +713,7 @@ describe("Vault", function () {
         account: accountLender.address,
         noteToken: noteToken.address,
         noteTokenId: loanId,
+        loanId: loanId,
         purchasePrice,
       });
       await expectEvent(sellTx, seniorLPToken, "Transfer", {
@@ -757,6 +760,7 @@ describe("Vault", function () {
         account: accountLender.address,
         noteToken: noteToken.address,
         noteTokenId: loanId,
+        loanId: loanId,
         purchasePrice,
       });
       await expectEvent(sellTx, juniorLPToken, "Transfer", {
@@ -1574,7 +1578,7 @@ describe("Vault", function () {
       });
       await expectEvent(withdrawTx, vault, "CollateralWithdrawn", {
         noteToken: noteToken.address,
-        noteTokenId: loanId,
+        loanId,
         collateralToken: nft1.address,
         collateralTokenId: collateralTokenId,
         collateralLiquidator: accountLiquidator.address,
@@ -1701,7 +1705,7 @@ describe("Vault", function () {
       const onLoanRepaidTx = await vault.onLoanRepaid(noteToken.address, loanId);
       await expectEvent(onLoanRepaidTx, vault, "LoanRepaid", {
         noteToken: noteToken.address,
-        noteTokenId: loanId,
+        loanId,
       });
 
       /* Check state after callback */
@@ -1936,7 +1940,7 @@ describe("Vault", function () {
       const onLoanLiquidatedTx = await vault.onLoanLiquidated(noteToken.address, loanId);
       await expectEvent(onLoanLiquidatedTx, vault, "LoanLiquidated", {
         noteToken: noteToken.address,
-        noteTokenId: loanId,
+        loanId,
       });
 
       /* Check state after callback */
@@ -2256,7 +2260,7 @@ describe("Vault", function () {
       });
       await expectEvent(onCollateralLiquidatedTx, vault, "CollateralLiquidated", {
         noteToken: noteToken.address,
-        noteTokenId: loanId,
+        loanId,
       });
 
       /* Check state after callback */

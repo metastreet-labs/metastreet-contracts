@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /**
  * @title Interface to a note adapter, a generic interface to a lending
- * platform.
+ * platform
  */
 interface INoteAdapter {
     /**************************************************************************/
@@ -14,6 +14,7 @@ interface INoteAdapter {
 
     /**
      * @notice Loan information
+     * @param loanId Loan ID
      * @param borrower Borrower
      * @param principal Principal value
      * @param repayment Repayment value
@@ -24,6 +25,7 @@ interface INoteAdapter {
      * @param collateralTokenId Collateral token ID
      */
     struct LoanInfo {
+        uint256 loanId;
         address borrower;
         uint256 principal;
         uint256 repayment;
@@ -45,21 +47,6 @@ interface INoteAdapter {
     function noteToken() external view returns (IERC721);
 
     /**
-     * @notice Get loan information
-     * @param noteTokenId Note token ID
-     * @return Loan information
-     */
-    function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory);
-
-    /**
-     * @notice Get target and calldata to liquidate loan
-     * @param noteTokenId Note token ID
-     * @return Target address
-     * @return Encoded calldata with selector
-     */
-    function getLiquidateCalldata(uint256 noteTokenId) external view returns (address, bytes memory);
-
-    /**
      * @notice Check if loan is supported by Vault
      * @param noteTokenId Note token ID
      * @param currencyToken Currency token used by Vault
@@ -68,23 +55,38 @@ interface INoteAdapter {
     function isSupported(uint256 noteTokenId, address currencyToken) external view returns (bool);
 
     /**
-     * @notice Check if loan is repaid
+     * @notice Get loan information
      * @param noteTokenId Note token ID
+     * @return Loan information
+     */
+    function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory);
+
+    /**
+     * @notice Get target and calldata to liquidate loan
+     * @param loanId Loan ID
+     * @return Target address
+     * @return Encoded calldata with selector
+     */
+    function getLiquidateCalldata(uint256 loanId) external view returns (address, bytes memory);
+
+    /**
+     * @notice Check if loan is repaid
+     * @param loanId Loan ID
      * @return True if repaid, otherwise false
      */
-    function isRepaid(uint256 noteTokenId) external view returns (bool);
+    function isRepaid(uint256 loanId) external view returns (bool);
 
     /**
      * @notice Check if loan is liquidated
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @return True if liquidated, otherwise false
      */
-    function isLiquidated(uint256 noteTokenId) external view returns (bool);
+    function isLiquidated(uint256 loanId) external view returns (bool);
 
     /**
      * @notice Check if loan is expired
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @return True if expired, otherwise false
      */
-    function isExpired(uint256 noteTokenId) external view returns (bool);
+    function isExpired(uint256 loanId) external view returns (bool);
 }

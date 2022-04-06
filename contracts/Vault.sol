@@ -108,7 +108,7 @@ abstract contract VaultStorageV1 {
     uint256 internal _totalWithdrawalBalance;
 
     /**
-     * @dev Mapping of note token contract to note token ID to loan
+     * @dev Mapping of note token contract to loan ID to loan
      */
     mapping(address => mapping(uint256 => Loan)) internal _loans;
 }
@@ -436,11 +436,11 @@ contract Vault is
     /**
      * @notice Get Loan state
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      * @return Loan state
      */
-    function loanState(address noteToken, uint256 noteTokenId) external view returns (Loan memory) {
-        return _loans[noteToken][noteTokenId];
+    function loanState(address noteToken, uint256 loanId) external view returns (Loan memory) {
+        return _loans[noteToken][loanId];
     }
 
     /**
@@ -758,7 +758,7 @@ contract Vault is
         _totalCashBalance -= purchasePrice;
 
         /* Store loan state */
-        Loan storage loan = _loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][loanInfo.loanId];
         loan.status = LoanStatus.Active;
         loan.maturityTimeBucket = maturityTimeBucket;
         loan.collateralToken = IERC721(loanInfo.collateralToken);
@@ -767,7 +767,7 @@ contract Vault is
         loan.repayment = loanInfo.repayment;
         loan.seniorTrancheReturn = seniorTrancheReturn;
 
-        emit NotePurchased(msg.sender, noteToken, noteTokenId, purchasePrice);
+        emit NotePurchased(msg.sender, noteToken, noteTokenId, loanInfo.loanId, purchasePrice);
 
         return purchasePrice;
     }
@@ -893,9 +893,9 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdrawCollateral(address noteToken, uint256 noteTokenId) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
+    function withdrawCollateral(address noteToken, uint256 loanId) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
         /* Lookup loan metadata */
-        Loan storage loan = _loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is liquidated */
         if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
@@ -903,13 +903,7 @@ contract Vault is
         /* Transfer collateral to liquidator */
         loan.collateralToken.safeTransferFrom(address(this), msg.sender, loan.collateralTokenId);
 
-        emit CollateralWithdrawn(
-            noteToken,
-            noteTokenId,
-            address(loan.collateralToken),
-            loan.collateralTokenId,
-            msg.sender
-        );
+        emit CollateralWithdrawn(noteToken, loanId, address(loan.collateralToken), loan.collateralTokenId, msg.sender);
     }
 
     /**************************************************************************/
@@ -919,18 +913,18 @@ contract Vault is
     /**
      * @inheritdoc ILoanReceiver
      */
-    function onLoanRepaid(address noteToken, uint256 noteTokenId) external {
+    function onLoanRepaid(address noteToken, uint256 loanId) external {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Lookup loan state */
-        Loan storage loan = _loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is active */
         if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
         /* Validate loan was repaid */
-        if (!noteAdapter.isRepaid(noteTokenId)) revert LoanNotRepaid();
+        if (!noteAdapter.isRepaid(loanId)) revert LoanNotRepaid();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
@@ -950,24 +944,24 @@ contract Vault is
         /* Mark loan complete */
         loan.status = LoanStatus.Complete;
 
-        emit LoanRepaid(noteToken, noteTokenId, [seniorTrancheReturn, juniorTrancheReturn]);
+        emit LoanRepaid(noteToken, loanId, [seniorTrancheReturn, juniorTrancheReturn]);
     }
 
     /**
      * @inheritdoc ILoanReceiver
      */
-    function onLoanLiquidated(address noteToken, uint256 noteTokenId) public {
+    function onLoanLiquidated(address noteToken, uint256 loanId) public {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Lookup loan metadata */
-        Loan storage loan = _loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is active */
         if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
         /* Validate loan was liquidated */
-        if (!noteAdapter.isLiquidated(noteTokenId)) revert LoanNotLiquidated();
+        if (!noteAdapter.isLiquidated(loanId)) revert LoanNotLiquidated();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
@@ -991,25 +985,25 @@ contract Vault is
         /* Mark loan liquidated in loan state */
         loan.status = LoanStatus.Liquidated;
 
-        emit LoanLiquidated(noteToken, noteTokenId, [seniorTrancheLoss, juniorTrancheLoss]);
+        emit LoanLiquidated(noteToken, loanId, [seniorTrancheLoss, juniorTrancheLoss]);
     }
 
     /**
      * @inheritdoc IVault
      */
-    function onLoanExpired(address noteToken, uint256 noteTokenId) public nonReentrant {
+    function onLoanExpired(address noteToken, uint256 loanId) public nonReentrant {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
         /* Get liquidate target and calldata */
-        (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(noteTokenId);
+        (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(loanId);
 
         /* Call liquidate on lending platform */
         (bool success, ) = target.call(data);
         if (!success) revert LiquidateFailed();
 
         /* Process loan liquidation */
-        onLoanLiquidated(noteToken, noteTokenId);
+        onLoanLiquidated(noteToken, loanId);
     }
 
     /**
@@ -1017,11 +1011,11 @@ contract Vault is
      */
     function onCollateralLiquidated(
         address noteToken,
-        uint256 noteTokenId,
+        uint256 loanId,
         uint256 proceeds
     ) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
         /* Lookup loan metadata */
-        Loan storage loan = _loans[noteToken][noteTokenId];
+        Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is liquidated */
         if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
@@ -1043,7 +1037,7 @@ contract Vault is
         /* Transfer cash from liquidator to vault */
         _currencyToken.safeTransferFrom(msg.sender, address(this), proceeds);
 
-        emit CollateralLiquidated(noteToken, noteTokenId, [seniorTrancheRepayment, juniorTrancheRepayment]);
+        emit CollateralLiquidated(noteToken, loanId, [seniorTrancheRepayment, juniorTrancheRepayment]);
     }
 
     /**************************************************************************/

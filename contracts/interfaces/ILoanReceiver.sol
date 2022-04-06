@@ -10,14 +10,14 @@ interface ILoanReceiver {
     /**
      * @notice Callback on loan repaid
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      */
-    function onLoanRepaid(address noteToken, uint256 noteTokenId) external;
+    function onLoanRepaid(address noteToken, uint256 loanId) external;
 
     /**
      * @notice Callback on loan liquidated
      * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
      */
-    function onLoanLiquidated(address noteToken, uint256 noteTokenId) external;
+    function onLoanLiquidated(address noteToken, uint256 loanId) external;
 }
