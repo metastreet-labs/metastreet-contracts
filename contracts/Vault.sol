@@ -910,11 +910,23 @@ contract Vault is
      * @inheritdoc IVault
      */
     function withdrawCollateral(address noteToken, uint256 loanId) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
-        /* Lookup loan metadata */
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
+
+        /* Lookup loan state */
         Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is liquidated */
         if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
+
+        /* Get unwrap target and calldata */
+        (address target, bytes memory data) = noteAdapter.getUnwrapCalldata(loanId);
+
+        /* Call unwrap if required */
+        if (target != address(0x0)) {
+            (bool success, ) = target.call(data);
+            if (!success) revert CallFailed();
+        }
 
         /* Transfer collateral to liquidator */
         loan.collateralToken.safeTransferFrom(address(this), msg.sender, loan.collateralTokenId);

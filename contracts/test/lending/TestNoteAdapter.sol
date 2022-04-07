@@ -81,8 +81,24 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
-    function getUnwrapCalldata(uint256) external pure returns (address, bytes memory) {
-        return (address(0), "");
+    function getUnwrapCalldata(uint256 loanId) external view returns (address, bytes memory) {
+        /* Get collateral token info from lending platform */
+        (, , , , , , address collateralToken, uint256 collateralTokenId) = _lendingPlatform.loans(loanId);
+
+        /* Dummy operation to test unwrap call in Vault withdrawCollateral() */
+        if (IERC721(collateralToken).ownerOf(collateralTokenId) == msg.sender) {
+            return (
+                collateralToken,
+                abi.encodeWithSignature(
+                    "transferFrom(address,address,uint256)",
+                    msg.sender,
+                    msg.sender,
+                    collateralTokenId
+                )
+            );
+        } else {
+            return (address(0), "");
+        }
     }
 
     /**

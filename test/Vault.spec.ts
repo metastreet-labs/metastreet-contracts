@@ -1573,11 +1573,29 @@ describe("Vault", function () {
 
       /* Withdraw the collateral */
       const withdrawTx = await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
-      await expectEvent(withdrawTx, nft1, "Transfer", {
-        from: vault.address,
-        to: accountLiquidator.address,
-        tokenId: collateralTokenId,
-      });
+      /* First transfer is a dummy unwrap */
+      await expectEvent(
+        withdrawTx,
+        nft1,
+        "Transfer",
+        {
+          from: vault.address,
+          to: vault.address,
+          tokenId: collateralTokenId,
+        },
+        0
+      );
+      await expectEvent(
+        withdrawTx,
+        nft1,
+        "Transfer",
+        {
+          from: vault.address,
+          to: accountLiquidator.address,
+          tokenId: collateralTokenId,
+        },
+        1
+      );
       await expectEvent(withdrawTx, vault, "CollateralWithdrawn", {
         noteToken: noteToken.address,
         loanId,
