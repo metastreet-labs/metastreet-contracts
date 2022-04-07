@@ -740,18 +740,14 @@ contract Vault is
         if (purchasePrice > _totalCashBalance) revert InsufficientCashAvailable();
 
         /* Calculate senior tranche contribution based on realized value proportion */
-        /* Senior Tranche Contribution = (D_s / (D_s + D_j)) * Purchase Price
-                                       = (D_s * Purchase Price) / (D_s + D_j)
-         */
+        /* Senior Tranche Contribution = (D_s * Purchase Price) / (D_s + D_j) */
         uint256 seniorTrancheContribution = PRBMathUD60x18.div(
             PRBMathUD60x18.mul(_seniorTranche.realizedValue, purchasePrice),
             _seniorTranche.realizedValue + _juniorTranche.realizedValue
         );
 
         /* Calculate senior tranche return */
-        /* Senior Tranche Return = Senior Tranche Contribution * (1 + r * t) - Senior Tranche Contribution
-                                 = Senior Tranche Contribution * r * t
-         */
+        /* Senior Tranche Return = Senior Tranche Contribution * r * t */
         uint256 seniorTrancheReturn = PRBMathUD60x18.mul(
             seniorTrancheContribution,
             PRBMathUD60x18.mul(_seniorTrancheRate, PRBMathUD60x18.fromUint(loanInfo.maturity - block.timestamp))
