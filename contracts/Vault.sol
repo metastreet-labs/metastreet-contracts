@@ -1081,8 +1081,12 @@ contract Vault is
             /* Lookup note adapter */
             INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
-            /* Check previous time bucket and current time bucket */
-            for (uint64 timeBucket = currentTimeBucket - 1; timeBucket < currentTimeBucket + 1; timeBucket++) {
+            /* Check previous, current, and future time buckets */
+            for (
+                uint64 timeBucket = currentTimeBucket - 1;
+                timeBucket < currentTimeBucket + SHARE_PRICE_PRORATION_BUCKETS;
+                timeBucket++
+            ) {
                 /* For each loan ID */
                 for (uint256 j = 0; j < _pendingLoans[timeBucket][noteToken].length; j++) {
                     /* Get loan ID */
