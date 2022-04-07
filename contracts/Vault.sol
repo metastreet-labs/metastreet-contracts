@@ -242,9 +242,9 @@ contract Vault is
     error LoanNotLiquidated();
 
     /**
-     * @notice Liquidate failed
+     * @notice Call failed
      */
-    error LiquidateFailed();
+    error CallFailed();
 
     /**************************************************************************/
     /* Access Control Roles */
@@ -1016,7 +1016,7 @@ contract Vault is
 
         /* Call liquidate on lending platform */
         (bool success, ) = target.call(data);
-        if (!success) revert LiquidateFailed();
+        if (!success) revert CallFailed();
 
         /* Process loan liquidation */
         onLoanLiquidated(noteToken, loanId);

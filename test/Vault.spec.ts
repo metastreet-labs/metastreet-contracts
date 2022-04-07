@@ -2205,10 +2205,10 @@ describe("Vault", function () {
       /* Sell note to vault */
       await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
 
-      await expect(vault.onLoanExpired(noteToken.address, loanId)).to.be.revertedWith("LiquidateFailed()");
+      await expect(vault.onLoanExpired(noteToken.address, loanId)).to.be.revertedWith("CallFailed()");
     });
     it("fails on unknown loan", async function () {
-      await expect(vault.onLoanExpired(noteToken.address, 12345)).to.be.revertedWith("LiquidateFailed()");
+      await expect(vault.onLoanExpired(noteToken.address, 12345)).to.be.revertedWith("CallFailed()");
     });
     it("fails on unsupported note token", async function () {
       await expect(vault.onLoanExpired(tok1.address, 12345)).to.be.revertedWith("UnsupportedNoteToken()");
