@@ -70,6 +70,14 @@ interface INoteAdapter {
     function getLiquidateCalldata(uint256 loanId) external view returns (address, bytes memory);
 
     /**
+     * @notice Get target and calldata to unwrap collateral
+     * @param loanId Loan ID
+     * @return Target address
+     * @return Encoded calldata with selector
+     */
+    function getUnwrapCalldata(uint256 loanId) external view returns (address, bytes memory);
+
+    /**
      * @notice Check if loan is repaid
      * @param loanId Loan ID
      * @return True if repaid, otherwise false

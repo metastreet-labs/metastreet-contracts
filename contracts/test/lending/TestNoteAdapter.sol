@@ -22,14 +22,14 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
-    function noteToken() public view returns (IERC721) {
+    function noteToken() external view returns (IERC721) {
         return IERC721(_lendingPlatform.noteToken());
     }
 
     /**
      * @inheritdoc INoteAdapter
      */
-    function isSupported(uint256 noteTokenId, address currencyToken) public view returns (bool) {
+    function isSupported(uint256 noteTokenId, address currencyToken) external view returns (bool) {
         /* All collateral tokens supported, so just check the note exists and
          * the currency token matches */
         return
@@ -40,7 +40,7 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
-    function getLoanInfo(uint256 noteTokenId) public view returns (LoanInfo memory) {
+    function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory) {
         /* Get loan from lending platform */
         (
             TestLendingPlatform.LoanStatus status,
@@ -74,14 +74,21 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
-    function getLiquidateCalldata(uint256 loanId) public view returns (address, bytes memory) {
+    function getLiquidateCalldata(uint256 loanId) external view returns (address, bytes memory) {
         return (address(_lendingPlatform), abi.encodeWithSignature("liquidate(uint256)", loanId));
     }
 
     /**
      * @inheritdoc INoteAdapter
      */
-    function isRepaid(uint256 loanId) public view returns (bool) {
+    function getUnwrapCalldata(uint256) external pure returns (address, bytes memory) {
+        return (address(0), "");
+    }
+
+    /**
+     * @inheritdoc INoteAdapter
+     */
+    function isRepaid(uint256 loanId) external view returns (bool) {
         /* Get loan status from lending platform */
         (TestLendingPlatform.LoanStatus status, , , , , , , ) = _lendingPlatform.loans(loanId);
         return status == TestLendingPlatform.LoanStatus.Repaid;
@@ -90,7 +97,7 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
-    function isLiquidated(uint256 loanId) public view returns (bool) {
+    function isLiquidated(uint256 loanId) external view returns (bool) {
         /* Get loan status from lending platform */
         (TestLendingPlatform.LoanStatus status, , , , , , , ) = _lendingPlatform.loans(loanId);
         return status == TestLendingPlatform.LoanStatus.Liquidated;
@@ -99,7 +106,7 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
-    function isExpired(uint256 loanId) public view returns (bool) {
+    function isExpired(uint256 loanId) external view returns (bool) {
         /* Get loan maturity from lending platform */
         (, , , , uint64 startTime, uint32 duration, , ) = _lendingPlatform.loans(loanId);
         return block.timestamp > startTime + duration;
