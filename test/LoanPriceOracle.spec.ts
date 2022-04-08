@@ -81,6 +81,17 @@ describe("LoanPriceOracle", function () {
     });
   });
 
+  describe("constructor", async function () {
+    it("fails on unsupported currency token decimals", async function () {
+      const testERC20Factory = await ethers.getContractFactory("TestERC20");
+      const tok2 = (await testERC20Factory.deploy("TOK2", "TOK2", 6, ethers.utils.parseEther("1000000"))) as TestERC20;
+      await tok2.deployed();
+
+      const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
+      await expect(loanPriceOracleFactory.deploy(tok2.address)).to.be.revertedWith("UnsupportedTokenDecimals()");
+    });
+  });
+
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
       await loanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
