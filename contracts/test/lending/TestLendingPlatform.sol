@@ -68,7 +68,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         uint256 principal,
         uint256 repayment,
         uint32 duration
-    ) public {
+    ) external {
         require(repayment >= principal, "Repayment less than principal");
 
         uint256 loanId = _loanId++;
@@ -90,7 +90,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         emit LoanCreated(loanId, borrower, lender);
     }
 
-    function repay(uint256 loanId, bool callback) public {
+    function repay(uint256 loanId, bool callback) external {
         LoanTerms storage loan = loans[loanId];
 
         require(loan.borrower != address(0x0), "Unknown loan");
@@ -112,7 +112,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         emit LoanRepaid(loanId);
     }
 
-    function liquidate(uint256 loanId) public {
+    function liquidate(uint256 loanId) external {
         LoanTerms storage loan = loans[loanId];
 
         require(loan.borrower != address(0x0), "Unknown loan");
