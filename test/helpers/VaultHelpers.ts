@@ -181,7 +181,6 @@ export async function cycleLoanDefault(
   principal: BigNumber,
   repayment: BigNumber,
   callback: boolean = true,
-  liquidate: boolean = true,
   duration: number = 30 * 86400
 ): Promise<BigNumber> {
   const collateralTokenId = _collateralTokenId++;
@@ -210,11 +209,8 @@ export async function cycleLoanDefault(
   /* Wait for loan to expire */
   await elapseTime(duration);
 
-  /* Liquidate the loan */
-  if (liquidate) await lendingPlatform.liquidate(loanId);
-
   /* Callback vault */
-  if (callback) await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loanId);
+  if (callback) await vault.onLoanExpired(await lendingPlatform.noteToken(), loanId);
 
   return loanId;
 }

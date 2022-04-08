@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 /**
  * @title Interface containing callbacks for smart contract loan holders
  * @notice Lending platforms should detect if a lender implements this
- * interface and call it on loan operations (e.g. repayment, liquidation, etc.)
+ * interface and call it on loan repayment.
  */
 interface ILoanReceiver {
     /**
@@ -15,9 +15,9 @@ interface ILoanReceiver {
     function onLoanRepaid(address noteToken, uint256 loanId) external;
 
     /**
-     * @notice Callback on loan liquidated
+     * @notice Callback on loan expired
      * @param noteToken Note token contract
      * @param loanId Loan ID
      */
-    function onLoanLiquidated(address noteToken, uint256 loanId) external;
+    function onLoanExpired(address noteToken, uint256 loanId) external;
 }

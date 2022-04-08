@@ -341,11 +341,8 @@ describe("Integration", function () {
       /* Wait for loan to expire */
       await elapseTime(duration);
 
-      /* Liquidate the loan */
-      await lendingPlatform.liquidate(loanId);
-
       /* Callback vault */
-      await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loanId);
+      await vault.onLoanExpired(await lendingPlatform.noteToken(), loanId);
 
       /* Withdraw the collateral */
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
@@ -436,11 +433,8 @@ describe("Integration", function () {
       /* Wait for loan to expire */
       await elapseTime(duration);
 
-      /* Liquidate the loan */
-      await lendingPlatform.liquidate(loanId);
-
       /* Callback vault */
-      await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loanId);
+      await vault.onLoanExpired(await lendingPlatform.noteToken(), loanId);
 
       /* Withdraw the collateral */
       await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
@@ -584,11 +578,8 @@ describe("Integration", function () {
             if ((await DeterministicRandom.randomNumber()) < defaultProbability) {
               /* Handle default */
 
-              /* Liquidate the loan */
-              await lendingPlatform.liquidate(loan.loanId);
-
               /* Callback vault */
-              await vault.onLoanLiquidated(await lendingPlatform.noteToken(), loan.loanId);
+              await vault.onLoanExpired(await lendingPlatform.noteToken(), loan.loanId);
 
               /* Withdraw the collateral */
               await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loan.loanId);

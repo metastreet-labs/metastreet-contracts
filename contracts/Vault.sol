@@ -237,9 +237,9 @@ contract Vault is
     error LoanNotRepaid();
 
     /**
-     * @notice Loan not liquidated
+     * @notice Loan not expired
      */
-    error LoanNotLiquidated();
+    error LoanNotExpired();
 
     /**
      * @notice Call failed
@@ -978,7 +978,7 @@ contract Vault is
     /**
      * @inheritdoc ILoanReceiver
      */
-    function onLoanLiquidated(address noteToken, uint256 loanId) public {
+    function onLoanExpired(address noteToken, uint256 loanId) public nonReentrant {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
@@ -988,8 +988,8 @@ contract Vault is
         /* Validate loan is active */
         if (loan.status != LoanStatus.Active) revert InvalidLoanStatus();
 
-        /* Validate loan was liquidated */
-        if (!noteAdapter.isLiquidated(loanId)) revert LoanNotLiquidated();
+        /* Validate loan is not repaid and expired */
+        if (noteAdapter.isRepaid(loanId) || !noteAdapter.isExpired(loanId)) revert LoanNotExpired();
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
@@ -1013,16 +1013,6 @@ contract Vault is
         /* Mark loan liquidated in loan state */
         loan.status = LoanStatus.Liquidated;
 
-        emit LoanLiquidated(noteToken, loanId, [seniorTrancheLoss, juniorTrancheLoss]);
-    }
-
-    /**
-     * @inheritdoc IVault
-     */
-    function onLoanExpired(address noteToken, uint256 loanId) public nonReentrant {
-        /* Lookup note adapter */
-        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
-
         /* Get liquidate target and calldata */
         (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(loanId);
 
@@ -1030,8 +1020,7 @@ contract Vault is
         (bool success, ) = target.call(data);
         if (!success) revert CallFailed();
 
-        /* Process loan liquidation */
-        onLoanLiquidated(noteToken, loanId);
+        emit LoanLiquidated(noteToken, loanId, [seniorTrancheLoss, juniorTrancheLoss]);
     }
 
     /**
@@ -1109,12 +1098,9 @@ contract Vault is
                     } else if (noteAdapter.isRepaid(loanId)) {
                         /* Call onLoanRepaid() */
                         return (true, abi.encode(uint8(0), noteToken, loanId));
-                    } else if (noteAdapter.isLiquidated(loanId)) {
-                        /* Call onLoanLiquidated() */
-                        return (true, abi.encode(uint8(1), noteToken, loanId));
                     } else if (noteAdapter.isExpired(loanId)) {
                         /* Call onLoanExpired() */
-                        return (true, abi.encode(uint8(2), noteToken, loanId));
+                        return (true, abi.encode(uint8(1), noteToken, loanId));
                     }
                 }
             }
@@ -1133,8 +1119,6 @@ contract Vault is
         if (code == 0) {
             onLoanRepaid(noteToken, loanId);
         } else if (code == 1) {
-            onLoanLiquidated(noteToken, loanId);
-        } else if (code == 2) {
             onLoanExpired(noteToken, loanId);
         } else {
             revert ParameterOutOfBounds();

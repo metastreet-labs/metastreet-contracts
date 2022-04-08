@@ -171,16 +171,6 @@ interface IVault is ILoanReceiver {
     /* See ILoanReceiver */
 
     /**
-     * @notice Callback on loan expired
-     *
-     * Emits a {LoanLiquidated} event.
-     *
-     * @param noteToken Note token contract
-     * @param loanId Loan ID
-     */
-    function onLoanExpired(address noteToken, uint256 loanId) external;
-
-    /**
      * @notice Callback on collateral liquidated
      *
      * Emits a {CollateralLiquidated} event.
