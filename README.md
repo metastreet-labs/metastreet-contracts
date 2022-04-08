@@ -73,6 +73,7 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
   - [`LPToken.spec.ts`](test/LPToken.spec.ts) - LPToken unit tests
   - [`Vault.spec.ts`](test/Vault.spec.ts) - Vault unit tests
   - [`Vault.accounting.spec.ts`](test/Vault.accounting.spec.ts) - Vault accounting unit tests
+  - [`Vault.keeper.spec.ts`](test/Vault.keeper.spec.ts) - Vault keeper integration unit tests
   - [`Integration.spec.ts`](test/Integration.spec.ts) - Integration test
   - [`helpers/`](test/helpers/) - Test helpers
     - [`EventUtilities.ts`](test/helpers/EventUtilities.ts) - Event helper functions
@@ -82,6 +83,7 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
     - [`VaultHelpers.ts`](test/helpers/VaultHelpers.ts) - Vault helper functions
 - [`scripts/`](scripts/) - Scripts
   - [`deploy-simulation.ts`](scripts/deploy-simulation.ts) - Simulation deployment
+  - [`deployment-manager.ts`](scripts/deploy-manager.ts) - Deployment manager
 - [`docs/`](docs/) - Documentation
   - [`SECURITY.md`](docs/SECURITY.md) - Security notes
 - [`hardhat.config.ts`](hardhat.config.ts) - Hardhat configuration
