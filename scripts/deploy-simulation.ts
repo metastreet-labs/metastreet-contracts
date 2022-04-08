@@ -62,10 +62,12 @@ async function main() {
   /* Deploy DAI Test Note Adapter */
   const daiTestNoteAdapter = await TestNoteAdapter.deploy(daiTestLendingPlatform.address);
   await daiTestNoteAdapter.deployed();
+  console.log("DAI Test Note Adapter:  ", daiTestNoteAdapter.address);
 
   /* Deploy WETH Test Note Adapter */
   const wethTestNoteAdapter = await TestNoteAdapter.deploy(wethTestLendingPlatform.address);
   await wethTestNoteAdapter.deployed();
+  console.log("WETH Test Note Adapter: ", wethTestNoteAdapter.address);
 
   /* Deploy Loan Price Oracle for DAI */
   const daiLoanPriceOracle = await LoanPriceOracle.deploy(daiTokenContract.address);
