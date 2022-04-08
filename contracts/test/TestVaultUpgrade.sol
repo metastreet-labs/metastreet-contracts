@@ -7,7 +7,10 @@ import "contracts/Vault.sol";
  * @title Test contract for Vault upgrades
  */
 contract TestVaultUpgrade is Vault {
-    /* New dummy method */
+    /**
+     * @notice Get total realized value (dummy method)
+     * @return Total realized value
+     */
     function totalRealizedValue() external view returns (uint256) {
         return _seniorTranche.realizedValue + _juniorTranche.realizedValue;
     }

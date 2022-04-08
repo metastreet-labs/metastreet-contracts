@@ -6,10 +6,18 @@ import "contracts/interfaces/INoteAdapter.sol";
 import "./TestLendingPlatform.sol";
 
 /**
- * @title TestNoteAdapter
+ * @title Test Note Adapter
  */
 contract TestNoteAdapter is INoteAdapter {
+    /**************************************************************************/
+    /* Properties */
+    /**************************************************************************/
+
     TestLendingPlatform private immutable _lendingPlatform;
+
+    /**************************************************************************/
+    /* Constructor */
+    /**************************************************************************/
 
     /**
      * @notice TestNoteAdapter constructor
@@ -18,6 +26,10 @@ contract TestNoteAdapter is INoteAdapter {
     constructor(TestLendingPlatform testLendingPlatform) {
         _lendingPlatform = testLendingPlatform;
     }
+
+    /**************************************************************************/
+    /* Implementation */
+    /**************************************************************************/
 
     /**
      * @inheritdoc INoteAdapter

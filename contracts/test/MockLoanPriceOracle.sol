@@ -3,7 +3,17 @@ pragma solidity 0.8.9;
 
 import "contracts/interfaces/ILoanPriceOracle.sol";
 
+/**
+ * @title Mock Loan Price Oracle
+ */
 contract MockLoanPriceOracle is ILoanPriceOracle {
+    /**************************************************************************/
+    /* Constants */
+    /**************************************************************************/
+
+    /**
+     * @notice Mock error
+     */
     enum MockError {
         None,
         UnsupportedCollateral,
@@ -11,14 +21,33 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         ParameterOutOfBounds
     }
 
+    /**************************************************************************/
+    /* Properties */
+    /**************************************************************************/
+
     IERC20 public override currencyToken;
     MockError private _error;
     uint256 private _price;
 
+    /**************************************************************************/
+    /* Constructor */
+    /**************************************************************************/
+
+    /**
+     * @notice MockLoanPriceOracle constructor
+     * @param currencyToken_ Currency token used for pricing
+     */
     constructor(IERC20 currencyToken_) {
         currencyToken = currencyToken_;
     }
 
+    /**************************************************************************/
+    /* Implementation */
+    /**************************************************************************/
+
+    /**
+     * @inheritdoc ILoanPriceOracle
+     */
     function priceLoan(
         address collateralToken,
         uint256 collateralTokenId,
@@ -47,10 +76,18 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         return _price;
     }
 
+    /**
+     * @notice Set a mock error to be reverted by priceLoan()
+     * @param error Mock error
+     */
     function setError(MockError error) external {
         _error = error;
     }
 
+    /**
+     * @notice Set the price to be returned by priceLoan()
+     * @param price Price
+     */
     function setPrice(uint256 price) external {
         _price = price;
     }

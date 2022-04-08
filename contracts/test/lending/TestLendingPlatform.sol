@@ -11,6 +11,9 @@ import "contracts/interfaces/ILoanReceiver.sol";
 
 import "./TestNoteToken.sol";
 
+/**
+ * @title Test Lending Platform
+ */
 contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     using SafeERC20 for IERC20;
 
@@ -18,14 +21,33 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     /* Events */
     /**************************************************************************/
 
+    /**
+     * @notice Emitted when a loan is created
+     * @param loanId Loan ID
+     * @param borrower Borrower
+     * @param lender Lender
+     */
     event LoanCreated(uint256 loanId, address borrower, address lender);
+
+    /**
+     * @notice Emitted when a loan is repaid
+     * @param loanId Loan ID
+     */
     event LoanRepaid(uint256 loanId);
+
+    /**
+     * @notice Emitted when a loan is liquidated
+     * @param loanId Loan ID
+     */
     event LoanLiquidated(uint256 loanId);
 
     /**************************************************************************/
     /* State */
     /**************************************************************************/
 
+    /**
+     * @notice Loan status
+     */
     enum LoanStatus {
         Unknown,
         Active,
@@ -33,6 +55,17 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         Liquidated
     }
 
+    /**
+     * @notice Loan terms
+     * @param status Loan status
+     * @param borrower Borrower
+     * @param principal Principal amount
+     * @param repayment Repayment amount
+     * @param startTime Start timestamp
+     * @param duration Duration in seconds
+     * @param collateralToken Collateral token contract
+     * @param collateralTokenId Collateral token ID
+     */
     struct LoanTerms {
         LoanStatus status;
         address borrower;
@@ -44,13 +77,43 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         uint256 collateralTokenId;
     }
 
+    /**************************************************************************/
+    /* Properties and State */
+    /**************************************************************************/
+
+    /**
+     * @dev Currency token
+     */
     IERC20 public immutable currencyToken;
+
+    /**
+     * @dev Promissory note token
+     */
     TestNoteToken public immutable noteToken;
+
+    /**
+     * @dev Mapping of loan ID to loan terms
+     */
     mapping(uint256 => LoanTerms) public loans;
+
+    /**
+     * @dev Mapping of loan ID to complete boolean
+     */
     mapping(uint256 => bool) public loansComplete;
 
+    /**
+     * @dev Loan ID counter
+     */
     uint256 private _loanId;
 
+    /**************************************************************************/
+    /* Constructor */
+    /**************************************************************************/
+
+    /**
+     * @notice TestLendingPlatform constructor
+     * @param currencyToken_ Currency token
+     */
     constructor(IERC20 currencyToken_) {
         currencyToken = currencyToken_;
         noteToken = new TestNoteToken();
@@ -60,6 +123,19 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     /* Primary API */
     /**************************************************************************/
 
+    /**
+     * @notice Create a new loan
+     *
+     * Emits a {LoanCreated} event.
+     *
+     * @param borrower Borrower
+     * @param lender Lender
+     * @param collateralToken Collateral token contract
+     * @param collateralTokenId Collateral token ID
+     * @param principal Principal amount
+     * @param repayment Repayment amount
+     * @param duration Duration in seconds
+     */
     function lend(
         address borrower,
         address lender,
@@ -90,6 +166,14 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         emit LoanCreated(loanId, borrower, lender);
     }
 
+    /**
+     * @notice Repay a loan
+     *
+     * Emits a {LoanRepaid} event.
+     *
+     * @param loanId Loan ID
+     * @param callback Callback to loan holder
+     */
     function repay(uint256 loanId, bool callback) external {
         LoanTerms storage loan = loans[loanId];
 
@@ -112,6 +196,13 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         emit LoanRepaid(loanId);
     }
 
+    /**
+     * @notice Liquidate a loan
+     *
+     * Emits a {LoanLiquidated} event.
+     *
+     * @param loanId Loan ID
+     */
     function liquidate(uint256 loanId) external {
         LoanTerms storage loan = loans[loanId];
 
@@ -136,6 +227,9 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     /* ERC165 interface */
     /******************************************************/
 
+    /**
+     * @inheritdoc IERC165
+     */
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
         return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
