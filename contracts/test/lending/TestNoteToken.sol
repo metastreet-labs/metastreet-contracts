@@ -7,15 +7,15 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 contract TestNoteToken is ERC721, Ownable {
     constructor() ERC721("Test Promissory Note", "TPN") {}
 
-    function mint(address to, uint256 tokenId) public virtual onlyOwner {
+    function mint(address to, uint256 tokenId) external virtual onlyOwner {
         _safeMint(to, tokenId);
     }
 
-    function burn(uint256 tokenId) public virtual onlyOwner {
+    function burn(uint256 tokenId) external virtual onlyOwner {
         _burn(tokenId);
     }
 
-    function exists(uint256 tokenId) public view returns (bool) {
+    function exists(uint256 tokenId) external view returns (bool) {
         return _exists(tokenId);
     }
 }
