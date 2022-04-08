@@ -41,6 +41,9 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: 'typechain',
   },
+  mocha: {
+    timeout: 60000
+  },
 };
 
 export default config;
