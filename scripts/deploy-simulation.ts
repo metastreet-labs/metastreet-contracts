@@ -25,12 +25,12 @@ async function main() {
   const Vault = await ethers.getContractFactory("Vault", accounts[9]);
 
   /* Deploy DAI */
-  const daiTokenContract = await TestERC20.deploy("DAI", "DAI", ethers.utils.parseEther("1000000"));
+  const daiTokenContract = await TestERC20.deploy("DAI", "DAI", 18, ethers.utils.parseEther("1000000"));
   await daiTokenContract.deployed();
   console.log("DAI Token Contract:     ", daiTokenContract.address);
 
   /* Deploy WETH */
-  const wethTokenContract = await TestERC20.deploy("WETH", "WETH", ethers.utils.parseEther("1000000"));
+  const wethTokenContract = await TestERC20.deploy("WETH", "WETH", 18, ethers.utils.parseEther("1000000"));
   await wethTokenContract.deployed();
   console.log("WETH Token Contract:    ", wethTokenContract.address);
 

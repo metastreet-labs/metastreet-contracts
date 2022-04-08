@@ -22,7 +22,7 @@ describe("TestLendingPlatform", function () {
     const testERC721Factory = await ethers.getContractFactory("TestERC721");
     const testLendingPlatformFactory = await ethers.getContractFactory("TestLendingPlatform");
 
-    tok1 = (await testERC20Factory.deploy("Token 1", "TOK1", ethers.utils.parseEther("1000"))) as TestERC20;
+    tok1 = (await testERC20Factory.deploy("Token 1", "TOK1", 18, ethers.utils.parseEther("1000"))) as TestERC20;
     await tok1.deployed();
 
     nft1 = (await testERC721Factory.deploy("NFT 1", "NFT1", "https://nft1.com/token/")) as TestERC721;

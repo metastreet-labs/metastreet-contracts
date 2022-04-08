@@ -88,7 +88,7 @@ describe("Integration", function () {
     const vaultFactory = await ethers.getContractFactory("Vault");
 
     /* Deploy test token */
-    tok1 = (await testERC20Factory.deploy("WETH", "WETH", ethers.utils.parseEther("1000000"))) as TestERC20;
+    tok1 = (await testERC20Factory.deploy("WETH", "WETH", 18, ethers.utils.parseEther("1000000"))) as TestERC20;
     await tok1.deployed();
 
     /* Deploy test NFT */
