@@ -149,6 +149,73 @@ describe("Vault", function () {
     });
   });
 
+  describe("#initialize", async function () {
+    it("fails on invalid addresses", async function () {
+      const vaultFactory = await ethers.getContractFactory("Vault");
+      const testVault = (await vaultFactory.deploy()) as Vault;
+      await testVault.deployed();
+
+      await expect(
+        testVault.initialize(
+          "Test Vault",
+          ethers.constants.AddressZero,
+          mockLoanPriceOracle.address,
+          seniorLPToken.address,
+          juniorLPToken.address
+        )
+      ).to.be.revertedWith("InvalidAddress()");
+
+      await expect(
+        testVault.initialize(
+          "Test Vault",
+          tok1.address,
+          ethers.constants.AddressZero,
+          seniorLPToken.address,
+          juniorLPToken.address
+        )
+      ).to.be.revertedWith("InvalidAddress()");
+
+      await expect(
+        testVault.initialize(
+          "Test Vault",
+          tok1.address,
+          mockLoanPriceOracle.address,
+          ethers.constants.AddressZero,
+          juniorLPToken.address
+        )
+      ).to.be.revertedWith("InvalidAddress()");
+
+      await expect(
+        testVault.initialize(
+          "Test Vault",
+          tok1.address,
+          mockLoanPriceOracle.address,
+          seniorLPToken.address,
+          ethers.constants.AddressZero
+        )
+      ).to.be.revertedWith("InvalidAddress()");
+    });
+    it("fails on unsupported currency token decimals", async function () {
+      const testERC20Factory = await ethers.getContractFactory("TestERC20");
+      const tok2 = (await testERC20Factory.deploy("TOK2", "TOK2", 6, ethers.utils.parseEther("1000000"))) as TestERC20;
+      await tok2.deployed();
+
+      const vaultFactory = await ethers.getContractFactory("Vault");
+      const testVault = (await vaultFactory.deploy()) as Vault;
+      await testVault.deployed();
+
+      await expect(
+        testVault.initialize(
+          "Test Vault",
+          tok2.address,
+          mockLoanPriceOracle.address,
+          seniorLPToken.address,
+          juniorLPToken.address
+        )
+      ).to.be.revertedWith("UnsupportedTokenDecimals()");
+    });
+  });
+
   describe("initial state", async function () {
     it("getters are correct", async function () {
       expect(await vault.name()).to.equal("Test Vault");
