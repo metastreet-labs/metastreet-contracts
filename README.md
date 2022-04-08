@@ -54,9 +54,14 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
     - [`ILoanPriceOracle.sol`](contracts/interfaces/ILoanPriceOracle.sol) - LoanPriceOracle interface
     - [`ILoanReceiver.sol`](contracts/interfaces/ILoanReceiver.sol) - LoanReceiver interface
     - [`IVault.sol`](contracts/interfaces/IVault.sol) - Vault interface
+    - [`IVaultRegistry.sol`](contracts/interfaces/IVaultRegistry.sol) - VaultRegistry interface
   - [`LoanPriceOracle.sol`](contracts/LoanPriceOracle.sol) - LoanPriceOracle implementation
   - [`LPToken.sol`](contracts/LPToken.sol) - LPToken implementation
   - [`Vault.sol`](contracts/Vault.sol) - Vault implementation
+  - [`VaultRegistry.sol`](contracts/VaultRegistry.sol) - VaultRegistry implementation
+  - [`integrations/`](integrations/) - Thirdparty integration contracts
+    - [`NFTfiV2/`](contracts/integrations/NFTfiV2/) - NFTfiV2 Note Adapter
+    - [`ArcadeV1/`](contracts/integrations/ArcadeV1/) - ArcadeV1 Note Adapter
   - [`test/`](contracts/test/) - Testing contracts
     - [`lending/`](contracts/test/lending/) - Test lending platform
       - [`TestNoteToken.sol`](contracts/test/lending/TestNoteToken.sol) - Note token for TestLendingPlatform
@@ -84,6 +89,7 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
 - [`scripts/`](scripts/) - Scripts
   - [`deploy-simulation.ts`](scripts/deploy-simulation.ts) - Simulation deployment
   - [`deployment-manager.ts`](scripts/deploy-manager.ts) - Deployment manager
+- [`deployments/`](deployments/) - Deployments
 - [`docs/`](docs/) - Documentation
   - [`SECURITY.md`](docs/SECURITY.md) - Security notes
 - [`hardhat.config.ts`](hardhat.config.ts) - Hardhat configuration
