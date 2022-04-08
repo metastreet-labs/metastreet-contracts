@@ -27,7 +27,7 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         uint256 duration,
         uint256 maturity,
         uint256 utilization
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         collateralToken;
         collateralTokenId;
         principal;
@@ -47,11 +47,11 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
         return _price;
     }
 
-    function setError(MockError error) public {
+    function setError(MockError error) external {
         _error = error;
     }
 
-    function setPrice(uint256 price) public {
+    function setPrice(uint256 price) external {
         _price = price;
     }
 }
