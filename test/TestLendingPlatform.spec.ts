@@ -197,15 +197,18 @@ describe("TestLendingPlatform", function () {
     const loanId = (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
 
     /* Check early liquidate fails */
-    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan not expired");
+    await expect(lendingPlatform.connect(lender).liquidate(loanId)).to.be.revertedWith("Loan not expired");
 
     /* Wait for loan expiration */
     const lendTimestamp = (await ethers.provider.getBlock(lendTx.blockHash!)).timestamp;
     await network.provider.send("evm_setNextBlockTimestamp", [lendTimestamp + duration + 1]);
     await network.provider.send("evm_mine");
 
+    /* Check liquidate fails from wrong account */
+    await expect(lendingPlatform.connect(accounts[3]).liquidate(loanId)).to.be.revertedWith("Invalid caller");
+
     /* Liquidate loan */
-    const liquidateTx = await lendingPlatform.liquidate(loanId);
+    const liquidateTx = await lendingPlatform.connect(lender).liquidate(loanId);
 
     await expectEvent(liquidateTx, nft1, "Transfer", {
       from: lendingPlatform.address,
@@ -228,7 +231,7 @@ describe("TestLendingPlatform", function () {
     expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent liquidate fails */
-    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan already complete");
+    await expect(lendingPlatform.connect(lender).liquidate(loanId)).to.be.revertedWith("Loan already complete");
     /* Check subsequent repayment fails */
     await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Loan already complete");
   });

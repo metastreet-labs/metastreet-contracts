@@ -209,6 +209,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         require(loan.borrower != address(0x0), "Unknown loan");
         require(!loansComplete[loanId], "Loan already complete");
         require(block.timestamp > loan.startTime + loan.duration, "Loan not expired");
+        require(noteToken.ownerOf(loanId) == msg.sender, "Invalid caller");
 
         loan.status = LoanStatus.Liquidated;
         loansComplete[loanId] = true;
