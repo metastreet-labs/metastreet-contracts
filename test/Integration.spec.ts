@@ -185,18 +185,11 @@ describe("Integration", function () {
   });
 
   describe("single loan", async function () {
-    let lastBlockTimestamp: number;
-
-    beforeEach("get last block timestamp", async function () {
-      lastBlockTimestamp = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp;
-    });
-
     it("tests loan repayment", async function () {
       const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("10.0");
       const repayment = ethers.utils.parseEther("10.1");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
 
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
@@ -228,17 +221,14 @@ describe("Integration", function () {
         principal,
         repayment,
         duration,
-        maturity,
+        (await lendingPlatform.loans(loanId)).startTime.add(duration),
         await vault.utilization()
       );
-
-      /* Add margin for min purchase price */
-      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, purchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault realized value and share price after sale */
@@ -284,7 +274,6 @@ describe("Integration", function () {
       const principal = ethers.utils.parseEther("10.0");
       const repayment = ethers.utils.parseEther("10.1");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
       const liquidation = ethers.utils.parseEther("20");
 
       /* Deposit cash */
@@ -317,17 +306,14 @@ describe("Integration", function () {
         principal,
         repayment,
         duration,
-        maturity,
+        (await lendingPlatform.loans(loanId)).startTime.add(duration),
         await vault.utilization()
       );
-
-      /* Add margin for min purchase price */
-      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, purchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault realized value and share price after sale */
@@ -376,7 +362,6 @@ describe("Integration", function () {
       const principal = ethers.utils.parseEther("10.0");
       const repayment = ethers.utils.parseEther("10.1");
       const duration = 30 * 86400;
-      const maturity = lastBlockTimestamp + duration;
       const liquidation = ethers.utils.parseEther("7");
 
       /* Deposit cash */
@@ -409,17 +394,14 @@ describe("Integration", function () {
         principal,
         repayment,
         duration,
-        maturity,
+        (await lendingPlatform.loans(loanId)).startTime.add(duration),
         await vault.utilization()
       );
-
-      /* Add margin for min purchase price */
-      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, purchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault realized value and share price after sale */
@@ -504,7 +486,6 @@ describe("Integration", function () {
         );
 
         const duration = Math.floor(await DeterministicRandom.randomNumberRange(15 * 86400, 90 * 86400));
-        const maturity = (await getBlockTimestamp()) + duration;
 
         /* Create loan */
         const loanId = await createLoan(
@@ -516,6 +497,8 @@ describe("Integration", function () {
           repayment,
           duration
         );
+
+        const maturity = (await lendingPlatform.loans(loanId)).startTime.add(duration).toNumber();
 
         return { loanId, principal, repayment, purchasePrice: ethers.constants.Zero, liquidation, duration, maturity };
       }
@@ -702,7 +685,6 @@ describe("Integration", function () {
       const principal = ethers.utils.parseEther("10.0");
       const repayment = ethers.utils.parseEther("10.1");
       const duration = 30 * 86400;
-      const maturity = (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp + duration;
 
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
@@ -726,17 +708,14 @@ describe("Integration", function () {
         principal,
         repayment,
         duration,
-        maturity,
+        (await lendingPlatform.loans(loanId)).startTime.add(duration),
         await vault.utilization()
       );
-
-      /* Add margin for min purchase price */
-      const minPurchasePrice = purchasePrice.sub(ethers.utils.parseEther("0.01"));
 
       /* Sell note to vault */
       const sellTx = await vault
         .connect(accountLender)
-        .sellNote(await lendingPlatform.noteToken(), loanId, minPurchasePrice);
+        .sellNote(await lendingPlatform.noteToken(), loanId, purchasePrice);
       const actualPurchasePrice = (await extractEvent(sellTx, vault, "NotePurchased")).args.purchasePrice;
 
       /* Check vault realized value and loan balance after sale */
