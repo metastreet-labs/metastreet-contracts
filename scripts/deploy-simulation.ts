@@ -241,8 +241,8 @@ async function main() {
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
       maxRate: FixedPoint.normalizeRate("2.00"),
-      target: ethers.BigNumber.from(30 * 86400),
-      max: ethers.BigNumber.from(90 * 86400),
+      target: ethers.BigNumber.from(30 * 86400).mul(ethers.constants.WeiPerEther),
+      max: ethers.BigNumber.from(90 * 86400).mul(ethers.constants.WeiPerEther),
     }),
     rateComponentWeights: [50, 25, 25],
   };
