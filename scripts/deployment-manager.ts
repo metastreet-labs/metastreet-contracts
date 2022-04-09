@@ -205,7 +205,7 @@ async function vaultInfo(vaultAddress: string) {
   console.log(`  Currency Token:      ${currencyToken} (${currencyTokenSymbol})`);
   console.log(`  Senior LP Token:     ${seniorLPToken} (${seniorLPTokenSymbol})`);
   console.log(`  Junior LP Token:     ${juniorLPToken} (${juniorLPTokenSymbol})`);
-  console.log(`  Senior Tranche Rate: ${ethers.utils.formatEther(seniorTrancheRate)}%`);
+  console.log(`  Senior Tranche Rate: ${ethers.utils.formatEther(seniorTrancheRate.mul(100))}%`);
   console.log(`  Reserve Ratio:       ${ethers.utils.formatEther(reserveRatio)}`);
 }
 
@@ -254,7 +254,7 @@ async function vaultLpoInfo(vaultAddress: string) {
   console.log("LoanPriceOracle");
   console.log(`  Impl. Version:      ${implVersion}`);
   console.log(`  Currency Token:     ${currencyToken} (${currencyTokenSymbol})`);
-  console.log(`  Min. Discount Rate: ${ethers.utils.formatEther(minimumDiscountRate)}%`);
+  console.log(`  Min. Discount Rate: ${ethers.utils.formatEther(minimumDiscountRate.mul(100))}%`);
   console.log(`  Min. Loan Duration: ${minimumLoanDuration.div(86400)} days (${minimumLoanDuration} seconds)`);
 }
 
