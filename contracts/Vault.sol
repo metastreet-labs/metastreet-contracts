@@ -909,7 +909,11 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdrawCollateral(address noteToken, uint256 loanId) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
+    function withdrawCollateral(address noteToken, uint256 loanId)
+        external
+        nonReentrant
+        onlyRole(COLLATERAL_LIQUIDATOR_ROLE)
+    {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
