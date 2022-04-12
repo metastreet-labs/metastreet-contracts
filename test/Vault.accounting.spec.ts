@@ -110,7 +110,6 @@ describe("Vault Accounting", function () {
     /* Setup vault */
     await vault.setNoteAdapter(noteToken.address, testNoteAdapter.address);
     await vault.setSeniorTrancheRate(FixedPoint.normalizeRate("0.05"));
-    await vault.setReserveRatio(FixedPoint.from("0.10"));
     await vault.grantRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), accounts[6].address);
 
     /* Setup accounts */
@@ -646,118 +645,49 @@ describe("Vault Accounting", function () {
     });
   });
 
-  describe("reserves", async function () {
-    it("loan repayment restores cash reserves", async function () {
-      const depositAmounts = [ethers.utils.parseEther("5"), ethers.utils.parseEther("5")];
-      const redemptionAmount = ethers.utils.parseEther("1.0");
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
-      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
-
-      /* Immediately redeem */
-      await vault.connect(accountDepositor).redeem(0, redemptionAmount);
-
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.constants.Zero);
-
-      const principal = ethers.utils.parseEther("0.1");
-      const repayment = ethers.utils.parseEther("0.4");
-
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment
-      );
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("8.9"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.4"));
-
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment
-      );
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("8.8"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.8"));
-
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment
-      );
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("8.91"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.99"));
-    });
-    it("cash reserves adjust downward after low collateral liquidation", async function () {
-      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
-      const principal = ethers.utils.parseEther("2.0");
-      const repayment = ethers.utils.parseEther("2.2");
-
-      /* Deposit cash */
-      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
-      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
-
-      /* Check vault balances before */
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("13.5"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("1.5"));
-
-      /* Cycle a defaulted loan */
-      const loanId = await cycleLoanDefault(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        principal,
-        repayment
-      );
-
-      /* Withdraw the collateral */
-      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
-
-      /* Check vault balances after, with decreased reserves */
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("11.5"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("1.5"));
-      expect((await vault.balanceState()).totalLoanBalance).to.be.equal(ethers.constants.Zero);
-
-      /* Callback vault */
-      await vault
-        .connect(accountLiquidator)
-        .onCollateralLiquidated(noteToken.address, loanId, ethers.utils.parseEther("1"));
-
-      /* Check vault balances after, with decreased reserves */
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("12.6"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("1.4"));
-      expect((await vault.balanceState()).totalLoanBalance).to.be.equal(ethers.constants.Zero);
-    });
-  });
-
   describe("redemption", async function () {
-    it("order is senior tranche, junior tranche, cash reserves", async function () {
-      const depositAmounts = [ethers.utils.parseEther("5"), ethers.utils.parseEther("5")];
+    it("order is senior tranche, junior tranche, undeployed cash", async function () {
+      const depositAmounts = [ethers.utils.parseEther("5.0"), ethers.utils.parseEther("5.0")];
       const redemptionAmount = ethers.utils.parseEther("2.0");
 
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Sell three loans */
+      const loanId1 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("2.0"),
+        ethers.utils.parseEther("2.1"),
+        30 * 86400
+      );
+      const loanId2 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("2.0"),
+        ethers.utils.parseEther("2.1"),
+        30 * 86400
+      );
+      const loanId3 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("5.0"),
+        ethers.utils.parseEther("5.1"),
+        30 * 86400
+      );
 
       /* Redeem */
       await vault.connect(accountDepositor).redeem(0, redemptionAmount);
@@ -781,61 +711,37 @@ describe("Vault Accounting", function () {
         );
       };
 
-      /* Check redemption / reserve balances */
+      /* Check redemption and cash balances */
       expect(await seniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("1.0"));
       expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.constants.Zero);
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.constants.Zero);
 
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        ethers.utils.parseEther("0.1"),
-        ethers.utils.parseEther("1.0")
-      );
+      /* Repay first loan */
+      await lendingPlatform.connect(accountBorrower).repay(loanId1, false);
+      await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId1);
 
-      /* Check redemption / reserve balances */
+      /* Check redemption and cash balances */
       expect(await seniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
-      expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.constants.Zero);
+      expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("1.1"));
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.constants.Zero);
 
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        ethers.utils.parseEther("0.1"),
-        ethers.utils.parseEther("0.8")
-      );
+      /* Repay second loan */
+      await lendingPlatform.connect(accountBorrower).repay(loanId2, false);
+      await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId2);
 
-      /* Check redemption / reserve balances */
-      expect(await seniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
-      expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("0.8"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.constants.Zero);
-
-      /* Cycle a loan */
-      await cycleLoan(
-        lendingPlatform,
-        mockLoanPriceOracle,
-        vault,
-        nft1,
-        accountBorrower,
-        accountLender,
-        ethers.utils.parseEther("0.1"),
-        ethers.utils.parseEther("1.6")
-      );
-
-      /* Check redemption / reserve balances */
+      /* Check redemption and cash balances */
       expect(await seniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
       expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
-      expect((await vault.balanceState()).totalReservesBalance).to.be.equal(ethers.utils.parseEther("0.4"));
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("1.2"));
+
+      /* Repay third loan */
+      await lendingPlatform.connect(accountBorrower).repay(loanId3, false);
+      await vault.onLoanRepaid(await lendingPlatform.noteToken(), loanId3);
+
+      /* Check redemption and cash balances */
+      expect(await seniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
+      expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
+      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("6.3"));
     });
   });
 });

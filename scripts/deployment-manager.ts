@@ -197,7 +197,6 @@ async function vaultInfo(vaultAddress: string) {
   const juniorLPToken = await vault.lpToken(1);
   const juniorLPTokenSymbol = await (await ethers.getContractAt("IERC20Metadata", juniorLPToken)).symbol();
   const seniorTrancheRate = (await vault.seniorTrancheRate()).mul(365 * 86400);
-  const reserveRatio = await vault.reserveRatio();
 
   console.log("Vault");
   console.log(`  Name:                ${vaultName}`);
@@ -206,7 +205,6 @@ async function vaultInfo(vaultAddress: string) {
   console.log(`  Senior LP Token:     ${seniorLPToken} (${seniorLPTokenSymbol})`);
   console.log(`  Junior LP Token:     ${juniorLPToken} (${juniorLPTokenSymbol})`);
   console.log(`  Senior Tranche Rate: ${ethers.utils.formatEther(seniorTrancheRate.mul(100))}%`);
-  console.log(`  Reserve Ratio:       ${ethers.utils.formatEther(reserveRatio)}`);
 }
 
 async function vaultSetNoteAdapter(vaultAddress: string, noteToken: string, noteAdapter: string) {
@@ -217,11 +215,6 @@ async function vaultSetNoteAdapter(vaultAddress: string, noteToken: string, note
 async function vaultSetSeniorTrancheRate(vaultAddress: string, rate: BigNumber) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   await vault.setSeniorTrancheRate(rate.div(365 * 86400));
-}
-
-async function vaultSetReserveRatio(vaultAddress: string, ratio: BigNumber) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
-  await vault.setReserveRatio(ratio);
 }
 
 async function vaultAddCollateralLiquidator(vaultAddress: string, liquidator: string) {
@@ -427,12 +420,6 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("rate", "Senior tranche interest rate (APR)", parseDecimal)
     .action(vaultSetSeniorTrancheRate);
-  program
-    .command("vault-set-reserve-ratio")
-    .description("Set Vault reserve ratio")
-    .argument("vault", "Vault address", parseAddress)
-    .argument("ratio", "Reserve ratio (0.00-1.00)", parseDecimal)
-    .action(vaultSetReserveRatio);
   program
     .command("vault-set-note-adapter")
     .description("Set Vault note adapter")

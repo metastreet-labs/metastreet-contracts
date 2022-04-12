@@ -88,14 +88,9 @@ abstract contract VaultStorageV1 {
     /**************************************************************************/
 
     /**
-     * @dev Senior tranche rate in UD60x18 amount per seconds
+     * @dev Senior tranche rate in UD60x18 amount per second
      */
     uint256 internal _seniorTrancheRate;
-
-    /**
-     * @dev Reserve ratio in UD60x18
-     */
-    uint256 internal _reserveRatio;
 
     /**************************************************************************/
     /* State */
@@ -105,7 +100,6 @@ abstract contract VaultStorageV1 {
     Tranche internal _juniorTranche;
     uint256 internal _totalCashBalance;
     /* _totalLoanBalance is computed at runtime */
-    uint256 internal _totalReservesBalance;
     uint256 internal _totalWithdrawalBalance;
 
     /**
@@ -271,12 +265,6 @@ contract Vault is
     event SeniorTrancheRateUpdated(uint256 rate);
 
     /**
-     * @notice Emitted when cash reserve ratio is updated
-     * @param ratio New cash reserve ratio in UD60x18
-     */
-    event ReserveRatioUpdated(uint256 ratio);
-
-    /**
      * @notice Emitted when loan price oracle contract is updated
      * @param loanPriceOracle New loan price oracle contract
      */
@@ -423,7 +411,6 @@ contract Vault is
     /**
      * @notice Get vault balance state
      * @return totalCashBalance Total cash balance
-     * @return totalReservesBalance Total reserves balance
      * @return totalLoanBalance Total loan balance
      * @return totalWithdrawalBalance Total withdrawal balance
      */
@@ -432,12 +419,11 @@ contract Vault is
         view
         returns (
             uint256 totalCashBalance,
-            uint256 totalReservesBalance,
             uint256 totalLoanBalance,
             uint256 totalWithdrawalBalance
         )
     {
-        return (_totalCashBalance, _totalReservesBalance, _totalLoanBalance(), _totalWithdrawalBalance);
+        return (_totalCashBalance, _totalLoanBalance(), _totalWithdrawalBalance);
     }
 
     /**
@@ -468,14 +454,6 @@ contract Vault is
         return _seniorTrancheRate;
     }
 
-    /**
-     * @notice Get cash reserve ratio
-     * @return Cash reserve ratio as a percentage in UD60x18
-     */
-    function reserveRatio() external view returns (uint256) {
-        return _reserveRatio;
-    }
-
     /**************************************************************************/
     /* Internal Helper Functions */
     /**************************************************************************/
@@ -500,7 +478,7 @@ contract Vault is
      * @return Total loan balance in UD60x18
      */
     function _totalLoanBalance() internal view returns (uint256) {
-        return _seniorTranche.realizedValue + _juniorTranche.realizedValue - _totalCashBalance - _totalReservesBalance;
+        return _seniorTranche.realizedValue + _juniorTranche.realizedValue - _totalCashBalance;
     }
 
     /**
@@ -631,32 +609,8 @@ contract Vault is
     }
 
     /**
-     * @dev Update cash reserves balance
-     * @param proceeds Proceeds in currency tokens
-     */
-    function _updateReservesBalance(uint256 proceeds) internal returns (uint256) {
-        /* Calculate target cash reserves balance */
-        uint256 targetReservesBalance = PRBMathUD60x18.mul(
-            _reserveRatio,
-            _totalCashBalance + _totalReservesBalance + _totalLoanBalance()
-        );
-
-        if (targetReservesBalance >= _totalReservesBalance) {
-            /* Increase reserves balance */
-            uint256 delta = Math.min(targetReservesBalance - _totalReservesBalance, proceeds);
-            _totalReservesBalance += delta;
-            return proceeds - delta;
-        } else {
-            /* Decrease reserves balance */
-            uint256 delta = _totalReservesBalance - targetReservesBalance;
-            _totalReservesBalance -= delta;
-            return proceeds + delta;
-        }
-    }
-
-    /**
-     * @dev Process new proceeds by applying them to redemptions, cash
-     * reserves, and undeployed cash
+     * @dev Process new proceeds by applying them to redemptions and undeployed
+     * cash
      * @param proceeds Proceeds in currency tokens
      */
     function _processProceeds(uint256 proceeds) internal {
@@ -664,8 +618,6 @@ contract Vault is
         proceeds = _processRedemptions(_seniorTranche, proceeds);
         /* Process junior redemptions */
         proceeds = _processRedemptions(_juniorTranche, proceeds);
-        /* Update cash reserves balance */
-        proceeds = _updateReservesBalance(proceeds);
         /* Update undeployed cash balance */
         _totalCashBalance += proceeds;
     }
@@ -870,9 +822,9 @@ contract Vault is
         tranche.pendingRedemptions += redemptionAmount;
         tranche.redemptionQueue += redemptionAmount;
 
-        /* Process redemptions from cash reserves */
-        uint256 immediateRedemptionAmount = Math.min(redemptionAmount, _totalReservesBalance);
-        _totalReservesBalance -= immediateRedemptionAmount;
+        /* Process redemptions from undeployed cash */
+        uint256 immediateRedemptionAmount = Math.min(redemptionAmount, _totalCashBalance);
+        _totalCashBalance -= immediateRedemptionAmount;
         _processProceeds(immediateRedemptionAmount);
 
         emit Redeemed(msg.sender, trancheId, shares, redemptionAmount);
@@ -1144,19 +1096,6 @@ contract Vault is
         if (rate == 0 || rate >= ONE_UD60X18) revert ParameterOutOfBounds();
         _seniorTrancheRate = rate;
         emit SeniorTrancheRateUpdated(rate);
-    }
-
-    /**
-     * @notice Set the cash reserve ratio
-     *
-     * Emits a {SeniorTrancheRateUpdated} event.
-     *
-     * @param ratio Reserve ratio in UD60x18
-     */
-    function setReserveRatio(uint256 ratio) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (ratio >= ONE_UD60X18) revert ParameterOutOfBounds();
-        _reserveRatio = ratio;
-        emit ReserveRatioUpdated(ratio);
     }
 
     /**
