@@ -217,6 +217,11 @@ async function vaultSetSeniorTrancheRate(vaultAddress: string, rate: BigNumber) 
   await vault.setSeniorTrancheRate(rate.div(365 * 86400));
 }
 
+async function vaultSetAdminFeeRate(vaultAddress: string, rate: BigNumber) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  await vault.setAdminFeeRate(rate);
+}
+
 async function vaultAddCollateralLiquidator(vaultAddress: string, liquidator: string) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   await vault.grantRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), liquidator);
@@ -420,6 +425,12 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("rate", "Senior tranche interest rate (APR)", parseDecimal)
     .action(vaultSetSeniorTrancheRate);
+  program
+    .command("vault-set-admin-fee-rate")
+    .description("Set Vault admin fee rate")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("rate", "Admin fee rate (fraction of interest)", parseDecimal)
+    .action(vaultSetAdminFeeRate);
   program
     .command("vault-set-note-adapter")
     .description("Set Vault note adapter")
