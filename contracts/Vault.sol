@@ -69,6 +69,7 @@ abstract contract VaultStorageV1 {
         uint256 collateralTokenId;
         uint256 purchasePrice;
         uint256 repayment;
+        uint256 adminFee;
         uint256 seniorTrancheReturn;
     }
 
@@ -92,6 +93,11 @@ abstract contract VaultStorageV1 {
      */
     uint256 internal _seniorTrancheRate;
 
+    /**
+     * @dev Admin fee rate in UD60x18 fraction of interest
+     */
+    uint256 internal _adminFeeRate;
+
     /**************************************************************************/
     /* State */
     /**************************************************************************/
@@ -100,6 +106,7 @@ abstract contract VaultStorageV1 {
     Tranche internal _juniorTranche;
     uint256 internal _totalCashBalance;
     /* _totalLoanBalance is computed at runtime */
+    uint256 internal _totalAdminFeeBalance;
     uint256 internal _totalWithdrawalBalance;
 
     /**
@@ -265,6 +272,12 @@ contract Vault is
     event SeniorTrancheRateUpdated(uint256 rate);
 
     /**
+     * @notice Emitted when admin fee rate is updated
+     * @param rate New admin fee rate in UD60x18 fraction of interest
+     */
+    event AdminFeeRateUpdated(uint256 rate);
+
+    /**
      * @notice Emitted when loan price oracle contract is updated
      * @param loanPriceOracle New loan price oracle contract
      */
@@ -276,6 +289,13 @@ contract Vault is
      * @param noteAdapter Note adapter contract
      */
     event NoteAdapterUpdated(address noteToken, address noteAdapter);
+
+    /**
+     * @notice Emitted when admin fees are withdrawn
+     * @param account Recipient account
+     * @param amount Amount of currency tokens withdrawn
+     */
+    event AdminFeesWithdrawn(address indexed account, uint256 amount);
 
     /**************************************************************************/
     /* Constructor */
@@ -412,6 +432,7 @@ contract Vault is
      * @notice Get vault balance state
      * @return totalCashBalance Total cash balance
      * @return totalLoanBalance Total loan balance
+     * @return totalAdminFeeBalance Total admin fee balance
      * @return totalWithdrawalBalance Total withdrawal balance
      */
     function balanceState()
@@ -420,10 +441,11 @@ contract Vault is
         returns (
             uint256 totalCashBalance,
             uint256 totalLoanBalance,
+            uint256 totalAdminFeeBalance,
             uint256 totalWithdrawalBalance
         )
     {
-        return (_totalCashBalance, _totalLoanBalance(), _totalWithdrawalBalance);
+        return (_totalCashBalance, _totalLoanBalance(), _totalAdminFeeBalance, _totalWithdrawalBalance);
     }
 
     /**
@@ -452,6 +474,14 @@ contract Vault is
      */
     function seniorTrancheRate() external view returns (uint256) {
         return _seniorTrancheRate;
+    }
+
+    /**
+     * @notice Get admin fee rate
+     * @return Admin fee rate in UD60x18 amount per second
+     */
+    function adminFeeRate() external view returns (uint256) {
+        return _adminFeeRate;
     }
 
     /**************************************************************************/
@@ -712,6 +742,11 @@ contract Vault is
         /* Junior Tranche Return = Repayment - Purchase Price - Senior Tranche Return */
         uint256 juniorTrancheReturn = loanInfo.repayment - purchasePrice - seniorTrancheReturn;
 
+        /* Calculate and apply admin fee */
+        seniorTrancheReturn -= PRBMathUD60x18.mul(_adminFeeRate, seniorTrancheReturn);
+        juniorTrancheReturn -= PRBMathUD60x18.mul(_adminFeeRate, juniorTrancheReturn);
+        uint256 adminFee = loanInfo.repayment - purchasePrice - seniorTrancheReturn - juniorTrancheReturn;
+
         /* Compute loan maturity time bucket */
         uint64 maturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
 
@@ -730,6 +765,7 @@ contract Vault is
         loan.collateralTokenId = loanInfo.collateralTokenId;
         loan.purchasePrice = purchasePrice;
         loan.repayment = loanInfo.repayment;
+        loan.adminFee = adminFee;
         loan.seniorTrancheReturn = seniorTrancheReturn;
 
         /* Add loan to pending loan ids */
@@ -912,23 +948,26 @@ contract Vault is
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
-        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
+        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - loan.adminFee - seniorTrancheReturn;
 
         /* Unschedule pending returns */
         _seniorTranche.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
         _juniorTranche.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
+
+        /* Increase admin fee balance */
+        _totalAdminFeeBalance += loan.adminFee;
 
         /* Increase tranche realized values */
         _seniorTranche.realizedValue += seniorTrancheReturn;
         _juniorTranche.realizedValue += juniorTrancheReturn;
 
         /* Process new proceeds */
-        _processProceeds(loan.repayment);
+        _processProceeds(loan.repayment - loan.adminFee);
 
         /* Mark loan complete */
         loan.status = LoanStatus.Complete;
 
-        emit LoanRepaid(noteToken, loanId, [seniorTrancheReturn, juniorTrancheReturn]);
+        emit LoanRepaid(noteToken, loanId, loan.adminFee, [seniorTrancheReturn, juniorTrancheReturn]);
     }
 
     /**
@@ -938,7 +977,7 @@ contract Vault is
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
-        /* Lookup loan metadata */
+        /* Lookup loan state */
         Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is active */
@@ -949,7 +988,7 @@ contract Vault is
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
-        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
+        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - loan.adminFee - seniorTrancheReturn;
 
         /* Unschedule pending returns */
         _seniorTranche.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
@@ -987,13 +1026,13 @@ contract Vault is
         uint256 loanId,
         uint256 proceeds
     ) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
-        /* Lookup loan metadata */
+        /* Lookup loan state */
         Loan storage loan = _loans[noteToken][loanId];
 
         /* Validate loan is liquidated */
         if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
 
-        /* Compute tranche repayments */
+        /* Compute tranche and admin fee repayments */
         uint256 seniorTrancheRepayment = Math.min(proceeds, loan.seniorTrancheReturn);
         uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
 
@@ -1099,6 +1138,19 @@ contract Vault is
     }
 
     /**
+     * @notice Set the admin fee rate
+     *
+     * Emits a {AdminFeeRateUpdated} event.
+     *
+     * @param rate Rate in UD60x18 fraction of interest
+     */
+    function setAdminFeeRate(uint256 rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (rate == 0 || rate >= ONE_UD60X18) revert ParameterOutOfBounds();
+        _adminFeeRate = rate;
+        emit AdminFeeRateUpdated(rate);
+    }
+
+    /**
      * @notice Set the loan price oracle contract
      *
      * Emits a {LoanPriceOracleUpdated} event.
@@ -1137,6 +1189,31 @@ contract Vault is
      */
     function unpause() external onlyRole(EMERGENCY_ADMIN_ROLE) {
         _unpause();
+    }
+
+    /**************************************************************************/
+    /* Admin Fees API */
+    /**************************************************************************/
+
+    /**
+     * @notice Withdraw admin fees
+     *
+     * Emits a {AdminFeesWithdrawn} event.
+     *
+     * @param recipient Recipient account
+     * @param amount Amount to withdraw
+     */
+    function withdrawAdminFees(address recipient, uint256 amount) external onlyRole(EMERGENCY_ADMIN_ROLE) {
+        if (recipient == address(0)) revert InvalidAddress();
+        if (amount > _totalAdminFeeBalance) revert ParameterOutOfBounds();
+
+        /* Update admin fees balance */
+        _totalAdminFeeBalance -= amount;
+
+        /* Transfer cash from vault to recipient */
+        _currencyToken.safeTransfer(recipient, amount);
+
+        emit AdminFeesWithdrawn(recipient, amount);
     }
 
     /******************************************************/

@@ -251,9 +251,10 @@ interface IVault is ILoanReceiver {
      * @notice Emitted when loan is repaid
      * @param noteToken Note token contract
      * @param loanId Loan ID
+     * @param adminFee Admin fee in currency tokens
      * @param trancheReturns Tranches returns in currency tokens
      */
-    event LoanRepaid(address noteToken, uint256 loanId, uint256[2] trancheReturns);
+    event LoanRepaid(address noteToken, uint256 loanId, uint256 adminFee, uint256[2] trancheReturns);
 
     /**
      * @notice Emitted when loan is liquidated

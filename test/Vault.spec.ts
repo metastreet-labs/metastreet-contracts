@@ -243,10 +243,11 @@ describe("Vault", function () {
         expect(await vault.redemptionSharePrice(trancheId)).to.equal(FixedPoint.from("1"));
       }
 
-      expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalLoanBalance).to.be.equal(ethers.constants.Zero);
-      expect((await vault.balanceState()).totalWithdrawalBalance).to.be.equal(ethers.constants.Zero);
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.balanceState()).totalLoanBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
       expect(await vault.seniorTrancheRate()).to.be.gt(ethers.constants.Zero);
+      expect(await vault.adminFeeRate()).to.equal(ethers.constants.Zero);
       expect(await vault.utilization()).to.equal(ethers.constants.Zero);
     });
   });
@@ -1724,31 +1725,23 @@ describe("Vault", function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("2.0");
       const repayment = ethers.utils.parseEther("2.2");
-      const duration = 86400;
 
       /* Deposit cash */
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Create loan */
-      const loanId = await createLoan(
+      /* Create and sell loan */
+      const loanId = await cycleLoan(
         lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
         nft1,
         accountBorrower,
         accountLender,
         principal,
         repayment,
-        duration
+        false
       );
-
-      /* Setup loan price with mock loan price oracle */
-      await mockLoanPriceOracle.setPrice(principal);
-
-      /* Sell note to vault */
-      await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
-
-      /* Repay loan */
-      await lendingPlatform.connect(accountBorrower).repay(loanId, false);
 
       /* Check state before callback */
       expect((await vault.balanceState()).totalCashBalance).to.equal(
@@ -2432,6 +2425,67 @@ describe("Vault", function () {
     });
   });
 
+  describe("#withdrawAdminFees", async function () {
+    it("withdraws admin fees successfully", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("10")];
+
+      /* Set admin fee rate */
+      await vault.setAdminFeeRate(FixedPoint.normalizeRate("0.10"));
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("10.0"),
+        ethers.utils.parseEther("10.5")
+      );
+
+      const adminFeeBalance = (await vault.balanceState()).totalAdminFeeBalance;
+
+      /* Save token balance before */
+      const tokBalanceBefore = await tok1.balanceOf(accounts[0].address);
+
+      /* Withdraw admin fees */
+      const withdrawAdminFeeTx = await vault.withdrawAdminFees(accounts[0].address, adminFeeBalance);
+      await expectEvent(withdrawAdminFeeTx, tok1, "Transfer", {
+        from: vault.address,
+        to: accounts[0].address,
+        value: adminFeeBalance,
+      });
+      await expectEvent(withdrawAdminFeeTx, vault, "AdminFeesWithdrawn", {
+        account: accounts[0].address,
+        amount: adminFeeBalance,
+      });
+
+      /* Check state after withdraw */
+      expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
+      expect((await tok1.balanceOf(accounts[0].address)).sub(tokBalanceBefore)).to.equal(adminFeeBalance);
+    });
+    it("fails on invalid address", async function () {
+      await expect(
+        vault.withdrawAdminFees(ethers.constants.AddressZero, ethers.utils.parseEther("1"))
+      ).to.be.revertedWith("InvalidAddress()");
+    });
+    it("fails on invalid amount", async function () {
+      await expect(vault.withdrawAdminFees(accounts[0].address, ethers.utils.parseEther("1"))).to.be.revertedWith(
+        "ParameterOutOfBounds()"
+      );
+    });
+    it("fails on invalid caller", async function () {
+      await expect(
+        vault.connect(accountDepositor).withdrawAdminFees(accountDepositor.address, ethers.utils.parseEther("1"))
+      ).to.be.revertedWith("AccessControl: account");
+    });
+  });
+
   describe("#setSeniorTrancheRate", async function () {
     it("sets senior tranche rate successfully", async function () {
       const rate = FixedPoint.normalizeRate("0.025");
@@ -2451,6 +2505,28 @@ describe("Vault", function () {
       const rate = FixedPoint.normalizeRate("0.025");
 
       await expect(vault.connect(accounts[1]).setSeniorTrancheRate(rate)).to.be.revertedWith("AccessControl: account");
+    });
+  });
+
+  describe("#setAdminFeeRate", async function () {
+    it("sets admin fee rate successfully", async function () {
+      const rate = FixedPoint.normalizeRate("0.05");
+
+      const tx = await vault.setAdminFeeRate(rate);
+
+      await expectEvent(tx, vault, "AdminFeeRateUpdated", {
+        rate: rate,
+      });
+      expect(await vault.adminFeeRate()).to.equal(rate);
+    });
+    it("fails on invalid value", async function () {
+      await expect(vault.setAdminFeeRate(ethers.constants.Zero)).to.be.revertedWith("ParameterOutOfBounds()");
+      await expect(vault.setAdminFeeRate(FixedPoint.from("1.0"))).to.be.revertedWith("ParameterOutOfBounds()");
+    });
+    it("fails on invalid caller", async function () {
+      const rate = FixedPoint.normalizeRate("0.05");
+
+      await expect(vault.connect(accounts[1]).setAdminFeeRate(rate)).to.be.revertedWith("AccessControl: account");
     });
   });
 

@@ -744,4 +744,219 @@ describe("Vault Accounting", function () {
       expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("6.3"));
     });
   });
+
+  describe("admin fees", async function () {
+    it("loan repaid with admin fee", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Set admin fee rate */
+      await vault.setAdminFeeRate(FixedPoint.normalizeRate("0.10"));
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check admin fee and tranche returns */
+      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
+        ethers.utils.parseEther("0.000000000634195840")
+      );
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
+        ethers.utils.parseEther("0.005479447808796521")
+      );
+
+      /* Check balance states and vault realized value */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("15.199999999365804160"));
+      expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(
+        ethers.utils.parseEther("0.000000000634195840")
+      );
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.194520551557007639"));
+    });
+    it("loan liquidated with admin fee", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Set admin fee rate */
+      await vault.setAdminFeeRate(FixedPoint.normalizeRate("0.10"));
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check admin fee and tranche returns */
+      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
+        ethers.utils.parseEther("0.000000000634195840")
+      );
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
+        ethers.utils.parseEther("0.005479447808796521")
+      );
+
+      /* Check balance states and vault realized value */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("13"));
+      expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("3"));
+    });
+    it("collateral liquidated with admin fee, lower liquidation", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Set admin fee rate */
+      await vault.setAdminFeeRate(FixedPoint.normalizeRate("0.10"));
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check admin fee and tranche returns */
+      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
+        ethers.utils.parseEther("0.000000000634195840")
+      );
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
+        ethers.utils.parseEther("0.005479447808796521")
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Callback vault */
+      await vault
+        .connect(accountLiquidator)
+        .onCollateralLiquidated(noteToken.address, loanId, ethers.utils.parseEther("1"));
+
+      /* Check balance states and vault realized value */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("14"));
+      expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("3.994520552191203479"));
+    });
+    it("collateral liquidated with admin fee, break even", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Set admin fee rate */
+      await vault.setAdminFeeRate(FixedPoint.normalizeRate("0.10"));
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check admin fee and tranche returns */
+      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
+        ethers.utils.parseEther("0.000000000634195840")
+      );
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
+        ethers.utils.parseEther("0.005479447808796521")
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Callback vault */
+      await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, principal);
+
+      /* Check balance states and vault realized value */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("15"));
+      expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("4.994520552191203479"));
+    });
+    it("collateral liquidated with admin fee, higher liquidation", async function () {
+      const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+
+      /* Set admin fee rate */
+      await vault.setAdminFeeRate(FixedPoint.normalizeRate("0.10"));
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Cycle a loan */
+      const loanId = await cycleLoanDefault(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment
+      );
+
+      /* Check admin fee and tranche returns */
+      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
+        ethers.utils.parseEther("0.000000000634195840")
+      );
+      expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
+        ethers.utils.parseEther("0.005479447808796521")
+      );
+
+      /* Withdraw the collateral */
+      await vault.connect(accountLiquidator).withdrawCollateral(noteToken.address, loanId);
+
+      /* Callback vault */
+      await vault.connect(accountLiquidator).onCollateralLiquidated(noteToken.address, loanId, repayment);
+
+      /* Check balance states and vault realized value */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("15.2"));
+      expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.194520552191203479"));
+    });
+  });
 });

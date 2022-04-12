@@ -442,6 +442,11 @@ describe("Integration", function () {
       let activeLoans: LoanInfo[] = [];
       let numLoansProcessed = 0;
       let expectedCashBalance = depositAmounts[0].add(depositAmounts[1]);
+      let expectedAdminFeeBalance = ethers.constants.Zero;
+
+      /* Set admin fee rate */
+      const adminFeeRate = FixedPoint.normalizeRate("0.10");
+      await vault.setAdminFeeRate(adminFeeRate);
 
       /* Deposit cash in Vault */
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
@@ -543,7 +548,7 @@ describe("Integration", function () {
                 .connect(accountLiquidator)
                 .onCollateralLiquidated(noteToken.address, loan.loanId, loan.liquidation);
 
-              /* Update balance */
+              /* Update expected balances */
               expectedCashBalance = expectedCashBalance.add(loan.liquidation);
             } else {
               /* Handle repayment */
@@ -554,8 +559,10 @@ describe("Integration", function () {
               /* Callback vault */
               await vault.onLoanRepaid(await lendingPlatform.noteToken(), loan.loanId);
 
-              /* Update balance */
-              expectedCashBalance = expectedCashBalance.add(loan.repayment);
+              /* Update expected balances */
+              const adminFee = FixedPoint.mul(adminFeeRate, loan.repayment.sub(loan.purchasePrice));
+              expectedCashBalance = expectedCashBalance.add(loan.repayment).sub(adminFee);
+              expectedAdminFeeBalance = expectedAdminFeeBalance.add(adminFee);
             }
 
             numLoansProcessed += 1;
@@ -568,11 +575,15 @@ describe("Integration", function () {
 
       /* Check final balances match expected */
       const balanceState = await vault.balanceState();
-      expect(balanceState.totalCashBalance).to.equal(expectedCashBalance);
-      expect(balanceState.totalLoanBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)).to.equal(
-        expectedCashBalance
+      expect(balanceState.totalCashBalance.add(balanceState.totalAdminFeeBalance)).to.equal(
+        expectedCashBalance.add(expectedAdminFeeBalance)
       );
+      expect(balanceState.totalLoanBalance).to.equal(ethers.constants.Zero);
+      expect(
+        (await vault.trancheState(0)).realizedValue.add((await vault.trancheState(1)).realizedValue)
+      ).to.be.closeTo(expectedCashBalance, 100);
+      expect(balanceState.totalCashBalance).to.be.closeTo(expectedCashBalance, 100);
+      expect(balanceState.totalAdminFeeBalance).to.be.closeTo(expectedAdminFeeBalance, 100);
     });
   });
 
