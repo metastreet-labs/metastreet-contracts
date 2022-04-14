@@ -5,7 +5,7 @@ import fs from "fs";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Network } from "@ethersproject/networks";
 
-import { Vault, LoanPriceOracle } from "../typechain";
+import { Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPriceOracle } from "../typechain";
 
 import { FixedPoint } from "../test/helpers/FixedPointHelpers";
 import {
@@ -328,6 +328,41 @@ async function vaultLpoSetCollateralParameters(vaultAddress: string, token: stri
   await loanPriceOracle.setCollateralParameters(token, encodeCollateralParameters(collateralParameters));
 }
 
+async function vaultLpoPriceLoan(vaultAddress: string, noteToken: string, noteTokenId: BigNumber) {
+  const vault = (await ethers.getContractAt("IVault", vaultAddress)) as IVault;
+  const noteAdapter = (await ethers.getContractAt("INoteAdapter", await vault.noteAdapters(noteToken))) as INoteAdapter;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "ILoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as ILoanPriceOracle;
+
+  const loanInfo = await noteAdapter.getLoanInfo(noteTokenId);
+  const utilization = await vault.utilization();
+
+  console.log(`Collateral Token:    ${loanInfo.collateralToken}`);
+  console.log(`Collateral Token ID: ${loanInfo.collateralTokenId.toString()}`);
+  console.log(`Principal:           ${ethers.utils.formatEther(loanInfo.principal)}`);
+  console.log(`Repayment:           ${ethers.utils.formatEther(loanInfo.repayment)}`);
+  console.log(
+    `Duration:            ${loanInfo.duration.div(86400).toNumber()} days (${loanInfo.duration.toNumber()} seconds)`
+  );
+  console.log(`Maturity:            ${new Date(loanInfo.maturity.toNumber() * 1000).toString()}`);
+  console.log("");
+  console.log(`Vault Utilization:   ${ethers.utils.formatEther(utilization)}`);
+  console.log("");
+
+  const price = await loanPriceOracle.priceLoan(
+    loanInfo.collateralToken,
+    loanInfo.collateralTokenId,
+    loanInfo.principal,
+    loanInfo.repayment,
+    loanInfo.duration,
+    loanInfo.maturity,
+    utilization
+  );
+  console.log(`Loan Price:          ${ethers.utils.formatEther(price)}`);
+}
+
 /******************************************************************************/
 /* Note Adapter Functions */
 /******************************************************************************/
@@ -366,6 +401,14 @@ function parseNumber(value: string, _: string) {
     throw new InvalidArgumentError("Invalid number.");
   }
   return parsedValue;
+}
+
+function parseBigNumber(value: string, _: string): BigNumber {
+  try {
+    return ethers.BigNumber.from(value);
+  } catch (e) {
+    throw new InvalidArgumentError("Invalid number: " + e);
+  }
 }
 
 /******************************************************************************/
@@ -478,6 +521,13 @@ async function main() {
     .argument("token", "Collateral token address", parseAddress)
     .argument("path", "Path to JSON parameters")
     .action(vaultLpoSetCollateralParameters);
+  program
+    .command("vault-lpo-price-loan")
+    .description("Use the Vault Loan Price Oracle to price a loan")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("token", "Note token address", parseAddress)
+    .argument("token_id", "Note token ID", parseBigNumber)
+    .action(vaultLpoPriceLoan);
 
   program
     .command("note-adapter-deploy")
