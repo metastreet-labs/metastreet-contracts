@@ -59,5 +59,5 @@ interface ILoanPriceOracle {
         uint256 duration,
         uint256 maturity,
         uint256 utilization
-    ) external returns (uint256);
+    ) external view returns (uint256);
 }
