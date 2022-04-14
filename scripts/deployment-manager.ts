@@ -4,8 +4,9 @@ import fs from "fs";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Network } from "@ethersproject/networks";
+import { getContractAddress } from "@ethersproject/address";
 
-import { Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPriceOracle } from "../typechain";
+import { VaultRegistry, Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPriceOracle } from "../typechain";
 
 import { FixedPoint } from "../test/helpers/FixedPointHelpers";
 import {
@@ -24,25 +25,25 @@ class Deployment {
   chainId?: number;
   vaultBeacon?: string;
   lpTokenBeacon?: string;
-  vaults?: string[];
+  vaultRegistry?: string;
 
   constructor(
     name: string | undefined = undefined,
     chainId: number | undefined = undefined,
     vaultBeacon: string | undefined = undefined,
     lpTokenBeacon: string | undefined = undefined,
-    vaults: string[] | undefined = undefined
+    vaultRegistry: string | undefined = undefined
   ) {
     this.name = name;
     this.chainId = chainId;
     this.vaultBeacon = vaultBeacon;
     this.lpTokenBeacon = lpTokenBeacon;
-    this.vaults = vaults;
+    this.vaultRegistry = vaultRegistry;
   }
 
   static fromFile(path: string): Deployment {
     const obj: Deployment = JSON.parse(fs.readFileSync(path, "utf-8"));
-    return new Deployment(obj.name, obj.chainId, obj.vaultBeacon, obj.lpTokenBeacon, obj.vaults);
+    return new Deployment(obj.name, obj.chainId, obj.vaultBeacon, obj.lpTokenBeacon, obj.vaultRegistry);
   }
 
   static fromScratch(network: Network): Deployment {
@@ -58,12 +59,7 @@ class Deployment {
     console.log(`Chain ID:        ${this.chainId}`);
     console.log(`Vault Beacon:    ${this.vaultBeacon || "Not deployed"}`);
     console.log(`LPToken Beacon:  ${this.lpTokenBeacon || "Not deployed"}`);
-    if (this.vaults) {
-      console.log("Vaults:");
-      for (const vaultAddress of this.vaults) {
-        console.log(`  ${vaultAddress}`);
-      }
-    }
+    console.log(`Vault Registry:  ${this.vaultRegistry || "Not deployed"}`);
   }
 }
 
@@ -121,6 +117,63 @@ async function beaconUpgrade(_: Deployment) {
 }
 
 /******************************************************************************/
+/* Registry Functions */
+/******************************************************************************/
+
+async function registryDeploy(deployment: Deployment) {
+  if (deployment.vaultRegistry) {
+    console.log("Vault registry already deployed.");
+    return;
+  }
+
+  const vaultRegistryFactory = await ethers.getContractFactory("VaultRegistry");
+
+  const vaultRegistry = await vaultRegistryFactory.deploy();
+  await vaultRegistry.deployed();
+
+  deployment.vaultRegistry = vaultRegistry.address;
+}
+
+async function registryList(deployment: Deployment) {
+  if (!deployment.vaultRegistry) {
+    return;
+  }
+
+  const vaultRegistry = (await ethers.getContractAt("VaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  const vaults = await vaultRegistry.getVaultList();
+
+  for (const vaultAddress of vaults) {
+    const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+    const vaultName = await vault.name();
+    const currencyToken = await vault.currencyToken();
+    const currencyTokenSymbol = await (await ethers.getContractAt("IERC20Metadata", currencyToken)).symbol();
+    console.log(
+      `${vaultAddress} | ${vaultName.padEnd(16)} | Currency Token: ${currencyToken} (${currencyTokenSymbol})`
+    );
+  }
+}
+
+async function registryRegister(deployment: Deployment, vaultAddress: string) {
+  if (!deployment.vaultRegistry) {
+    console.error("Vault registry not yet deployed.");
+    return;
+  }
+
+  const vaultRegistry = (await ethers.getContractAt("IVaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  await vaultRegistry.registerVault(vaultAddress);
+}
+
+async function registryUnregister(deployment: Deployment, vaultAddress: string) {
+  if (!deployment.vaultRegistry) {
+    console.error("Vault registry not yet deployed.");
+    return;
+  }
+
+  const vaultRegistry = (await ethers.getContractAt("IVaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  await vaultRegistry.unregisterVault(vaultAddress);
+}
+
+/******************************************************************************/
 /* Vault Functions */
 /******************************************************************************/
 
@@ -133,6 +186,9 @@ async function vaultDeploy(
 ) {
   if (!deployment.lpTokenBeacon || !deployment.vaultBeacon) {
     console.error("Beacons not yet deployed.");
+    return;
+  } else if (!deployment.vaultRegistry) {
+    console.error("Vault registry not yet deployed.");
     return;
   }
 
@@ -159,6 +215,11 @@ async function vaultDeploy(
   console.debug(`Junior LP Token:   ${juniorLPToken.address}`);
   console.debug();
 
+  const [account] = await ethers.getSigners();
+  const vaultAddress = getContractAddress({ from: account.address, nonce: (await account.getTransactionCount()) + 1 });
+  const vaultRegistry = (await ethers.getContractAt("VaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  await vaultRegistry.registerVault(vaultAddress);
+
   const vault = await upgrades.deployBeaconProxy(deployment.vaultBeacon, vaultFactory, [
     name,
     currencyToken,
@@ -172,20 +233,6 @@ async function vaultDeploy(
   await juniorLPToken.transferOwnership(vault.address);
 
   console.log(vault.address);
-
-  deployment.vaults = deployment.vaults ? [...deployment.vaults, vault.address] : [vault.address];
-}
-
-async function vaultList(deployment: Deployment) {
-  for (const vaultAddress of deployment.vaults || []) {
-    const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
-    const vaultName = await vault.name();
-    const currencyToken = await vault.currencyToken();
-    const currencyTokenSymbol = await (await ethers.getContractAt("IERC20Metadata", currencyToken)).symbol();
-    console.log(
-      `${vaultAddress} | ${vaultName.padEnd(16)} | Currency Token: ${currencyToken} (${currencyTokenSymbol})`
-    );
-  }
 }
 
 async function vaultInfo(vaultAddress: string) {
@@ -465,6 +512,25 @@ async function main() {
     .action(() => beaconUpgrade(deployment));
 
   program
+    .command("registry-deploy")
+    .description("Deploy Vault registry")
+    .action(() => registryDeploy(deployment));
+  program
+    .command("registry-list")
+    .description("List deployed Vaults")
+    .action(() => registryList(deployment));
+  program
+    .command("registry-register")
+    .description("Register Vault")
+    .argument("vault", "Vault address", parseAddress)
+    .action((vaultAddress) => registryRegister(deployment, vaultAddress));
+  program
+    .command("registry-unregister")
+    .description("Unregister Vault")
+    .argument("vault", "Vault address", parseAddress)
+    .action((vaultAddress) => registryUnregister(deployment, vaultAddress));
+
+  program
     .command("vault-deploy")
     .description("Deploy Vault")
     .argument("name", "Name of Vault")
@@ -475,13 +541,9 @@ async function main() {
       vaultDeploy(deployment, name, currencyToken, seniorLPSymbol, juniorLPSymbol)
     );
   program
-    .command("vault-list")
-    .description("List deployed Vaults")
-    .action(() => vaultList(deployment));
-  program
     .command("vault-info")
-    .argument("vault", "Vault address", parseAddress)
     .description("Dump Vault information")
+    .argument("vault", "Vault address", parseAddress)
     .action(vaultInfo);
   program
     .command("vault-set-senior-tranche-rate")
