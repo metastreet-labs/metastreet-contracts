@@ -472,7 +472,7 @@ async function main() {
     .command("vault-lpo-set-collateral-parameters")
     .description("Set Vault Loan Price Oracle collateral parameters")
     .argument("vault", "Vault address", parseAddress)
-    .argument("token", "Token address", parseAddress)
+    .argument("token", "Collateral token address", parseAddress)
     .argument("path", "Path to JSON parameters")
     .action(vaultLpoSetCollateralParameters);
 
