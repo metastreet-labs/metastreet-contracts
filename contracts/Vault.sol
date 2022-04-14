@@ -60,6 +60,7 @@ abstract contract VaultStorageV1 {
      * @param collateralTokenId Collateral token ID
      * @param purchasePrice Purchase price in currency tokens
      * @param repayment Repayment in currency tokens
+     * @param adminFee Admin fee in currency tokens
      * @param seniorTrancheReturn Senior tranche return in currency tokens
      */
     struct Loan {
@@ -478,7 +479,7 @@ contract Vault is
 
     /**
      * @notice Get admin fee rate
-     * @return Admin fee rate in UD60x18 amount per second
+     * @return Admin fee rate in UD60x18 fraction of interest
      */
     function adminFeeRate() external view returns (uint256) {
         return _adminFeeRate;
@@ -1032,7 +1033,7 @@ contract Vault is
         /* Validate loan is liquidated */
         if (loan.status != LoanStatus.Liquidated) revert InvalidLoanStatus();
 
-        /* Compute tranche and admin fee repayments */
+        /* Compute tranche repayments */
         uint256 seniorTrancheRepayment = Math.min(proceeds, loan.seniorTrancheReturn);
         uint256 juniorTrancheRepayment = proceeds - seniorTrancheRepayment;
 
