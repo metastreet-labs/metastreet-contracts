@@ -19,6 +19,7 @@ async function main() {
   const TestERC20 = await ethers.getContractFactory("TestERC20", accounts[9]);
   const TestERC721 = await ethers.getContractFactory("TestERC721", accounts[9]);
   const TestLendingPlatformFactory = await ethers.getContractFactory("TestLendingPlatform", accounts[9]);
+  const VaultRegistry = await ethers.getContractFactory("VaultRegistry", accounts[9]);
   const TestNoteAdapter = await ethers.getContractFactory("TestNoteAdapter", accounts[9]);
   const LoanPriceOracle = await ethers.getContractFactory("LoanPriceOracle", accounts[9]);
   const LPToken = await ethers.getContractFactory("LPToken", accounts[9]);
@@ -57,6 +58,12 @@ async function main() {
   await wethTestLendingPlatform.deployed();
   console.log("WETH Lending Platform:  ", wethTestLendingPlatform.address);
   console.log("       Note Token Address: ", await wethTestLendingPlatform.noteToken());
+  console.log("");
+
+  /* Deploy Vault Registry */
+  const vaultRegistry = await VaultRegistry.deploy();
+  await vaultRegistry.deployed();
+  console.log("Vault Registry:         ", vaultRegistry.address);
   console.log("");
 
   /* Deploy DAI Test Note Adapter */
@@ -166,6 +173,13 @@ async function main() {
 
   await wethBlueChipVault.setNoteAdapter(await wethTestLendingPlatform.noteToken(), wethTestNoteAdapter.address);
   console.log("Attached WETH Test Note Adapter to Blue Chip WETH Vault");
+  console.log("");
+
+  await vaultRegistry.registerVault(daiBlueChipVault.address);
+  console.log("Registered Blue Chip DAI Vault with Vault Registry");
+
+  await vaultRegistry.registerVault(wethBlueChipVault.address);
+  console.log("Registered Blue Chip WETH Vault with Vault Registry");
   console.log("");
 
   console.log("Lender is      account #0 (%s)", accounts[0].address);
