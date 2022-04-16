@@ -1203,7 +1203,7 @@ contract Vault is
      * @param recipient Recipient account
      * @param amount Amount to withdraw
      */
-    function withdrawAdminFees(address recipient, uint256 amount) external onlyRole(EMERGENCY_ADMIN_ROLE) {
+    function withdrawAdminFees(address recipient, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (recipient == address(0)) revert InvalidAddress();
         if (amount > _totalAdminFeeBalance) revert ParameterOutOfBounds();
 
