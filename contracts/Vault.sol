@@ -1234,6 +1234,7 @@ contract Vault is
             interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             interfaceId == type(IERC721Receiver).interfaceId ||
             interfaceId == type(ILoanReceiver).interfaceId ||
+            interfaceId == type(KeeperCompatibleInterface).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 }

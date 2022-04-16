@@ -2668,6 +2668,16 @@ describe("Vault", function () {
           )
         )
       ).to.equal(true);
+      /* KeeperCompatibleInterface */
+      expect(
+        await vault.supportsInterface(
+          ethers.utils.hexlify(
+            ethers.BigNumber.from(vault.interface.getSighash("checkUpkeep")).xor(
+              ethers.BigNumber.from(vault.interface.getSighash("performUpkeep"))
+            )
+          )
+        )
+      ).to.equal(true);
     });
     it("returns false on unsupported interfaces", async function () {
       expect(await vault.supportsInterface("0xaabbccdd")).to.equal(false);
