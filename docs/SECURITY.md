@@ -5,7 +5,7 @@
 ### `contracts/Vault.sol`
 
 ```
-   919:32  warning  Avoid to use low level calls                                       avoid-low-level-calls
+   937:32  warning  Avoid to use low level calls                                       avoid-low-level-calls
 
     function withdrawCollateral(address noteToken, uint256 loanId)
         external
@@ -26,7 +26,7 @@ by the note adapter, and subsequently requires a low-level call to execute it
 from the Vault.
 
 ```
-  1015:28  warning  Avoid to use low level calls                                       avoid-low-level-calls
+  1033:28  warning  Avoid to use low level calls                                       avoid-low-level-calls
 
     function onLoanExpired(address noteToken, uint256 loanId) public nonReentrant {
         ...
@@ -44,45 +44,41 @@ subsequently requires a low-level call to execute it from the Vault.
 ## `slither` Warning Review
 
 ```
-Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#690-777) performs a multiplication on the result of a division:
+Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#701-795) performs a multiplication on the result of a division:
 ```
 This is a required operation for the senior tranche return calculation.
 
 --------------------------------------------------------------------------------
 
 ```
-Reentrancy in Vault._deposit(IVault.TrancheId,uint256) (contracts/Vault.sol#661-681):
-Reentrancy in Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#690-777):
-Reentrancy in Vault.sellNoteAndDeposit(address,uint256,uint256,uint256[2]) (contracts/Vault.sol#815-837):
-Reentrancy in Vault.redeem(IVault.TrancheId,uint256) (contracts/Vault.sol#842-867):
-Reentrancy in Vault.withdraw(IVault.TrancheId,uint256) (contracts/Vault.sol#872-891):
+Reentrancy in Vault.sellNoteAndDeposit(address,uint256,uint256,uint256[2]) (contracts/Vault.sol#833-855):
 ```
-These reentrancy warnings concern LoanPriceOracle and LPToken, which are
-trusted contracts, deployed with the Vault.
+This reentrancy warning concerns LPToken, which is a trusted contract deployed
+with the Vault.
 
 --------------------------------------------------------------------------------
 
 ```
-Reentrancy in Vault.withdrawCollateral(address,uint256) (contracts/Vault.sol#900-927):
-Reentrancy in Vault.onLoanExpired(address,uint256) (contracts/Vault.sol#976-1019):
+Reentrancy in Vault.withdrawCollateral(address,uint256) (contracts/Vault.sol#918-945):
+Reentrancy in Vault.onLoanExpired(address,uint256) (contracts/Vault.sol#994-1037):
 ```
 These methods are protected by a reentrancy guard.
 
 --------------------------------------------------------------------------------
 
 ```
-Vault.checkUpkeep(bytes) (contracts/Vault.sol#1062-1105) has external calls inside a loop: noteAdapter.isRepaid(loanId) (contracts/Vault.sol#1093)
-Vault.checkUpkeep(bytes) (contracts/Vault.sol#1062-1105) has external calls inside a loop: noteAdapter.isExpired(loanId) (contracts/Vault.sol#1096)
+Vault.checkUpkeep(bytes) (contracts/Vault.sol#1080-1121) has external calls inside a loop: noteAdapter.isRepaid(loanId) (contracts/Vault.sol#1109)
+Vault.checkUpkeep(bytes) (contracts/Vault.sol#1080-1121) has external calls inside a loop: noteAdapter.isExpired(loanId) (contracts/Vault.sol#1112)
 ```
 This method is intended only to be used off-chain.
 
 --------------------------------------------------------------------------------
 
 ```
-LoanPriceOracle._computeRateComponent(LoanPriceOracle.PiecewiseLinearModel,uint256,uint256) (contracts/LoanPriceOracle.sol#139-153) uses timestamp for comparisons
-LoanPriceOracle.priceLoan(address,uint256,uint256,uint256,uint256,uint256,uint256) (contracts/LoanPriceOracle.sol#182-231) uses timestamp for comparisons
-Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#690-777) uses timestamp for comparisons
-Vault.checkUpkeep(bytes) (contracts/Vault.sol#1062-1105) uses timestamp for comparisons
+LoanPriceOracle._computeRateComponent(LoanPriceOracle.PiecewiseLinearModel,uint256,uint256) (contracts/LoanPriceOracle.sol#159-173) uses timestamp for comparisons
+LoanPriceOracle.priceLoan(address,uint256,uint256,uint256,uint256,uint256,uint256) (contracts/LoanPriceOracle.sol#202-251) uses timestamp for comparisons
+Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#701-795) uses timestamp for comparisons
+Vault.checkUpkeep(bytes) (contracts/Vault.sol#1080-1121) uses timestamp for comparisons
 ```
 Timestamps are necessary for computing the loan maturity time bucket, loan
 duration remaining, and the loan purchase price, and those results are
