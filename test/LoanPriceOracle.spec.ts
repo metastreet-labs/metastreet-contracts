@@ -6,7 +6,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { TestERC20, TestERC721, LoanPriceOracle } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
-import { getBlockTimestamp } from "./helpers/VaultHelpers";
+import { randomAddress, getBlockTimestamp } from "./helpers/VaultHelpers";
 import { FixedPoint } from "./helpers/FixedPointHelpers";
 import {
   CollateralParameters,
@@ -297,6 +297,34 @@ describe("LoanPriceOracle", function () {
       );
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).durationRateComponent).to.deep.equal(
         Object.values(collateralParametersUpdate.durationRateComponent)
+      );
+    });
+    it("set multiple collateral parameters successfully", async function () {
+      const collateralTokens = [randomAddress(), randomAddress(), randomAddress()];
+
+      await loanPriceOracle.setCollateralParameters(
+        collateralTokens[0],
+        encodeCollateralParameters(collateralParameters)
+      );
+      await loanPriceOracle.setCollateralParameters(
+        collateralTokens[1],
+        encodeCollateralParameters(collateralParameters)
+      );
+      await loanPriceOracle.setCollateralParameters(
+        collateralTokens[2],
+        encodeCollateralParameters(collateralParameters)
+      );
+
+      expect([...(await loanPriceOracle.supportedCollateralTokens())].sort()).to.deep.equal(collateralTokens.sort());
+
+      /* Disable collateral token 1 */
+      await loanPriceOracle.setCollateralParameters(
+        collateralTokens[1],
+        encodeCollateralParameters({ ...collateralParameters, collateralValue: ethers.constants.Zero })
+      );
+
+      expect([...(await loanPriceOracle.supportedCollateralTokens())].sort()).to.deep.equal(
+        [collateralTokens[0], collateralTokens[2]].sort()
       );
     });
     it("fails on invalid address", async function () {

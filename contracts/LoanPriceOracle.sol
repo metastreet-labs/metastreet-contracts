@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
 import "./interfaces/ILoanPriceOracle.sol";
@@ -11,6 +12,8 @@ import "./interfaces/ILoanPriceOracle.sol";
  * @title Loan Price Oracle
  */
 contract LoanPriceOracle is Ownable, ILoanPriceOracle {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     /**************************************************************************/
     /* Constants */
     /**************************************************************************/
@@ -94,6 +97,11 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      * @dev Mapping of collateral token contract to collateral parameters
      */
     mapping(address => CollateralParameters) private _parameters;
+
+    /**
+     * @dev Set of supported collateral tokens
+     */
+    EnumerableSet.AddressSet private _collateralTokens;
 
     /**
      * @inheritdoc ILoanPriceOracle
@@ -243,6 +251,14 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         return _parameters[collateralToken];
     }
 
+    /**
+     * @notice Get list of supported collateral tokens
+     * @return List of collateral token addresses
+     */
+    function supportedCollateralTokens() external view returns (address[] memory) {
+        return _collateralTokens.values();
+    }
+
     /**************************************************************************/
     /* Setters */
     /**************************************************************************/
@@ -288,6 +304,12 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         if (collateralToken == address(0)) revert InvalidAddress();
 
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
+
+        if (_parameters[collateralToken].collateralValue != 0) {
+            _collateralTokens.add(collateralToken);
+        } else {
+            _collateralTokens.remove(collateralToken);
+        }
 
         emit CollateralParametersUpdated(collateralToken);
     }
