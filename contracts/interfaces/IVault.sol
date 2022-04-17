@@ -24,6 +24,95 @@ interface IVault is ILoanReceiver {
     }
 
     /**************************************************************************/
+    /* Events */
+    /**************************************************************************/
+
+    /**
+     * @notice Emitted when currency is deposited
+     * @param account Depositing account
+     * @param trancheId Tranche
+     * @param amount Amount of currency tokens
+     * @param shares Amount of LP tokens minted
+     */
+    event Deposited(address indexed account, TrancheId indexed trancheId, uint256 amount, uint256 shares);
+
+    /**
+     * @notice Emitted when a note is purchased
+     * @param account Selling account
+     * @param noteToken Note token contract
+     * @param noteTokenId Note token ID
+     * @param loanId Loan ID
+     * @param purchasePrice Purchase price in currency tokens
+     * @param trancheContributions Tranche contributions in currency tokens
+     */
+    event NotePurchased(
+        address indexed account,
+        address noteToken,
+        uint256 noteTokenId,
+        uint256 loanId,
+        uint256 purchasePrice,
+        uint256[2] trancheContributions
+    );
+
+    /**
+     * @notice Emitted when LP tokens are redeemed
+     * @param account Redeeming account
+     * @param trancheId Tranche
+     * @param shares Amount of LP tokens burned
+     * @param amount Amount of currency tokens
+     */
+    event Redeemed(address indexed account, TrancheId indexed trancheId, uint256 shares, uint256 amount);
+
+    /**
+     * @notice Emitted when redeemed currency tokens are withdrawn
+     * @param account Withdrawing account
+     * @param trancheId Tranche
+     * @param amount Amount of currency tokens withdrawn
+     */
+    event Withdrawn(address indexed account, TrancheId indexed trancheId, uint256 amount);
+
+    /**
+     * @notice Emitted when liquidated loan collateral is withdrawn
+     * @param noteToken Note token contract
+     * @param loanId Loan ID
+     * @param collateralToken Collateral token contract
+     * @param collateralTokenId Collateral token ID
+     * @param collateralLiquidator Collateral liquidator contract
+     */
+    event CollateralWithdrawn(
+        address noteToken,
+        uint256 loanId,
+        address collateralToken,
+        uint256 collateralTokenId,
+        address collateralLiquidator
+    );
+
+    /**
+     * @notice Emitted when loan is repaid
+     * @param noteToken Note token contract
+     * @param loanId Loan ID
+     * @param adminFee Admin fee in currency tokens
+     * @param trancheReturns Tranches returns in currency tokens
+     */
+    event LoanRepaid(address noteToken, uint256 loanId, uint256 adminFee, uint256[2] trancheReturns);
+
+    /**
+     * @notice Emitted when loan is liquidated
+     * @param noteToken Note token contract
+     * @param loanId Loan ID
+     * @param trancheLosses Tranche losses in currency tokens
+     */
+    event LoanLiquidated(address noteToken, uint256 loanId, uint256[2] trancheLosses);
+
+    /**
+     * @notice Emitted when collateral is liquidated
+     * @param noteToken Note token contract
+     * @param loanId Loan ID
+     * @param trancheReturns Tranches returns in currency tokens
+     */
+    event CollateralLiquidated(address noteToken, uint256 loanId, uint256[2] trancheReturns);
+
+    /**************************************************************************/
     /* Getters */
     /**************************************************************************/
 
@@ -190,93 +279,4 @@ interface IVault is ILoanReceiver {
         uint256 loanId,
         uint256 proceeds
     ) external;
-
-    /**************************************************************************/
-    /* Events */
-    /**************************************************************************/
-
-    /**
-     * @notice Emitted when currency is deposited
-     * @param account Depositing account
-     * @param trancheId Tranche
-     * @param amount Amount of currency tokens
-     * @param shares Amount of LP tokens minted
-     */
-    event Deposited(address indexed account, TrancheId indexed trancheId, uint256 amount, uint256 shares);
-
-    /**
-     * @notice Emitted when a note is purchased
-     * @param account Selling account
-     * @param noteToken Note token contract
-     * @param noteTokenId Note token ID
-     * @param loanId Loan ID
-     * @param purchasePrice Purchase price in currency tokens
-     * @param trancheContributions Tranche contributions in currency tokens
-     */
-    event NotePurchased(
-        address indexed account,
-        address noteToken,
-        uint256 noteTokenId,
-        uint256 loanId,
-        uint256 purchasePrice,
-        uint256[2] trancheContributions
-    );
-
-    /**
-     * @notice Emitted when LP tokens are redeemed
-     * @param account Redeeming account
-     * @param trancheId Tranche
-     * @param shares Amount of LP tokens burned
-     * @param amount Amount of currency tokens
-     */
-    event Redeemed(address indexed account, TrancheId indexed trancheId, uint256 shares, uint256 amount);
-
-    /**
-     * @notice Emitted when redeemed currency tokens are withdrawn
-     * @param account Withdrawing account
-     * @param trancheId Tranche
-     * @param amount Amount of currency tokens withdrawn
-     */
-    event Withdrawn(address indexed account, TrancheId indexed trancheId, uint256 amount);
-
-    /**
-     * @notice Emitted when liquidated loan collateral is withdrawn
-     * @param noteToken Note token contract
-     * @param loanId Loan ID
-     * @param collateralToken Collateral token contract
-     * @param collateralTokenId Collateral token ID
-     * @param collateralLiquidator Collateral liquidator contract
-     */
-    event CollateralWithdrawn(
-        address noteToken,
-        uint256 loanId,
-        address collateralToken,
-        uint256 collateralTokenId,
-        address collateralLiquidator
-    );
-
-    /**
-     * @notice Emitted when loan is repaid
-     * @param noteToken Note token contract
-     * @param loanId Loan ID
-     * @param adminFee Admin fee in currency tokens
-     * @param trancheReturns Tranches returns in currency tokens
-     */
-    event LoanRepaid(address noteToken, uint256 loanId, uint256 adminFee, uint256[2] trancheReturns);
-
-    /**
-     * @notice Emitted when loan is liquidated
-     * @param noteToken Note token contract
-     * @param loanId Loan ID
-     * @param trancheLosses Tranche losses in currency tokens
-     */
-    event LoanLiquidated(address noteToken, uint256 loanId, uint256[2] trancheLosses);
-
-    /**
-     * @notice Emitted when collateral is liquidated
-     * @param noteToken Note token contract
-     * @param loanId Loan ID
-     * @param trancheReturns Tranches returns in currency tokens
-     */
-    event CollateralLiquidated(address noteToken, uint256 loanId, uint256[2] trancheReturns);
 }
