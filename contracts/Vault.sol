@@ -178,6 +178,20 @@ contract Vault is
     uint64 public constant ONE_UD60X18 = 1e18;
 
     /**************************************************************************/
+    /* Access Control Roles */
+    /**************************************************************************/
+
+    /**
+     * @notice Collateral liquidator role
+     */
+    bytes32 public constant COLLATERAL_LIQUIDATOR_ROLE = keccak256("COLLATERAL_LIQUIDATOR");
+
+    /**
+     * @notice Emergency administrator role
+     */
+    bytes32 public constant EMERGENCY_ADMIN_ROLE = keccak256("EMERGENCY_ADMIN");
+
+    /**************************************************************************/
     /* Errors */
     /**************************************************************************/
 
@@ -250,20 +264,6 @@ contract Vault is
      * @notice Call failed
      */
     error CallFailed();
-
-    /**************************************************************************/
-    /* Access Control Roles */
-    /**************************************************************************/
-
-    /**
-     * @notice Collateral liquidator role
-     */
-    bytes32 public constant COLLATERAL_LIQUIDATOR_ROLE = keccak256("COLLATERAL_LIQUIDATOR");
-
-    /**
-     * @notice Emergency administrator role
-     */
-    bytes32 public constant EMERGENCY_ADMIN_ROLE = keccak256("EMERGENCY_ADMIN");
 
     /**************************************************************************/
     /* Events */
