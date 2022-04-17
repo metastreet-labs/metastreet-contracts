@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
@@ -11,7 +11,7 @@ import "./interfaces/ILoanPriceOracle.sol";
 /**
  * @title Loan Price Oracle
  */
-contract LoanPriceOracle is Ownable, ILoanPriceOracle {
+contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**************************************************************************/
@@ -22,6 +22,15 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      * @notice Implementation version
      */
     string public constant IMPLEMENTATION_VERSION = "1.0";
+
+    /**************************************************************************/
+    /* Access Control Roles */
+    /**************************************************************************/
+
+    /**
+     * @notice Parameter admin role
+     */
+    bytes32 public constant PARAMETER_ADMIN_ROLE = keccak256("PARAMETER_ADMIN");
 
     /**************************************************************************/
     /* Errors */
@@ -130,6 +139,9 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
         if (IERC20Metadata(address(currencyToken_)).decimals() != 18) revert UnsupportedTokenDecimals();
 
         currencyToken = currencyToken_;
+
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(PARAMETER_ADMIN_ROLE, msg.sender);
     }
 
     /**************************************************************************/
@@ -270,7 +282,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      *
      * @param rate Minimum discount rate in UD60x18 amount per second
      */
-    function setMinimumDiscountRate(uint256 rate) external onlyOwner {
+    function setMinimumDiscountRate(uint256 rate) external onlyRole(PARAMETER_ADMIN_ROLE) {
         minimumDiscountRate = rate;
 
         emit MinimumDiscountRateUpdated(rate);
@@ -283,7 +295,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      *
      * @param duration Minimum loan duration in seconds
      */
-    function setMinimumLoanDuration(uint256 duration) external onlyOwner {
+    function setMinimumLoanDuration(uint256 duration) external onlyRole(PARAMETER_ADMIN_ROLE) {
         minimumLoanDuration = duration;
 
         emit MinimumLoanDurationUpdated(duration);
@@ -299,7 +311,7 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      */
     function setCollateralParameters(address collateralToken, bytes calldata packedCollateralParameters)
         external
-        onlyOwner
+        onlyRole(PARAMETER_ADMIN_ROLE)
     {
         if (collateralToken == address(0)) revert InvalidAddress();
 

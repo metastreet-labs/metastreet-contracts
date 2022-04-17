@@ -340,7 +340,12 @@ describe("LoanPriceOracle", function () {
         loanPriceOracle
           .connect(accounts[1])
           .setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters))
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("AccessControl: account");
+
+      await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
+      await expect(
+        loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters))
+      ).to.be.revertedWith("AccessControl: account");
     });
   });
 
@@ -354,7 +359,12 @@ describe("LoanPriceOracle", function () {
     it("fails on invalid caller", async function () {
       await expect(
         loanPriceOracle.connect(accounts[1]).setMinimumDiscountRate(FixedPoint.normalizeRate("0.05"))
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("AccessControl: account");
+
+      await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
+      await expect(loanPriceOracle.setMinimumDiscountRate(FixedPoint.normalizeRate("0.05"))).to.be.revertedWith(
+        "AccessControl: account"
+      );
     });
   });
 
@@ -367,8 +377,39 @@ describe("LoanPriceOracle", function () {
     });
     it("fails on invalid caller", async function () {
       await expect(loanPriceOracle.connect(accounts[1]).setMinimumLoanDuration(7 * 86400)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+        "AccessControl: account"
       );
+
+      await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
+      await expect(loanPriceOracle.setMinimumLoanDuration(7 * 86400)).to.be.revertedWith("AccessControl: account");
+    });
+  });
+
+  describe("#supportsInterface", async function () {
+    it("returns true on supported interfaces", async function () {
+      /* ERC165 */
+      expect(
+        await loanPriceOracle.supportsInterface(loanPriceOracle.interface.getSighash("supportsInterface"))
+      ).to.equal(true);
+      /* AccessControl */
+      expect(
+        await loanPriceOracle.supportsInterface(
+          ethers.utils.hexlify(
+            [
+              loanPriceOracle.interface.getSighash("hasRole"),
+              loanPriceOracle.interface.getSighash("getRoleAdmin"),
+              loanPriceOracle.interface.getSighash("grantRole"),
+              loanPriceOracle.interface.getSighash("revokeRole"),
+              loanPriceOracle.interface.getSighash("renounceRole"),
+            ].reduce((acc, value) => acc.xor(ethers.BigNumber.from(value)), ethers.constants.Zero)
+          )
+        )
+      ).to.equal(true);
+    });
+    it("returns false on unsupported interfaces", async function () {
+      expect(await loanPriceOracle.supportsInterface("0xaabbccdd")).to.equal(false);
+      expect(await loanPriceOracle.supportsInterface("0x00000000")).to.equal(false);
+      expect(await loanPriceOracle.supportsInterface("0xffffffff")).to.equal(false);
     });
   });
 });
