@@ -35,6 +35,28 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
     error InvalidAddress();
 
     /**************************************************************************/
+    /* Events */
+    /**************************************************************************/
+
+    /**
+     * @notice Emitted when minimum discount rate is updated
+     * @param rate New minimum discount rate in UD60x18 amount per second
+     */
+    event MinimumDiscountRateUpdated(uint256 rate);
+
+    /**
+     * @notice Emitted when minimum loan duration is updated
+     * @param duration New minimum loan duration in seconds
+     */
+    event MinimumLoanDurationUpdated(uint256 duration);
+
+    /**
+     * @notice Emitted when collateral parameters are updated
+     * @param collateralToken Address of collateral token
+     */
+    event CollateralParametersUpdated(address collateralToken);
+
+    /**************************************************************************/
     /* State */
     /**************************************************************************/
 
@@ -87,28 +109,6 @@ contract LoanPriceOracle is Ownable, ILoanPriceOracle {
      * @notice Minimum loan duration in seconds
      */
     uint256 public minimumLoanDuration;
-
-    /**************************************************************************/
-    /* Events */
-    /**************************************************************************/
-
-    /**
-     * @notice Emitted when minimum discount rate is updated
-     * @param rate New minimum discount rate in UD60x18 amount per second
-     */
-    event MinimumDiscountRateUpdated(uint256 rate);
-
-    /**
-     * @notice Emitted when minimum loan duration is updated
-     * @param duration New minimum loan duration in seconds
-     */
-    event MinimumLoanDurationUpdated(uint256 duration);
-
-    /**
-     * @notice Emitted when collateral parameters are updated
-     * @param collateralToken Address of collateral token
-     */
-    event CollateralParametersUpdated(address collateralToken);
 
     /**************************************************************************/
     /* Constructor */
