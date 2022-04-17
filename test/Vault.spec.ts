@@ -2564,6 +2564,27 @@ describe("Vault", function () {
       });
       expect(await vault.noteAdapters(addr1)).to.equal(addr2);
     });
+    it("set multiple note adapters successfully", async function () {
+      const noteTokens = [randomAddress(), randomAddress(), randomAddress()];
+      const noteAdapters = [randomAddress(), randomAddress(), randomAddress()];
+
+      await vault.setNoteAdapter(noteTokens[0], noteAdapters[0]);
+      await vault.setNoteAdapter(noteTokens[1], noteAdapters[1]);
+      await vault.setNoteAdapter(noteTokens[2], noteAdapters[2]);
+
+      expect(await vault.noteAdapters(noteTokens[0])).to.equal(noteAdapters[0]);
+      expect(await vault.noteAdapters(noteTokens[1])).to.equal(noteAdapters[1]);
+      expect(await vault.noteAdapters(noteTokens[2])).to.equal(noteAdapters[2]);
+      expect([...(await vault.supportedNoteTokens())].sort()).to.deep.equal([...noteTokens, noteToken.address].sort());
+
+      /* Remove note token 1 */
+      await vault.setNoteAdapter(noteTokens[1], ethers.constants.AddressZero);
+
+      expect(await vault.noteAdapters(noteTokens[1])).to.equal(ethers.constants.AddressZero);
+      expect([...(await vault.supportedNoteTokens())].sort()).to.deep.equal(
+        [noteTokens[0], noteTokens[2], noteToken.address].sort()
+      );
+    });
     it("fails on invalid address", async function () {
       await expect(vault.setNoteAdapter(ethers.constants.AddressZero, randomAddress())).to.be.revertedWith(
         "InvalidAddress()"

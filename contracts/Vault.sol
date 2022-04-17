@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -82,6 +83,7 @@ abstract contract VaultStorageV1 {
     IERC20 internal _currencyToken;
     ILoanPriceOracle internal _loanPriceOracle;
     mapping(address => INoteAdapter) internal _noteAdapters;
+    EnumerableSet.AddressSet internal _noteTokens;
     LPToken internal _seniorLPToken;
     LPToken internal _juniorLPToken;
 
@@ -144,6 +146,7 @@ contract Vault is
     IVault
 {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     /**************************************************************************/
     /* Constants */
@@ -375,6 +378,13 @@ contract Vault is
      */
     function noteAdapters(address noteToken) external view returns (INoteAdapter) {
         return _noteAdapters[noteToken];
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function supportedNoteTokens() external view returns (address[] memory) {
+        return _noteTokens.values();
     }
 
     /**
@@ -1060,16 +1070,14 @@ contract Vault is
     /**
      * @inheritdoc KeeperCompatibleInterface
      */
-    function checkUpkeep(bytes calldata checkData) external view returns (bool, bytes memory) {
-        address[] memory noteTokens = abi.decode(checkData, (address[]));
-
+    function checkUpkeep(bytes calldata) external view returns (bool, bytes memory) {
         /* Compute current time bucket */
         uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
 
         /* For each note token */
-        for (uint256 i = 0; i < noteTokens.length; i++) {
+        for (uint256 i = 0; i < _noteTokens.length(); i++) {
             /* Get note token */
-            address noteToken = noteTokens[i];
+            address noteToken = _noteTokens.at(i);
 
             /* Lookup note adapter */
             INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
@@ -1175,6 +1183,11 @@ contract Vault is
     function setNoteAdapter(address noteToken, address noteAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (noteToken == address(0)) revert InvalidAddress();
         _noteAdapters[noteToken] = INoteAdapter(noteAdapter);
+        if (noteAdapter != address(0)) {
+            _noteTokens.add(noteToken);
+        } else {
+            _noteTokens.remove(noteToken);
+        }
         emit NoteAdapterUpdated(noteToken, noteAdapter);
     }
 

@@ -60,6 +60,12 @@ interface IVault is ILoanReceiver {
     function noteAdapters(address noteToken) external view returns (INoteAdapter);
 
     /**
+     * @notice Get list of supported note tokens
+     * @return List of note token addresses
+     */
+    function supportedNoteTokens() external view returns (address[] memory);
+
+    /**
      * @notice Get share price
      * @param trancheId Tranche
      * @return Share price in UD60x18
