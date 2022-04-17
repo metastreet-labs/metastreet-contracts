@@ -168,6 +168,9 @@ async function vaultDeploy(
   ]);
   await vault.deployed();
 
+  await seniorLPToken.transferOwnership(vault.address);
+  await juniorLPToken.transferOwnership(vault.address);
+
   console.log(vault.address);
 
   deployment.vaults = deployment.vaults ? [...deployment.vaults, vault.address] : [vault.address];
