@@ -382,6 +382,19 @@ async function noteAdapterDeploy(contractName: string, ...args: string[]) {
 }
 
 /******************************************************************************/
+/* Loan Price Oracle Deployment */
+/******************************************************************************/
+
+async function loanPriceOracleDeploy(currencyToken: string) {
+  const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
+
+  const loanPriceOracle = await loanPriceOracleFactory.deploy(currencyToken);
+  await loanPriceOracle.deployed();
+
+  console.log(loanPriceOracle.address);
+}
+
+/******************************************************************************/
 /* Parsers for Arguments */
 /******************************************************************************/
 
@@ -547,6 +560,12 @@ async function main() {
     .argument("contract", "Note adapter contract name")
     .argument("args...", "Arguments")
     .action(noteAdapterDeploy);
+
+  program
+    .command("lpo-deploy")
+    .description("Deploy Loan Price Oracle")
+    .argument("currency_token", "Currency token address", parseAddress)
+    .action(loanPriceOracleDeploy);
 
   /* Parse command */
   await program.parseAsync(process.argv);
