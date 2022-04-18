@@ -215,6 +215,11 @@ async function vaultSetNoteAdapter(vaultAddress: string, noteToken: string, note
   await vault.setNoteAdapter(noteToken, noteAdapter);
 }
 
+async function vaultSetLoanPriceOracle(vaultAddress: string, loanPriceOracle: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  await vault.setLoanPriceOracle(loanPriceOracle);
+}
+
 async function vaultSetSeniorTrancheRate(vaultAddress: string, rate: BigNumber) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   await vault.setSeniorTrancheRate(rate.div(365 * 86400));
@@ -484,6 +489,13 @@ async function main() {
     .argument("note_token", "Note token address", parseAddress)
     .argument("note_adapter", "Note adapter address", parseAddress)
     .action(vaultSetNoteAdapter);
+  program
+    .command("vault-set-loan-price-oracle")
+    .description("Set Vault Loan Price Oracle")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("loan_price_oracle", "Loan Price Oracle address", parseAddress)
+    .action(vaultSetLoanPriceOracle);
+
   program
     .command("vault-add-collateral-liquidator")
     .description("Add Vault collateral liquidator")
