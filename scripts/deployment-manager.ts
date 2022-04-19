@@ -112,8 +112,17 @@ async function beaconShow(deployment: Deployment) {
   }
 }
 
-async function beaconUpgrade(_: Deployment) {
-  console.log("Not implemented.");
+async function beaconUpgrade(deployment: Deployment) {
+  if (!deployment.vaultBeacon || !deployment.lpTokenBeacon) {
+    console.error("Beacons not yet deployed.");
+    return;
+  }
+
+  const vaultFactory = await ethers.getContractFactory("Vault");
+  const lpTokenFactory = await ethers.getContractFactory("LPToken");
+
+  await upgrades.upgradeBeacon(deployment.vaultBeacon, vaultFactory, { unsafeAllow: ["delegatecall"] });
+  await upgrades.upgradeBeacon(deployment.lpTokenBeacon, lpTokenFactory, { unsafeAllow: ["delegatecall"] });
 }
 
 /******************************************************************************/
