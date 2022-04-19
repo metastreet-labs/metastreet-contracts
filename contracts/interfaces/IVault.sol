@@ -205,19 +205,21 @@ interface IVault is ILoanReceiver {
     event Deposited(address indexed account, TrancheId indexed trancheId, uint256 amount, uint256 shares);
 
     /**
-     * @notice Emitted when note is sold
+     * @notice Emitted when a note is purchased
      * @param account Selling account
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
      * @param loanId Loan ID
      * @param purchasePrice Purchase price in currency tokens
+     * @param trancheContributions Tranche contributions in currency tokens
      */
     event NotePurchased(
         address indexed account,
         address noteToken,
         uint256 noteTokenId,
         uint256 loanId,
-        uint256 purchasePrice
+        uint256 purchasePrice,
+        uint256[2] trancheContributions
     );
 
     /**

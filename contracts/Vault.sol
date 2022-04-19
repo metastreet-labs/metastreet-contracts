@@ -782,7 +782,14 @@ contract Vault is
         /* Add loan to pending loan ids */
         _pendingLoans[maturityTimeBucket][noteToken].push(loanInfo.loanId);
 
-        emit NotePurchased(msg.sender, noteToken, noteTokenId, loanInfo.loanId, purchasePrice);
+        emit NotePurchased(
+            msg.sender,
+            noteToken,
+            noteTokenId,
+            loanInfo.loanId,
+            purchasePrice,
+            [seniorTrancheContribution, purchasePrice - seniorTrancheContribution]
+        );
 
         return purchasePrice;
     }
