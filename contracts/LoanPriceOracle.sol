@@ -66,7 +66,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      * @notice Emitted when collateral parameters are updated
      * @param collateralToken Address of collateral token
      */
-    event CollateralParametersUpdated(address collateralToken);
+    event CollateralParametersUpdated(address indexed collateralToken);
 
     /**************************************************************************/
     /* State */
