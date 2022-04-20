@@ -1,4 +1,7 @@
 {
+  "name": "metastreet-contracts",
+  "version": "0.1.0",
+  "description": "MetaStreet Vault Contracts",
   "scripts": {
     "build": "hardhat compile",
     "clean": "hardhat clean",
