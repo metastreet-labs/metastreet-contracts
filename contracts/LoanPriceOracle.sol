@@ -212,9 +212,8 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         collateralTokenId;
         duration;
 
-        /* Calculate loan time remaining */
-        uint256 loanTimeRemaining = maturity - block.timestamp;
-        if (loanTimeRemaining < minimumLoanDuration) {
+        /* Validate minimum loan duration */
+        if (block.timestamp > maturity - minimumLoanDuration) {
             revert InsufficientTimeRemaining();
         }
 
@@ -224,8 +223,8 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
             revert UnsupportedCollateral();
         }
 
-        /* Convert loan time remaining */
-        loanTimeRemaining = PRBMathUD60x18.fromUint(loanTimeRemaining);
+        /* Calculate loan time remaining */
+        uint256 loanTimeRemaining = PRBMathUD60x18.fromUint(maturity - block.timestamp);
 
         /* Calculate loan to value */
         uint256 loanToValue = PRBMathUD60x18.div(principal, collateralParameters.collateralValue);
