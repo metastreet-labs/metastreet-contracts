@@ -53,32 +53,21 @@ contract TestNoteAdapter is INoteAdapter {
      * @inheritdoc INoteAdapter
      */
     function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory) {
-        /* Get loan from lending platform */
-        (
-            TestLendingPlatform.LoanStatus status,
-            address borrower,
-            uint256 principal,
-            uint256 repayment,
-            uint64 startTime,
-            uint32 duration,
-            address collateralToken,
-            uint256 collateralTokenId
-        ) = _lendingPlatform.loans(noteTokenId);
-
-        /* Check loan exists */
-        require(status != TestLendingPlatform.LoanStatus.Unknown, "Unknown loan");
+        /* Get loan terms from lending platform */
+        TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(noteTokenId);
 
         /* Arrange into LoanInfo structure */
-        LoanInfo memory loanInfo;
-        loanInfo.loanId = noteTokenId;
-        loanInfo.borrower = borrower;
-        loanInfo.principal = principal;
-        loanInfo.repayment = repayment;
-        loanInfo.maturity = startTime + duration;
-        loanInfo.duration = duration;
-        loanInfo.currencyToken = address(_lendingPlatform.currencyToken());
-        loanInfo.collateralToken = collateralToken;
-        loanInfo.collateralTokenId = collateralTokenId;
+        LoanInfo memory loanInfo = LoanInfo({
+            loanId: noteTokenId,
+            borrower: loanTerms.borrower,
+            principal: loanTerms.principal,
+            repayment: loanTerms.repayment,
+            maturity: loanTerms.startTime + loanTerms.duration,
+            duration: loanTerms.duration,
+            currencyToken: address(_lendingPlatform.currencyToken()),
+            collateralToken: loanTerms.collateralToken,
+            collateralTokenId: loanTerms.collateralTokenId
+        });
 
         return loanInfo;
     }
@@ -95,17 +84,17 @@ contract TestNoteAdapter is INoteAdapter {
      */
     function getUnwrapCalldata(uint256 loanId) external view returns (address, bytes memory) {
         /* Get collateral token info from lending platform */
-        (, , , , , , address collateralToken, uint256 collateralTokenId) = _lendingPlatform.loans(loanId);
+        TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(loanId);
 
         /* Dummy operation to test unwrap call in Vault withdrawCollateral() */
-        if (IERC721(collateralToken).ownerOf(collateralTokenId) == msg.sender) {
+        if (IERC721(loanTerms.collateralToken).ownerOf(loanTerms.collateralTokenId) == msg.sender) {
             return (
-                collateralToken,
+                loanTerms.collateralToken,
                 abi.encodeWithSignature(
                     "transferFrom(address,address,uint256)",
                     msg.sender,
                     msg.sender,
-                    collateralTokenId
+                    loanTerms.collateralTokenId
                 )
             );
         } else {
@@ -117,26 +106,24 @@ contract TestNoteAdapter is INoteAdapter {
      * @inheritdoc INoteAdapter
      */
     function isRepaid(uint256 loanId) external view returns (bool) {
-        /* Get loan status from lending platform */
-        (TestLendingPlatform.LoanStatus status, , , , , , , ) = _lendingPlatform.loans(loanId);
-        return status == TestLendingPlatform.LoanStatus.Repaid;
+        return _lendingPlatform.loans(loanId).status == TestLendingPlatform.LoanStatus.Repaid;
     }
 
     /**
      * @inheritdoc INoteAdapter
      */
     function isLiquidated(uint256 loanId) external view returns (bool) {
-        /* Get loan status from lending platform */
-        (TestLendingPlatform.LoanStatus status, , , , , , , ) = _lendingPlatform.loans(loanId);
-        return status == TestLendingPlatform.LoanStatus.Liquidated;
+        return _lendingPlatform.loans(loanId).status == TestLendingPlatform.LoanStatus.Liquidated;
     }
 
     /**
      * @inheritdoc INoteAdapter
      */
     function isExpired(uint256 loanId) external view returns (bool) {
-        /* Get loan maturity from lending platform */
-        (, , , , uint64 startTime, uint32 duration, , ) = _lendingPlatform.loans(loanId);
-        return block.timestamp > startTime + duration;
+        /* Get loan terms */
+        TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(loanId);
+        return
+            loanTerms.status == TestLendingPlatform.LoanStatus.Active &&
+            block.timestamp > loanTerms.startTime + loanTerms.duration;
     }
 }

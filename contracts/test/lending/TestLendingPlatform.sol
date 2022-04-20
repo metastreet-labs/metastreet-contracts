@@ -42,7 +42,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     event LoanLiquidated(uint256 loanId);
 
     /**************************************************************************/
-    /* State */
+    /* Structures */
     /**************************************************************************/
 
     /**
@@ -94,12 +94,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     /**
      * @dev Mapping of loan ID to loan terms
      */
-    mapping(uint256 => LoanTerms) public loans;
-
-    /**
-     * @dev Mapping of loan ID to complete boolean
-     */
-    mapping(uint256 => bool) public loansComplete;
+    mapping(uint256 => LoanTerms) private _loans;
 
     /**
      * @dev Loan ID counter
@@ -117,6 +112,14 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     constructor(IERC20 currencyToken_) {
         currencyToken = currencyToken_;
         noteToken = new TestNoteToken();
+    }
+
+    /**************************************************************************/
+    /* Getter */
+    /**************************************************************************/
+
+    function loans(uint256 loanId) external view returns (LoanTerms memory) {
+        return _loans[loanId];
     }
 
     /**************************************************************************/
@@ -149,7 +152,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
 
         uint256 loanId = _loanId++;
 
-        LoanTerms storage loan = loans[loanId];
+        LoanTerms storage loan = _loans[loanId];
         loan.status = LoanStatus.Active;
         loan.borrower = borrower;
         loan.principal = principal;
@@ -175,14 +178,13 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
      * @param callback Callback to loan holder
      */
     function repay(uint256 loanId, bool callback) external {
-        LoanTerms storage loan = loans[loanId];
+        LoanTerms storage loan = _loans[loanId];
 
-        require(loan.borrower != address(0x0), "Unknown loan");
-        require(!loansComplete[loanId], "Loan already complete");
+        require(loan.status != LoanStatus.Unknown, "Unknown loan");
+        require(loan.status == LoanStatus.Active, "Loan already complete");
         require(loan.borrower == msg.sender, "Invalid caller");
 
         loan.status = LoanStatus.Repaid;
-        loansComplete[loanId] = true;
 
         address noteOwner = noteToken.ownerOf(loanId);
 
@@ -204,15 +206,14 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
      * @param loanId Loan ID
      */
     function liquidate(uint256 loanId) external {
-        LoanTerms storage loan = loans[loanId];
+        LoanTerms storage loan = _loans[loanId];
 
-        require(loan.borrower != address(0x0), "Unknown loan");
-        require(!loansComplete[loanId], "Loan already complete");
+        require(loan.status != LoanStatus.Unknown, "Unknown loan");
+        require(loan.status == LoanStatus.Active, "Loan already complete");
         require(block.timestamp > loan.startTime + loan.duration, "Loan not expired");
         require(noteToken.ownerOf(loanId) == msg.sender, "Invalid caller");
 
         loan.status = LoanStatus.Liquidated;
-        loansComplete[loanId] = true;
 
         IERC721(loan.collateralToken).safeTransferFrom(
             address(this),

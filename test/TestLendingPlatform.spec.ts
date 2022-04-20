@@ -153,7 +153,6 @@ describe("TestLendingPlatform", function () {
 
     /* Check loan is complete */
     expect((await lendingPlatform.loans(loanId)).status).to.equal(2);
-    expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent repayment fails */
     await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Loan already complete");
@@ -228,7 +227,6 @@ describe("TestLendingPlatform", function () {
 
     /* Check loan is complete */
     expect((await lendingPlatform.loans(loanId)).status).to.equal(3);
-    expect(await lendingPlatform.loansComplete(loanId)).to.equal(true);
 
     /* Check subsequent liquidate fails */
     await expect(lendingPlatform.connect(lender).liquidate(loanId)).to.be.revertedWith("Loan already complete");
