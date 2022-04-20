@@ -292,7 +292,7 @@ contract Vault is
      * @param noteToken Note token contract
      * @param noteAdapter Note adapter contract
      */
-    event NoteAdapterUpdated(address noteToken, address noteAdapter);
+    event NoteAdapterUpdated(address indexed noteToken, address noteAdapter);
 
     /**
      * @notice Emitted when admin fees are withdrawn

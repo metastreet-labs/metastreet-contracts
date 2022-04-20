@@ -47,9 +47,9 @@ interface IVault is ILoanReceiver {
      */
     event NotePurchased(
         address indexed account,
-        address noteToken,
+        address indexed noteToken,
         uint256 noteTokenId,
-        uint256 loanId,
+        uint256 indexed loanId,
         uint256 purchasePrice,
         uint256[2] trancheContributions
     );
@@ -80,8 +80,8 @@ interface IVault is ILoanReceiver {
      * @param collateralLiquidator Collateral liquidator contract
      */
     event CollateralWithdrawn(
-        address noteToken,
-        uint256 loanId,
+        address indexed noteToken,
+        uint256 indexed loanId,
         address collateralToken,
         uint256 collateralTokenId,
         address collateralLiquidator
@@ -94,7 +94,7 @@ interface IVault is ILoanReceiver {
      * @param adminFee Admin fee in currency tokens
      * @param trancheReturns Tranches returns in currency tokens
      */
-    event LoanRepaid(address noteToken, uint256 loanId, uint256 adminFee, uint256[2] trancheReturns);
+    event LoanRepaid(address indexed noteToken, uint256 indexed loanId, uint256 adminFee, uint256[2] trancheReturns);
 
     /**
      * @notice Emitted when loan is liquidated
@@ -102,7 +102,7 @@ interface IVault is ILoanReceiver {
      * @param loanId Loan ID
      * @param trancheLosses Tranche losses in currency tokens
      */
-    event LoanLiquidated(address noteToken, uint256 loanId, uint256[2] trancheLosses);
+    event LoanLiquidated(address indexed noteToken, uint256 indexed loanId, uint256[2] trancheLosses);
 
     /**
      * @notice Emitted when collateral is liquidated
@@ -110,7 +110,7 @@ interface IVault is ILoanReceiver {
      * @param loanId Loan ID
      * @param trancheReturns Tranches returns in currency tokens
      */
-    event CollateralLiquidated(address noteToken, uint256 loanId, uint256[2] trancheReturns);
+    event CollateralLiquidated(address indexed noteToken, uint256 indexed loanId, uint256[2] trancheReturns);
 
     /**************************************************************************/
     /* Getters */
