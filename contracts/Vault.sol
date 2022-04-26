@@ -794,6 +794,9 @@ contract Vault is
      * @inheritdoc IVault
      */
     function deposit(TrancheId trancheId, uint256 amount) external whenNotPaused {
+        /* Validate amount */
+        if (amount == 0) revert ParameterOutOfBounds();
+
         /* Deposit into tranche */
         _deposit(trancheId, amount);
 
@@ -850,6 +853,9 @@ contract Vault is
      * @inheritdoc IVault
      */
     function redeem(TrancheId trancheId, uint256 shares) external whenNotPaused {
+        /* Validate shares */
+        if (shares == 0) revert ParameterOutOfBounds();
+
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Check tranche is solvent */

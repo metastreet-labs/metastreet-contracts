@@ -366,6 +366,10 @@ describe("Vault", function () {
         "ERC20: transfer amount exceeds balance"
       );
     });
+    it("fails on zero amount ", async function () {
+      await expect(vault.connect(accountDepositor).deposit(0, 0)).to.be.revertedWith("ParameterOutOfBounds()");
+      await expect(vault.connect(accountDepositor).deposit(1, 0)).to.be.revertedWith("ParameterOutOfBounds()");
+    });
   });
 
   describe("#deposit (multicall)", async function () {
@@ -1214,6 +1218,11 @@ describe("Vault", function () {
       await expect(vault.connect(accountDepositor).redeem(1, depositAmount)).to.be.revertedWith(
         "InsufficientBalance()"
       );
+    });
+    it("fails on zero amount", async function () {
+      await expect(vault.connect(accountDepositor).redeem(0, 0)).to.be.revertedWith("ParameterOutOfBounds()");
+
+      await expect(vault.connect(accountDepositor).redeem(1, 0)).to.be.revertedWith("ParameterOutOfBounds()");
     });
     it("fails on outstanding redemption", async function () {
       const depositAmount = ethers.utils.parseEther("1.23");
