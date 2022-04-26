@@ -1088,7 +1088,8 @@ contract Vault is
         uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
 
         /* For each note token */
-        for (uint256 i = 0; i < _noteTokens.length(); i++) {
+        uint256 numNoteTokens = _noteTokens.length();
+        for (uint256 i = 0; i < numNoteTokens; i++) {
             /* Get note token */
             address noteToken = _noteTokens.at(i);
 
@@ -1102,7 +1103,8 @@ contract Vault is
                 timeBucket++
             ) {
                 /* For each loan ID */
-                for (uint256 j = 0; j < _pendingLoans[timeBucket][noteToken].length; j++) {
+                uint256 numLoans = _pendingLoans[timeBucket][noteToken].length;
+                for (uint256 j = 0; j < numLoans; j++) {
                     /* Get loan ID */
                     uint256 loanId = _pendingLoans[timeBucket][noteToken][j];
 
