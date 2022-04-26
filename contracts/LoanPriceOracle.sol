@@ -321,6 +321,14 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
 
+        /* Validate rate component weights sum to 100 */
+        if (
+            _parameters[collateralToken].rateComponentWeights[0] +
+                _parameters[collateralToken].rateComponentWeights[1] +
+                _parameters[collateralToken].rateComponentWeights[2] !=
+            100
+        ) revert ParameterOutOfBounds(4);
+
         if (_parameters[collateralToken].collateralValue != 0) {
             _collateralTokens.add(collateralToken);
         } else {

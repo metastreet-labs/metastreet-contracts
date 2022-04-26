@@ -327,6 +327,14 @@ describe("LoanPriceOracle", function () {
         [collateralTokens[0], collateralTokens[2]].sort()
       );
     });
+    it("fails on invalid rate component weights", async function () {
+      await expect(
+        loanPriceOracle.setCollateralParameters(
+          nft1.address,
+          encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [50, 25, 26] })
+        )
+      ).to.be.revertedWith("ParameterOutOfBounds(4)");
+    });
     it("fails on invalid address", async function () {
       await expect(
         loanPriceOracle.setCollateralParameters(
