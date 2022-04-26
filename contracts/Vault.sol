@@ -40,7 +40,7 @@ abstract contract VaultStorageV1 {
         uint256 pendingRedemptions;
         uint256 redemptionQueue;
         uint256 processedRedemptionQueue;
-        mapping(uint64 => uint256) pendingReturns;
+        mapping(uint256 => uint256) pendingReturns;
     }
 
     /**
@@ -118,7 +118,7 @@ abstract contract VaultStorageV1 {
     /**
      * @dev Mapping of maturity time bucket to note token contract to list of loan IDs
      */
-    mapping(uint64 => mapping(address => uint256[])) internal _pendingLoans;
+    mapping(uint256 => mapping(address => uint256[])) internal _pendingLoans;
 }
 
 /**
@@ -158,17 +158,17 @@ contract Vault is
     /**
      * @notice Time bucket duration in seconds
      */
-    uint64 public constant TIME_BUCKET_DURATION = 15 days;
+    uint256 public constant TIME_BUCKET_DURATION = 15 days;
 
     /**
      * @notice Number of share price proration buckets
      */
-    uint64 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
 
     /**
      * @notice Total share price proration window in seconds
      */
-    uint64 public constant TOTAL_SHARE_PRICE_PRORATION_DURATION = TIME_BUCKET_DURATION * SHARE_PRICE_PRORATION_BUCKETS;
+    uint256 public constant TOTAL_SHARE_PRICE_PRORATION_DURATION = TIME_BUCKET_DURATION * SHARE_PRICE_PRORATION_BUCKETS;
 
     /**
      * @notice One in UD60x18
@@ -474,7 +474,7 @@ contract Vault is
      * @return Loan IDs
      */
     function pendingLoans(uint64 timeBucket, address noteToken) external view returns (uint256[] memory) {
-        return _pendingLoans[timeBucket][noteToken];
+        return _pendingLoans[uint256(timeBucket)][noteToken];
     }
 
     /**
@@ -535,14 +535,14 @@ contract Vault is
     /**
      * @dev Convert Unix timestamp to time bucket
      */
-    function _timestampToTimeBucket(uint64 timestamp) internal pure returns (uint64) {
+    function _timestampToTimeBucket(uint256 timestamp) internal pure returns (uint256) {
         return timestamp / TIME_BUCKET_DURATION;
     }
 
     /**
      * @dev Convert time bucket to Unix timestamp
      */
-    function _timeBucketToTimestamp(uint64 timeBucket) internal pure returns (uint64) {
+    function _timeBucketToTimestamp(uint256 timeBucket) internal pure returns (uint256) {
         return timeBucket * TIME_BUCKET_DURATION;
     }
 
@@ -556,7 +556,7 @@ contract Vault is
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Get the current time bucket */
-        uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
+        uint256 currentTimeBucket = _timestampToTimeBucket(block.timestamp);
 
         /* Compute elapsed time into current time bucket and convert to UD60x18 */
         uint256 elapsedTimeIntoBucket = PRBMathUD60x18.fromUint(
@@ -565,7 +565,7 @@ contract Vault is
 
         /* Sum the prorated returns from pending returns in each time bucket */
         uint256 proratedReturns;
-        for (uint64 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
+        for (uint256 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
             /* Prorated Returns[i] = ((Elapsed Time + W * (N - 1 - i)) / (W * N)) * Pending Returns[i]  */
             proratedReturns += PRBMathUD60x18.div(
                 PRBMathUD60x18.mul(
@@ -752,7 +752,7 @@ contract Vault is
         uint256 juniorTrancheReturn = loanInfo.repayment - purchasePrice - seniorTrancheReturn;
 
         /* Compute loan maturity time bucket */
-        uint64 maturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
+        uint256 maturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
 
         /* Schedule pending tranche returns */
         _seniorTranche.pendingReturns[maturityTimeBucket] += seniorTrancheReturn;
@@ -764,7 +764,7 @@ contract Vault is
         /* Store loan state */
         Loan storage loan = _loans[noteToken][loanInfo.loanId];
         loan.status = LoanStatus.Active;
-        loan.maturityTimeBucket = maturityTimeBucket;
+        loan.maturityTimeBucket = uint64(maturityTimeBucket);
         loan.collateralToken = IERC721(loanInfo.collateralToken);
         loan.collateralTokenId = loanInfo.collateralTokenId;
         loan.purchasePrice = purchasePrice;
@@ -1085,7 +1085,7 @@ contract Vault is
      */
     function checkUpkeep(bytes calldata) external view returns (bool, bytes memory) {
         /* Compute current time bucket */
-        uint64 currentTimeBucket = _timestampToTimeBucket(uint64(block.timestamp));
+        uint256 currentTimeBucket = _timestampToTimeBucket(block.timestamp);
 
         /* For each note token */
         uint256 numNoteTokens = _noteTokens.length();
@@ -1098,7 +1098,7 @@ contract Vault is
 
             /* Check previous, current, and future time buckets */
             for (
-                uint64 timeBucket = currentTimeBucket - 1;
+                uint256 timeBucket = currentTimeBucket - 1;
                 timeBucket < currentTimeBucket + SHARE_PRICE_PRORATION_BUCKETS;
                 timeBucket++
             ) {
