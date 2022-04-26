@@ -173,7 +173,7 @@ contract Vault is
     /**
      * @notice One in UD60x18
      */
-    uint64 public constant ONE_UD60X18 = 1e18;
+    uint256 private constant ONE_UD60X18 = 1e18;
 
     /**************************************************************************/
     /* Access Control Roles */
