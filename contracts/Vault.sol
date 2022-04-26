@@ -842,8 +842,8 @@ contract Vault is
         uint256 juniorTrancheAmount = purchasePrice - seniorTrancheAmount;
 
         /* Deposit sale proceeds in tranches */
-        if (seniorTrancheAmount > 0) _deposit(TrancheId.Senior, seniorTrancheAmount);
-        if (juniorTrancheAmount > 0) _deposit(TrancheId.Junior, juniorTrancheAmount);
+        if (seniorTrancheAmount != 0) _deposit(TrancheId.Senior, seniorTrancheAmount);
+        if (juniorTrancheAmount != 0) _deposit(TrancheId.Junior, juniorTrancheAmount);
 
         /* Transfer promissory note from user to vault */
         IERC721(noteToken).safeTransferFrom(msg.sender, address(this), noteTokenId);
