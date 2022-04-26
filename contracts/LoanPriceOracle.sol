@@ -56,12 +56,6 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     /**************************************************************************/
 
     /**
-     * @notice Emitted when minimum discount rate is updated
-     * @param rate New minimum discount rate in UD60x18 amount per second
-     */
-    event MinimumDiscountRateUpdated(uint256 rate);
-
-    /**
      * @notice Emitted when minimum loan duration is updated
      * @param duration New minimum loan duration in seconds
      */
@@ -79,12 +73,14 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
     /**
      * @notice Piecewise linear model parameters
+     * @param offset Output value offset in UD60x18
      * @param slope1 Slope before kink in UD60x18
      * @param slope2 Slope after kink in UD60x18
-     * @param target Value of kink in UD60x18
+     * @param target Input value of kink in UD60x18
      * @param max Max input value in UD60x18
      */
     struct PiecewiseLinearModel {
+        uint256 offset;
         uint256 slope1;
         uint256 slope2;
         uint256 target;
@@ -121,11 +117,6 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      * @inheritdoc ILoanPriceOracle
      */
     IERC20 public immutable override currencyToken;
-
-    /**
-     * @notice Minimum discount rate in UD60x18 amount per second
-     */
-    uint256 public minimumDiscountRate;
 
     /**
      * @notice Minimum loan duration in seconds
@@ -171,8 +162,8 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         }
         return
             (x <= model.target)
-                ? minimumDiscountRate + PRBMathUD60x18.mul(x, model.slope1)
-                : minimumDiscountRate +
+                ? model.offset + PRBMathUD60x18.mul(x, model.slope1)
+                : model.offset +
                     PRBMathUD60x18.mul(model.target, model.slope1) +
                     PRBMathUD60x18.mul(x - model.target, model.slope2);
     }
@@ -278,19 +269,6 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     /**************************************************************************/
     /* Setters */
     /**************************************************************************/
-
-    /**
-     * @notice Set minimum discount rate
-     *
-     * Emits a {MinimumDiscountRateUpdated} event.
-     *
-     * @param rate Minimum discount rate in UD60x18 amount per second
-     */
-    function setMinimumDiscountRate(uint256 rate) external onlyRole(PARAMETER_ADMIN_ROLE) {
-        minimumDiscountRate = rate;
-
-        emit MinimumDiscountRateUpdated(rate);
-    }
 
     /**
      * @notice Set minimum loan duration

@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { BigNumber } from "@ethersproject/bignumber";
 
 export type PiecewiseLinearModel = {
+  offset: BigNumber;
   slope1: BigNumber;
   slope2: BigNumber;
   target: BigNumber;
@@ -20,24 +21,27 @@ export type CollateralParameters = {
 export function encodeCollateralParameters(collateralParameters: CollateralParameters): string {
   return ethers.utils.defaultAbiCoder.encode(
     [
-      "tuple(uint256, tuple(uint256, uint256, uint256, uint256), tuple(uint256, uint256, uint256, uint256), tuple(uint256, uint256, uint256, uint256), uint16[3])",
+      "tuple(uint256, tuple(uint256, uint256, uint256, uint256, uint256), tuple(uint256, uint256, uint256, uint256, uint256), tuple(uint256, uint256, uint256, uint256, uint256), uint16[3])",
     ],
     [
       [
         collateralParameters.collateralValue,
         [
+          collateralParameters.utilizationRateComponent.offset,
           collateralParameters.utilizationRateComponent.slope1,
           collateralParameters.utilizationRateComponent.slope2,
           collateralParameters.utilizationRateComponent.target,
           collateralParameters.utilizationRateComponent.max,
         ],
         [
+          collateralParameters.loanToValueRateComponent.offset,
           collateralParameters.loanToValueRateComponent.slope1,
           collateralParameters.loanToValueRateComponent.slope2,
           collateralParameters.loanToValueRateComponent.target,
           collateralParameters.loanToValueRateComponent.max,
         ],
         [
+          collateralParameters.durationRateComponent.offset,
           collateralParameters.durationRateComponent.slope1,
           collateralParameters.durationRateComponent.slope2,
           collateralParameters.durationRateComponent.target,
@@ -57,6 +61,7 @@ export function computePiecewiseLinearModel(parameters: {
   max: BigNumber;
 }): PiecewiseLinearModel {
   return {
+    offset: parameters.minRate,
     slope1: parameters.targetRate.sub(parameters.minRate).mul(ethers.constants.WeiPerEther).div(parameters.target),
     slope2: parameters.maxRate
       .sub(parameters.targetRate)

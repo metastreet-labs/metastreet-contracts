@@ -226,8 +226,6 @@ async function main() {
   console.log("");
 
   /* Setup collateral parameters for loan price oracles */
-  const minimumDiscountRate = FixedPoint.normalizeRate("0.05");
-
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
     utilizationRateComponent: computePiecewiseLinearModel({
@@ -254,14 +252,12 @@ async function main() {
     rateComponentWeights: [5000, 2500, 2500],
   };
 
-  await daiLoanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
   await daiLoanPriceOracle.setCollateralParameters(
     baycTokenContract.address,
     encodeCollateralParameters(collateralParameters)
   );
   console.log("Setup BAYC collateral parameters for DAI Loan Price Oracle");
 
-  await wethLoanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
   await wethLoanPriceOracle.setCollateralParameters(
     baycTokenContract.address,
     encodeCollateralParameters(collateralParameters)

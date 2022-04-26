@@ -46,7 +46,6 @@ describe("LoanPriceOracle", function () {
     await network.provider.send("evm_revert", [snapshotId]);
   });
 
-  const minimumDiscountRate = FixedPoint.normalizeRate("0.05");
   const minimumLoanDuration = 7 * 86400;
 
   const collateralParameters: CollateralParameters = {
@@ -94,7 +93,6 @@ describe("LoanPriceOracle", function () {
 
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
-      await loanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
       await loanPriceOracle.setMinimumLoanDuration(minimumLoanDuration);
       await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
     });
@@ -354,25 +352,6 @@ describe("LoanPriceOracle", function () {
       await expect(
         loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters))
       ).to.be.revertedWith("AccessControl: account");
-    });
-  });
-
-  describe("#setMinimumDiscountRate", async function () {
-    it("sets minimum discount rate successfully", async function () {
-      const rate = FixedPoint.normalizeRate("0.075");
-
-      await loanPriceOracle.setMinimumDiscountRate(rate);
-      expect(await loanPriceOracle.minimumDiscountRate()).to.equal(rate);
-    });
-    it("fails on invalid caller", async function () {
-      await expect(
-        loanPriceOracle.connect(accounts[1]).setMinimumDiscountRate(FixedPoint.normalizeRate("0.05"))
-      ).to.be.revertedWith("AccessControl: account");
-
-      await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
-      await expect(loanPriceOracle.setMinimumDiscountRate(FixedPoint.normalizeRate("0.05"))).to.be.revertedWith(
-        "AccessControl: account"
-      );
     });
   });
 

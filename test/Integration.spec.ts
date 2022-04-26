@@ -48,8 +48,6 @@ describe("Integration", function () {
   let accountLiquidator: SignerWithAddress;
 
   /* LoanPriceOracle parameters */
-  const minimumDiscountRate = FixedPoint.normalizeRate("0.05");
-
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
     utilizationRateComponent: computePiecewiseLinearModel({
@@ -149,7 +147,6 @@ describe("Integration", function () {
     await juniorLPToken.transferOwnership(vault.address);
 
     /* Setup loan price oracle */
-    await loanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);
     await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
 
     /* Setup vault */

@@ -310,23 +310,12 @@ async function vaultLpoInfo(vaultAddress: string) {
   const implVersion = await loanPriceOracle.IMPLEMENTATION_VERSION();
   const currencyToken = await loanPriceOracle.currencyToken();
   const currencyTokenSymbol = await (await ethers.getContractAt("IERC20Metadata", currencyToken)).symbol();
-  const minimumDiscountRate = (await loanPriceOracle.minimumDiscountRate()).mul(365 * 86400);
   const minimumLoanDuration = await loanPriceOracle.minimumLoanDuration();
 
   console.log("LoanPriceOracle");
   console.log(`  Impl. Version:      ${implVersion}`);
   console.log(`  Currency Token:     ${currencyToken} (${currencyTokenSymbol})`);
-  console.log(`  Min. Discount Rate: ${ethers.utils.formatEther(minimumDiscountRate.mul(100))}%`);
   console.log(`  Min. Loan Duration: ${minimumLoanDuration.div(86400)} days (${minimumLoanDuration} seconds)`);
-}
-
-async function vaultLpoSetMinimumDiscountRate(vaultAddress: string, rate: BigNumber) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
-  const loanPriceOracle = (await ethers.getContractAt(
-    "LoanPriceOracle",
-    await vault.loanPriceOracle()
-  )) as LoanPriceOracle;
-  await loanPriceOracle.setMinimumDiscountRate(rate.div(365 * 86400));
 }
 
 async function vaultLpoSetMinimumLoanDuration(vaultAddress: string, duration: number) {
@@ -598,12 +587,6 @@ async function main() {
     .description("Dump Vault Loan Price Oracle information")
     .argument("vault", "Vault address", parseAddress)
     .action(vaultLpoInfo);
-  program
-    .command("vault-lpo-set-minimum-discount-rate")
-    .description("Set Vault Loan Price Oracle minimum discount rate")
-    .argument("vault", "Vault address", parseAddress)
-    .argument("rate", "Minimum discount rate (APR)", parseDecimal)
-    .action(vaultLpoSetMinimumDiscountRate);
   program
     .command("vault-lpo-set-minimum-loan-duration")
     .description("Set Vault Loan Price Oracle minimum loan duration")
