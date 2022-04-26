@@ -1025,6 +1025,7 @@ contract Vault is
 
         /* Get liquidate target and calldata */
         (address target, bytes memory data) = noteAdapter.getLiquidateCalldata(loanId);
+        if (target == address(0x0)) revert InvalidAddress();
 
         /* Call liquidate on lending platform */
         (bool success, ) = target.call(data);
