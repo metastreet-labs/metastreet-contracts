@@ -23,6 +23,11 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      */
     string public constant IMPLEMENTATION_VERSION = "1.0";
 
+    /**
+     * @notice One in UD60x18
+     */
+    uint256 private constant ONE_UD60X18 = 1e18;
+
     /**************************************************************************/
     /* Access Control Roles */
     /**************************************************************************/
@@ -243,7 +248,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         /* Purchase Price = Loan Repayment Value / (1 + Discount Rate * t) */
         uint256 purchasePrice = PRBMathUD60x18.div(
             repayment,
-            1e18 + PRBMathUD60x18.mul(discountRate, loanTimeRemaining)
+            ONE_UD60X18 + PRBMathUD60x18.mul(discountRate, loanTimeRemaining)
         );
 
         return purchasePrice;
