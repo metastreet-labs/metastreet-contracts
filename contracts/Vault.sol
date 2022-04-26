@@ -61,7 +61,6 @@ abstract contract VaultStorageV1 {
      * @param collateralTokenId Collateral token ID
      * @param purchasePrice Purchase price in currency tokens
      * @param repayment Repayment in currency tokens
-     * @param adminFee Admin fee in currency tokens
      * @param seniorTrancheReturn Senior tranche return in currency tokens
      */
     struct Loan {
@@ -71,7 +70,6 @@ abstract contract VaultStorageV1 {
         uint256 collateralTokenId;
         uint256 purchasePrice;
         uint256 repayment;
-        uint256 adminFee;
         uint256 seniorTrancheReturn;
     }
 
@@ -753,11 +751,6 @@ contract Vault is
         /* Junior Tranche Return = Repayment - Purchase Price - Senior Tranche Return */
         uint256 juniorTrancheReturn = loanInfo.repayment - purchasePrice - seniorTrancheReturn;
 
-        /* Calculate and apply admin fee */
-        seniorTrancheReturn -= PRBMathUD60x18.mul(_adminFeeRate, seniorTrancheReturn);
-        juniorTrancheReturn -= PRBMathUD60x18.mul(_adminFeeRate, juniorTrancheReturn);
-        uint256 adminFee = loanInfo.repayment - purchasePrice - seniorTrancheReturn - juniorTrancheReturn;
-
         /* Compute loan maturity time bucket */
         uint64 maturityTimeBucket = _timestampToTimeBucket(loanInfo.maturity);
 
@@ -776,7 +769,6 @@ contract Vault is
         loan.collateralTokenId = loanInfo.collateralTokenId;
         loan.purchasePrice = purchasePrice;
         loan.repayment = loanInfo.repayment;
-        loan.adminFee = adminFee;
         loan.seniorTrancheReturn = seniorTrancheReturn;
 
         /* Add loan to pending loan ids */
@@ -966,26 +958,31 @@ contract Vault is
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
-        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - loan.adminFee - seniorTrancheReturn;
+        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
 
         /* Unschedule pending returns */
         _seniorTranche.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;
         _juniorTranche.pendingReturns[loan.maturityTimeBucket] -= juniorTrancheReturn;
 
+        /* Calculate and apply admin fee */
+        seniorTrancheReturn -= PRBMathUD60x18.mul(_adminFeeRate, seniorTrancheReturn);
+        juniorTrancheReturn -= PRBMathUD60x18.mul(_adminFeeRate, juniorTrancheReturn);
+        uint256 adminFee = loan.repayment - loan.purchasePrice - seniorTrancheReturn - juniorTrancheReturn;
+
         /* Increase admin fee balance */
-        _totalAdminFeeBalance += loan.adminFee;
+        _totalAdminFeeBalance += adminFee;
 
         /* Increase tranche realized values */
         _seniorTranche.realizedValue += seniorTrancheReturn;
         _juniorTranche.realizedValue += juniorTrancheReturn;
 
         /* Process new proceeds */
-        _processProceeds(loan.repayment - loan.adminFee);
+        _processProceeds(loan.repayment - adminFee);
 
         /* Mark loan complete */
         loan.status = LoanStatus.Complete;
 
-        emit LoanRepaid(noteToken, loanId, loan.adminFee, [seniorTrancheReturn, juniorTrancheReturn]);
+        emit LoanRepaid(noteToken, loanId, adminFee, [seniorTrancheReturn, juniorTrancheReturn]);
     }
 
     /**
@@ -1006,7 +1003,7 @@ contract Vault is
 
         /* Calculate tranche returns */
         uint256 seniorTrancheReturn = loan.seniorTrancheReturn;
-        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - loan.adminFee - seniorTrancheReturn;
+        uint256 juniorTrancheReturn = loan.repayment - loan.purchasePrice - seniorTrancheReturn;
 
         /* Unschedule pending returns */
         _seniorTranche.pendingReturns[loan.maturityTimeBucket] -= seniorTrancheReturn;

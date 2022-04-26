@@ -770,12 +770,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check admin fee and tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
-        ethers.utils.parseEther("0.000000000634195840")
-      );
+      /* Check tranche return */
       expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
-        ethers.utils.parseEther("0.005479447808796521")
+        ethers.utils.parseEther("0.005479447826171736")
       );
 
       /* Check balance states and vault realized value */
@@ -810,12 +807,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check admin fee and tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
-        ethers.utils.parseEther("0.000000000634195840")
-      );
+      /* Check tranche return */
       expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
-        ethers.utils.parseEther("0.005479447808796521")
+        ethers.utils.parseEther("0.005479447826171736")
       );
 
       /* Check balance states and vault realized value */
@@ -848,12 +842,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check admin fee and tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
-        ethers.utils.parseEther("0.000000000634195840")
-      );
+      /* Check tranche return */
       expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
-        ethers.utils.parseEther("0.005479447808796521")
+        ethers.utils.parseEther("0.005479447826171736")
       );
 
       /* Withdraw the collateral */
@@ -867,8 +858,8 @@ describe("Vault Accounting", function () {
       /* Check balance states and vault realized value */
       expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("14"));
       expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
-      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("3.994520552191203479"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("3.994520552173828264"));
     });
     it("collateral liquidated with admin fee, break even", async function () {
       const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -894,12 +885,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check admin fee and tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
-        ethers.utils.parseEther("0.000000000634195840")
-      );
+      /* Check tranche return */
       expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
-        ethers.utils.parseEther("0.005479447808796521")
+        ethers.utils.parseEther("0.005479447826171736")
       );
 
       /* Withdraw the collateral */
@@ -911,8 +899,8 @@ describe("Vault Accounting", function () {
       /* Check balance states and vault realized value */
       expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("15"));
       expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
-      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("4.994520552191203479"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("4.994520552173828264"));
     });
     it("collateral liquidated with admin fee, higher liquidation", async function () {
       const depositAmounts = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
@@ -938,12 +926,9 @@ describe("Vault Accounting", function () {
         repayment
       );
 
-      /* Check admin fee and tranche returns */
-      expect((await vault.loanState(noteToken.address, loanId)).adminFee).to.equal(
-        ethers.utils.parseEther("0.000000000634195840")
-      );
+      /* Check tranche return */
       expect((await vault.loanState(noteToken.address, loanId)).seniorTrancheReturn).to.equal(
-        ethers.utils.parseEther("0.005479447808796521")
+        ethers.utils.parseEther("0.005479447826171736")
       );
 
       /* Withdraw the collateral */
@@ -955,8 +940,8 @@ describe("Vault Accounting", function () {
       /* Check balance states and vault realized value */
       expect((await vault.balanceState()).totalCashBalance).to.equal(ethers.utils.parseEther("15.2"));
       expect((await vault.balanceState()).totalAdminFeeBalance).to.equal(ethers.constants.Zero);
-      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447808796521"));
-      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.194520552191203479"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("10.005479447826171736"));
+      expect((await vault.trancheState(1)).realizedValue).to.equal(ethers.utils.parseEther("5.194520552173828264"));
     });
   });
 });
