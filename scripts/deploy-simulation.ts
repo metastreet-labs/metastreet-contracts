@@ -251,7 +251,7 @@ async function main() {
       target: ethers.BigNumber.from(30 * 86400).mul(ethers.constants.WeiPerEther),
       max: ethers.BigNumber.from(90 * 86400).mul(ethers.constants.WeiPerEther),
     }),
-    rateComponentWeights: [50, 25, 25],
+    rateComponentWeights: [5000, 2500, 2500],
   };
 
   await daiLoanPriceOracle.setMinimumDiscountRate(minimumDiscountRate);

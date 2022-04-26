@@ -97,14 +97,14 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      * @param utilizationRateComponent Rate component model for utilization
      * @param loanToValueRateComponent Rate component model for loan to value
      * @param durationRateComponent Rate component model for duration
-     * @param rateComponentWeights Weights for rate components, each 0 to 100
+     * @param rateComponentWeights Weights for rate components, each 0 to 10000
      */
     struct CollateralParameters {
         uint256 collateralValue; /* UD60x18 */
         PiecewiseLinearModel utilizationRateComponent;
         PiecewiseLinearModel loanToValueRateComponent;
         PiecewiseLinearModel durationRateComponent;
-        uint8[3] rateComponentWeights; /* 0-100 */
+        uint16[3] rateComponentWeights; /* 0-10000 */
     }
 
     /**
@@ -179,11 +179,11 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
     /**
      * @dev Compute the weighted rate
-     * @param weights Weights to apply, each 0 to 100
+     * @param weights Weights to apply, each 0 to 10000
      * @param components Components to weight, each UD60x18
      * @return Weighted rate in UD60x18
      */
-    function _computeWeightedRate(uint8[3] storage weights, uint256[3] memory components)
+    function _computeWeightedRate(uint16[3] storage weights, uint256[3] memory components)
         internal
         view
         returns (uint256)
@@ -193,7 +193,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
                 PRBMathUD60x18.mul(components[0], PRBMathUD60x18.fromUint(weights[0])) +
                     PRBMathUD60x18.mul(components[1], PRBMathUD60x18.fromUint(weights[1])) +
                     PRBMathUD60x18.mul(components[2], PRBMathUD60x18.fromUint(weights[2])),
-                PRBMathUD60x18.fromUint(100)
+                PRBMathUD60x18.fromUint(10000)
             );
     }
 
@@ -321,12 +321,12 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));
 
-        /* Validate rate component weights sum to 100 */
+        /* Validate rate component weights sum to 10000 */
         if (
             _parameters[collateralToken].rateComponentWeights[0] +
                 _parameters[collateralToken].rateComponentWeights[1] +
                 _parameters[collateralToken].rateComponentWeights[2] !=
-            100
+            10000
         ) revert ParameterOutOfBounds(4);
 
         if (_parameters[collateralToken].collateralValue != 0) {

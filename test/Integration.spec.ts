@@ -73,7 +73,7 @@ describe("Integration", function () {
       target: FixedPoint.from(30 * 86400),
       max: FixedPoint.from(90 * 86400),
     }),
-    rateComponentWeights: [50, 25, 25],
+    rateComponentWeights: [5000, 2500, 2500],
   };
 
   before("deploy fixture", async () => {

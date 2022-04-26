@@ -72,7 +72,7 @@ describe("LoanPriceOracle", function () {
       target: FixedPoint.from(30 * 86400),
       max: FixedPoint.from(90 * 86400),
     }),
-    rateComponentWeights: [50, 25, 25],
+    rateComponentWeights: [5000, 2500, 2500],
   };
 
   describe("constants", async function () {
@@ -110,7 +110,7 @@ describe("LoanPriceOracle", function () {
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
         nft1.address,
-        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [100, 0, 0] })
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [10000, 0, 0] })
       );
 
       expect(
@@ -133,7 +133,7 @@ describe("LoanPriceOracle", function () {
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
         nft1.address,
-        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 100, 0] })
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 10000, 0] })
       );
 
       expect(
@@ -156,7 +156,7 @@ describe("LoanPriceOracle", function () {
       /* Override weights */
       await loanPriceOracle.setCollateralParameters(
         nft1.address,
-        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 0, 100] })
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 0, 10000] })
       );
 
       expect(
@@ -331,7 +331,7 @@ describe("LoanPriceOracle", function () {
       await expect(
         loanPriceOracle.setCollateralParameters(
           nft1.address,
-          encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [50, 25, 26] })
+          encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [5000, 2500, 2501] })
         )
       ).to.be.revertedWith("ParameterOutOfBounds(4)");
     });
