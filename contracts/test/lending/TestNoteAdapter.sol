@@ -42,11 +42,19 @@ contract TestNoteAdapter is INoteAdapter {
      * @inheritdoc INoteAdapter
      */
     function isSupported(uint256 noteTokenId, address currencyToken) external view returns (bool) {
-        /* All collateral tokens supported, so just check the note exists and
-         * the currency token matches */
-        return
-            _lendingPlatform.noteToken().exists(noteTokenId) &&
-            address(_lendingPlatform.currencyToken()) == currencyToken;
+        /* Validate note exists */
+        if (!_lendingPlatform.noteToken().exists(noteTokenId)) return false;
+
+        /* Look up loan terms */
+        TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(noteTokenId);
+
+        /* Validate loan is active */
+        if (loanTerms.status != TestLendingPlatform.LoanStatus.Active) return false;
+
+        /* Validate loan currency token matches */
+        if (address(_lendingPlatform.currencyToken()) != currencyToken) return false;
+
+        return true;
     }
 
     /**
