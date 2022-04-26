@@ -335,8 +335,8 @@ contract Vault is
         _seniorLPToken = seniorLPToken_;
         _juniorLPToken = juniorLPToken_;
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(EMERGENCY_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(EMERGENCY_ADMIN_ROLE, msg.sender);
     }
 
     /**************************************************************************/
