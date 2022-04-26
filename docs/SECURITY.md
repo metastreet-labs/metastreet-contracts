@@ -26,7 +26,7 @@ by the note adapter, and subsequently requires a low-level call to execute it
 from the Vault.
 
 ```
-  1033:28  warning  Avoid to use low level calls                                       avoid-low-level-calls
+  1039:28  warning  Avoid to use low level calls                                       avoid-low-level-calls
 
     function onLoanExpired(address noteToken, uint256 loanId) public nonReentrant {
         ...
@@ -44,14 +44,14 @@ subsequently requires a low-level call to execute it from the Vault.
 ## `slither` Warning Review
 
 ```
-Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#701-795) performs a multiplication on the result of a division:
+Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#699-787) performs a multiplication on the result of a division:
 ```
 This is a required operation for the senior tranche return calculation.
 
 --------------------------------------------------------------------------------
 
 ```
-Reentrancy in Vault.sellNoteAndDeposit(address,uint256,uint256,uint256[2]) (contracts/Vault.sol#833-855):
+Reentrancy in Vault.sellNoteAndDeposit(address,uint256,uint256,uint256[2]) (contracts/Vault.sol#828-850):
 ```
 This reentrancy warning concerns LPToken, which is a trusted contract deployed
 with the Vault.
@@ -60,25 +60,25 @@ with the Vault.
 
 ```
 Reentrancy in Vault.withdrawCollateral(address,uint256) (contracts/Vault.sol#918-945):
-Reentrancy in Vault.onLoanExpired(address,uint256) (contracts/Vault.sol#994-1037):
+Reentrancy in Vault.onLoanExpired(address,uint256) (contracts/Vault.sol#999-1043):
 ```
 These methods are protected by a reentrancy guard.
 
 --------------------------------------------------------------------------------
 
 ```
-Vault.checkUpkeep(bytes) (contracts/Vault.sol#1080-1121) has external calls inside a loop: noteAdapter.isRepaid(loanId) (contracts/Vault.sol#1109)
-Vault.checkUpkeep(bytes) (contracts/Vault.sol#1080-1121) has external calls inside a loop: noteAdapter.isExpired(loanId) (contracts/Vault.sol#1112)
+Vault.checkUpkeep(bytes) (contracts/Vault.sol#1086-1129) has external calls inside a loop: noteAdapter.isRepaid(loanId) (contracts/Vault.sol#1117)
+Vault.checkUpkeep(bytes) (contracts/Vault.sol#1086-1129) has external calls inside a loop: noteAdapter.isExpired(loanId) (contracts/Vault.sol#1120)
 ```
 This method is intended only to be used off-chain.
 
 --------------------------------------------------------------------------------
 
 ```
-LoanPriceOracle._computeRateComponent(LoanPriceOracle.PiecewiseLinearModel,uint256,uint256) (contracts/LoanPriceOracle.sol#159-173) uses timestamp for comparisons
-LoanPriceOracle.priceLoan(address,uint256,uint256,uint256,uint256,uint256,uint256) (contracts/LoanPriceOracle.sol#202-251) uses timestamp for comparisons
-Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#701-795) uses timestamp for comparisons
-Vault.checkUpkeep(bytes) (contracts/Vault.sol#1080-1121) uses timestamp for comparisons
+LoanPriceOracle._computeRateComponent(LoanPriceOracle.PiecewiseLinearModel,uint256,uint256) (contracts/LoanPriceOracle.sol#155-169) uses timestamp for comparisons
+LoanPriceOracle.priceLoan(address,uint256,uint256,uint256,uint256,uint256,uint256) (contracts/LoanPriceOracle.sol#198-246) uses timestamp for comparisons
+Vault._sellNote(address,uint256,uint256) (contracts/Vault.sol#699-787) uses timestamp for comparisons
+Vault.checkUpkeep(bytes) (contracts/Vault.sol#1086-1129) uses timestamp for comparisons
 ```
 Timestamps are necessary for computing the loan maturity time bucket, loan
 duration remaining, and the loan purchase price, and those results are
