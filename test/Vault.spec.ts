@@ -1592,6 +1592,15 @@ describe("Vault", function () {
         amount: ethers.utils.parseEther("2.0"),
       });
     });
+    it("no-op on zero withdrawal", async function () {
+      const withdrawTx = await vault.connect(accountDepositor).withdraw(0, ethers.constants.Zero);
+      expect((await withdrawTx.wait()).logs.length).to.equal(1);
+      await expectEvent(withdrawTx, vault, "Withdrawn", {
+        account: accountDepositor.address,
+        trancheId: 0,
+        amount: ethers.constants.Zero,
+      });
+    });
   });
 
   describe("#withdrawCollateral", async function () {

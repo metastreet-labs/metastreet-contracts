@@ -894,14 +894,16 @@ contract Vault is
             maxAmount
         );
 
-        /* Update user's token state with redemption */
-        _lpToken(trancheId).withdraw(msg.sender, amount, tranche.processedRedemptionQueue);
+        if (amount != 0) {
+            /* Update user's token state with redemption */
+            _lpToken(trancheId).withdraw(msg.sender, amount, tranche.processedRedemptionQueue);
 
-        /* Decrease total withdrawal balance */
-        _totalWithdrawalBalance -= amount;
+            /* Decrease total withdrawal balance */
+            _totalWithdrawalBalance -= amount;
 
-        /* Transfer cash from vault to user */
-        _currencyToken.safeTransfer(msg.sender, amount);
+            /* Transfer cash from vault to user */
+            _currencyToken.safeTransfer(msg.sender, amount);
+        }
 
         emit Withdrawn(msg.sender, trancheId, amount);
     }
