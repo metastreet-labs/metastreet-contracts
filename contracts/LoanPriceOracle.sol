@@ -73,18 +73,18 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
     /**
      * @notice Piecewise linear model parameters
-     * @param offset Output value offset in UD60x18
-     * @param slope1 Slope before kink in UD60x18
-     * @param slope2 Slope after kink in UD60x18
-     * @param target Input value of kink in UD60x18
-     * @param max Max input value in UD60x18
+     * @param offset Output value offset in UD4x18
+     * @param slope1 Slope before kink in UD4x18
+     * @param slope2 Slope after kink in UD4x18
+     * @param target Input value of kink in UD11x18
+     * @param max Max input value in UD11x18
      */
     struct PiecewiseLinearModel {
-        uint256 offset;
-        uint256 slope1;
-        uint256 slope2;
-        uint256 target;
-        uint256 max;
+        uint72 offset;
+        uint72 slope1;
+        uint72 slope2;
+        uint96 target;
+        uint96 max;
     }
 
     /**
@@ -157,15 +157,15 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         uint256 x,
         uint256 index
     ) internal view returns (uint256) {
-        if (x > model.max) {
+        if (x > uint256(model.max)) {
             revert ParameterOutOfBounds(index);
         }
         return
-            (x <= model.target)
-                ? model.offset + PRBMathUD60x18.mul(x, model.slope1)
-                : model.offset +
-                    PRBMathUD60x18.mul(model.target, model.slope1) +
-                    PRBMathUD60x18.mul(x - model.target, model.slope2);
+            (x <= uint256(model.target))
+                ? uint256(model.offset) + PRBMathUD60x18.mul(x, uint256(model.slope1))
+                : uint256(model.offset) +
+                    PRBMathUD60x18.mul(uint256(model.target), uint256(model.slope1)) +
+                    PRBMathUD60x18.mul(x - uint256(model.target), uint256(model.slope2));
     }
 
     /**

@@ -21,7 +21,7 @@ export type CollateralParameters = {
 export function encodeCollateralParameters(collateralParameters: CollateralParameters): string {
   return ethers.utils.defaultAbiCoder.encode(
     [
-      "tuple(uint256, tuple(uint256, uint256, uint256, uint256, uint256), tuple(uint256, uint256, uint256, uint256, uint256), tuple(uint256, uint256, uint256, uint256, uint256), uint16[3])",
+      "tuple(uint256, tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), uint16[3])",
     ],
     [
       [
