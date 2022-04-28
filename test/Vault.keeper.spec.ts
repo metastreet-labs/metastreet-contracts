@@ -141,9 +141,7 @@ describe("Vault Keeper Integration", function () {
 
     it("detects repaid loan", async function () {
       /* Check upkeep before */
-      let [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      let [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(false);
       expect(performData).to.equal("0x");
 
@@ -164,9 +162,7 @@ describe("Vault Keeper Integration", function () {
       await elapseTime(30 * 86400);
 
       /* Check upkeep after for repaid loan */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [0, noteToken.address, loanId])
@@ -174,9 +170,7 @@ describe("Vault Keeper Integration", function () {
     });
     it("detects expired loan", async function () {
       /* Check upkeep before */
-      let [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      let [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(false);
       expect(performData).to.equal("0x");
 
@@ -194,9 +188,7 @@ describe("Vault Keeper Integration", function () {
       );
 
       /* Check upkeep after for expired loan */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [1, noteToken.address, loanId])
@@ -204,9 +196,7 @@ describe("Vault Keeper Integration", function () {
     });
     it("detects repaid loan in previous time bucket", async function () {
       /* Check upkeep before */
-      let [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      let [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(false);
       expect(performData).to.equal("0x");
 
@@ -233,9 +223,7 @@ describe("Vault Keeper Integration", function () {
       await elapseTime(targetTimestamp - currentTimestamp);
 
       /* Check upkeep after for repaid loan */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [0, noteToken.address, loanId])
@@ -268,9 +256,7 @@ describe("Vault Keeper Integration", function () {
       await elapseTime(30 * 86400);
 
       /* Check and perform upkeep after for repaid loan */
-      const [, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      const [, performData] = await vault.checkUpkeep("0x");
       const performUpkeepTx = await vault.performUpkeep(performData);
       await expectEvent(performUpkeepTx, vault, "LoanRepaid", {
         noteToken: noteToken.address,
@@ -292,9 +278,7 @@ describe("Vault Keeper Integration", function () {
       );
 
       /* Check and perform upkeep after for expired loan */
-      const [, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      const [, performData] = await vault.checkUpkeep("0x");
       const performUpkeepTx = await vault.performUpkeep(performData);
       await expectEvent(performUpkeepTx, lendingPlatform, "LoanLiquidated", {
         loanId,
@@ -394,9 +378,7 @@ describe("Vault Keeper Integration", function () {
       let performData: string;
 
       /* Upkeep for repaid loan in previous time bucket */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [0, noteToken.address, loanId1])
@@ -404,9 +386,7 @@ describe("Vault Keeper Integration", function () {
       await expectEvent(await vault.performUpkeep(performData), vault, "LoanRepaid", { loanId: loanId1 });
 
       /* Upkeep for expired loan in current time bucket */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [1, noteToken.address, loanId2])
@@ -414,9 +394,7 @@ describe("Vault Keeper Integration", function () {
       await expectEvent(await vault.performUpkeep(performData), vault, "LoanLiquidated", { loanId: loanId2 });
 
       /* Upkeep for expired loan in current time bucket */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [1, noteToken.address, loanId3])
@@ -424,9 +402,7 @@ describe("Vault Keeper Integration", function () {
       await expectEvent(await vault.performUpkeep(performData), vault, "LoanLiquidated", { loanId: loanId3 });
 
       /* Upkeep for repaid loan in current time bucket */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(true);
       expect(performData).to.equal(
         ethers.utils.defaultAbiCoder.encode(["uint8", "address", "uint256"], [0, noteToken.address, loanId4])
@@ -434,9 +410,7 @@ describe("Vault Keeper Integration", function () {
       await expectEvent(await vault.performUpkeep(performData), vault, "LoanRepaid", { loanId: loanId4 });
 
       /* No further upkeeps */
-      [upkeepNeeded, performData] = await vault.checkUpkeep(
-        ethers.utils.defaultAbiCoder.encode(["address[]"], [[noteToken.address]])
-      );
+      [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
       expect(upkeepNeeded).to.equal(false);
       expect(performData).to.equal("0x");
     });
