@@ -310,6 +310,25 @@ async function vaultRemoveCollateralLiquidator(vaultAddress: string, liquidator:
   await vault.revokeRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), liquidator);
 }
 
+async function vaultServiceLoans(vaultAddress: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+
+  while (true) {
+    const [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
+    if (!upkeepNeeded) {
+      break;
+    }
+
+    console.log(`Calling performUpkeep() with data ${performData}...`);
+    const performUpkeepTx = await vault.performUpkeep(performData);
+    console.log(performUpkeepTx.hash);
+    await performUpkeepTx.wait();
+    console.log();
+  }
+
+  console.log("All loans serviced.");
+}
+
 /******************************************************************************/
 /* Loan Price Oracle Functions */
 /******************************************************************************/
@@ -611,6 +630,11 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("liquidator", "Collateral liquidator address", parseAddress)
     .action(vaultRemoveCollateralLiquidator);
+  program
+    .command("vault-service-loans")
+    .description("Service Vault loans")
+    .argument("vault", "Vault address", parseAddress)
+    .action(vaultServiceLoans);
 
   program
     .command("vault-lpo-info")
