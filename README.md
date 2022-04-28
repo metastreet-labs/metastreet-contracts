@@ -88,7 +88,7 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
     - [`VaultHelpers.ts`](test/helpers/VaultHelpers.ts) - Vault helper functions
 - [`scripts/`](scripts/) - Scripts
   - [`deploy-simulation.ts`](scripts/deploy-simulation.ts) - Simulation deployment
-  - [`deployment-manager.ts`](scripts/deploy-manager.ts) - Deployment manager
+  - [`deployment-manager.ts`](scripts/deployment-manager.ts) - Deployment manager
 - [`deployments/`](deployments/) - Deployments
 - [`docs/`](docs/) - Documentation
   - [`SECURITY.md`](docs/SECURITY.md) - Security notes
