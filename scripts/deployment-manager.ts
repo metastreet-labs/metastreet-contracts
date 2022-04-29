@@ -440,6 +440,22 @@ async function noteAdapterDeploy(contractName: string, ...args: string[]) {
   console.log(noteAdapter.address);
 }
 
+async function noteAdapterInfo(noteAdapterAddress: string) {
+  const noteAdapter = (await ethers.getContractAt("INoteAdapter", noteAdapterAddress)) as INoteAdapter;
+
+  const implVersion = await (
+    await ethers.getContractAt(["function IMPLEMENTATION_VERSION() view returns (string)"], noteAdapterAddress)
+  ).IMPLEMENTATION_VERSION();
+  const name = await noteAdapter.name();
+  const noteToken = await noteAdapter.noteToken();
+  const noteTokenName = await (await ethers.getContractAt("IERC20Metadata", noteToken)).name();
+
+  console.log("Note Adapter");
+  console.log(`  Name:          ${name}`);
+  console.log(`  Impl. Version: ${implVersion}`);
+  console.log(`  Note Token:    ${noteToken} (${noteTokenName})`);
+}
+
 /******************************************************************************/
 /* Loan Price Oracle Deployment */
 /******************************************************************************/
@@ -628,6 +644,11 @@ async function main() {
     .argument("contract", "Note adapter contract name")
     .argument("args...", "Arguments")
     .action(noteAdapterDeploy);
+  program
+    .command("note-adapter-info")
+    .description("Dump Note Adapter information")
+    .argument("note_adapter", "Note adapter address", parseAddress)
+    .action(noteAdapterInfo);
 
   program
     .command("lpo-deploy")
