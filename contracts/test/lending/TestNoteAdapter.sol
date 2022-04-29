@@ -34,6 +34,13 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
+    function name() external pure returns (string memory) {
+        return "Test Note Adapter";
+    }
+
+    /**
+     * @inheritdoc INoteAdapter
+     */
     function noteToken() external view returns (IERC721) {
         return IERC721(_lendingPlatform.noteToken());
     }

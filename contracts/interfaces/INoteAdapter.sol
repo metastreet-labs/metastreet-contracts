@@ -41,6 +41,12 @@ interface INoteAdapter {
     /**************************************************************************/
 
     /**
+     * @notice Get note adapter name
+     * @return Note adapter name
+     */
+    function name() external view returns (string memory);
+
+    /**
      * @notice Get note token of lending platform
      * @return Note token contract
      */

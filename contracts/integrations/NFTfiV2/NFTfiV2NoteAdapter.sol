@@ -104,6 +104,13 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
+    function name() external pure returns (string memory) {
+        return "NFTfi v2 Note Adapter";
+    }
+
+    /**
+     * @inheritdoc INoteAdapter
+     */
     function noteToken() external view returns (IERC721) {
         return IERC721(address(_noteToken));
     }

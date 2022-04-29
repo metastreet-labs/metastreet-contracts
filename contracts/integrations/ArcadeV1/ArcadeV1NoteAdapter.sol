@@ -88,6 +88,13 @@ contract ArcadeV1NoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
+    function name() external pure returns (string memory) {
+        return "Arcade v1 Note Adapter";
+    }
+
+    /**
+     * @inheritdoc INoteAdapter
+     */
     function noteToken() external view returns (IERC721) {
         return IERC721(address(_lenderNote));
     }
