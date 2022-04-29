@@ -554,19 +554,27 @@ describe("Vault Accounting", function () {
       /* Check share price leading up to and after maturity */
 
       await elapseTime(5 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(await computeEstimatedValue(0, pendingReturns));
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(await computeEstimatedValue(1, pendingReturns));
       expect(await vault.sharePrice(0)).to.equal(await computeSharePrice(0, pendingReturns));
       expect(await vault.sharePrice(1)).to.equal(await computeSharePrice(1, pendingReturns));
 
       await elapseTime(30 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(await computeEstimatedValue(0, pendingReturns));
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(await computeEstimatedValue(1, pendingReturns));
       expect(await vault.sharePrice(0)).to.equal(await computeSharePrice(0, pendingReturns));
       expect(await vault.sharePrice(1)).to.equal(await computeSharePrice(1, pendingReturns));
 
       await elapseTime(30 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(await computeEstimatedValue(0, pendingReturns));
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(await computeEstimatedValue(1, pendingReturns));
       expect(await vault.sharePrice(0)).to.equal(await computeSharePrice(0, pendingReturns));
       expect(await vault.sharePrice(1)).to.equal(await computeSharePrice(1, pendingReturns));
 
       /* Past loan maturity */
       await elapseTime(40 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
     });
@@ -627,19 +635,27 @@ describe("Vault Accounting", function () {
       /* Check share price leading up to and after maturities */
 
       await elapseTime(5 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(await computeEstimatedValue(0, pendingReturns));
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(await computeEstimatedValue(1, pendingReturns));
       expect(await vault.sharePrice(0)).to.equal(await computeSharePrice(0, pendingReturns));
       expect(await vault.sharePrice(1)).to.equal(await computeSharePrice(1, pendingReturns));
 
       await elapseTime(30 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(await computeEstimatedValue(0, pendingReturns));
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(await computeEstimatedValue(1, pendingReturns));
       expect(await vault.sharePrice(0)).to.equal(await computeSharePrice(0, pendingReturns));
       expect(await vault.sharePrice(1)).to.equal(await computeSharePrice(1, pendingReturns));
 
       await elapseTime(45 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(await computeEstimatedValue(0, pendingReturns));
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(await computeEstimatedValue(1, pendingReturns));
       expect(await vault.sharePrice(0)).to.equal(await computeSharePrice(0, pendingReturns));
       expect(await vault.sharePrice(1)).to.equal(await computeSharePrice(1, pendingReturns));
 
       /* Past loan maturities */
       await elapseTime(30 * 86400);
+      expect((await vault.trancheState(0)).estimatedValue).to.equal(depositAmounts[0]);
+      expect((await vault.trancheState(1)).estimatedValue).to.equal(depositAmounts[1]);
       expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
       expect(await vault.sharePrice(1)).to.equal(FixedPoint.from("1"));
     });
