@@ -257,6 +257,7 @@ async function vaultInfo(vaultAddress: string) {
   const juniorLPTokenSymbol = await (await ethers.getContractAt("IERC20Metadata", juniorLPToken)).symbol();
   const seniorTrancheRate = (await vault.seniorTrancheRate()).mul(365 * 86400);
   const adminFeeRate = await vault.adminFeeRate();
+  const supportedNoteTokens = await vault.supportedNoteTokens();
 
   console.log("Vault");
   console.log(`  Name:                ${vaultName}`);
@@ -266,6 +267,17 @@ async function vaultInfo(vaultAddress: string) {
   console.log(`  Junior LP Token:     ${juniorLPToken} (${juniorLPTokenSymbol})`);
   console.log(`  Senior Tranche Rate: ${ethers.utils.formatEther(seniorTrancheRate.mul(100))}%`);
   console.log(`  Admin Fee Rate:      ${ethers.utils.formatEther(adminFeeRate.mul(100))}%`);
+  if (supportedNoteTokens) {
+    console.log(`  Note Tokens:`);
+    for (const noteToken of supportedNoteTokens) {
+      const noteTokenName = await (await ethers.getContractAt("IERC20Metadata", noteToken)).name();
+      const noteAdapter = await vault.noteAdapters(noteToken);
+      const noteAdapterName = await (await ethers.getContractAt("INoteAdapter", noteAdapter)).name();
+      console.log(`    Note Token:   ${noteToken} (${noteTokenName})`);
+      console.log(`    Note Adapter: ${noteAdapter} (${noteAdapterName})`);
+      console.log();
+    }
+  }
 }
 
 async function vaultSetNoteAdapter(vaultAddress: string, noteToken: string, noteAdapter: string) {
