@@ -1037,7 +1037,7 @@ describe("Vault", function () {
         )
       ).to.equal(ethers.constants.Zero);
     });
-    it("immediate redemption causing insolvent tranche succeeds", async function () {
+    it("immediate redemption of entire tranche succeeds", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("5"), ethers.utils.parseEther("5")];
       const principal = ethers.utils.parseEther("4");
       const repayment = ethers.utils.parseEther("5");
@@ -1046,7 +1046,7 @@ describe("Vault", function () {
       await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
-      /* Cycle a defaulted loan, wiping out junior tranche and part of senior tranche */
+      /* Cycle a defaulted loan, wiping out part of junior tranche */
       await cycleLoanDefault(
         lendingPlatform,
         mockLoanPriceOracle,

@@ -743,6 +743,77 @@ describe("Vault Accounting", function () {
       expect(await juniorRedemptionAvailable(accountDepositor)).to.equal(ethers.utils.parseEther("2.0"));
       expect((await vault.balanceState()).totalCashBalance).to.be.equal(ethers.utils.parseEther("6.3"));
     });
+    it("share prices consistent before and after pending redemption", async function () {
+      const depositAmounts = [ethers.utils.parseEther("5.0"), ethers.utils.parseEther("5.0")];
+      const redemptionAmount = ethers.utils.parseEther("2.0");
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Tie up all capital in one loan */
+      const loanId1 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("10.0"),
+        ethers.utils.parseEther("10.1"),
+        30 * 86400
+      );
+
+      /* Check share prices before redemption */
+      expect(await vault.sharePrice(0)).to.be.gt(FixedPoint.from("1"));
+      expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
+
+      /* Save deposit share price */
+      const depositSharePrice = await vault.sharePrice(0);
+
+      /* Redeem from senior tranche */
+      await vault.connect(accountDepositor).redeem(0, redemptionAmount);
+      expect((await vault.trancheState(0)).pendingRedemptions).to.equal(redemptionAmount);
+
+      /* Check share price after redemption */
+      expect(await vault.sharePrice(0)).to.be.gt(depositSharePrice);
+      expect(await vault.redemptionSharePrice(0)).to.equal(FixedPoint.from("1"));
+    });
+    it("tranche accepts deposits after pending redemption of entire tranche", async function () {
+      const depositAmounts = [ethers.utils.parseEther("5.0"), ethers.utils.parseEther("5.0")];
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Tie up all capital in one loan */
+      const loanId1 = await createAndSellLoan(
+        lendingPlatform,
+        mockLoanPriceOracle,
+        vault,
+        nft1,
+        accountBorrower,
+        accountLender,
+        ethers.utils.parseEther("10.0"),
+        ethers.utils.parseEther("10.1"),
+        30 * 86400
+      );
+
+      /* Redeem entire senior tranche */
+      await vault.connect(accountDepositor).redeem(0, depositAmounts[0]);
+      expect((await vault.trancheState(0)).pendingRedemptions).to.equal(depositAmounts[0]);
+
+      /* Check senior tranche share price resets to 0 */
+      expect(await vault.sharePrice(0)).to.equal(FixedPoint.from("1"));
+
+      /* Deposit it into senior tranche */
+      await vault.connect(accountDepositor).deposit(0, ethers.utils.parseEther("2.5"));
+      expect((await vault.trancheState(0)).realizedValue).to.equal(ethers.utils.parseEther("5.0"));
+      expect((await vault.trancheState(0)).pendingRedemptions).to.equal(ethers.utils.parseEther("2.5"));
+
+      /* Check share price is now pricing in pending returns */
+      expect(await vault.sharePrice(0)).to.be.gt(FixedPoint.from("1"));
+    });
   });
 
   describe("admin fees", async function () {

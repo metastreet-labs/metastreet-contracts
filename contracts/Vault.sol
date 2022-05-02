@@ -547,6 +547,17 @@ contract Vault is
     }
 
     /**
+     * @dev Compute solvent value of the tranche
+     * @param trancheId tranche
+     * @return Solvent value in currency tokens
+     */
+    function _computeSolventValue(TrancheId trancheId) internal view returns (uint256) {
+        Tranche storage tranche = _trancheState(trancheId);
+        return
+            tranche.realizedValue > tranche.pendingRedemptions ? tranche.realizedValue - tranche.pendingRedemptions : 0;
+    }
+
+    /**
      * @dev Compute estimated value of the tranche, including prorated pending
      * returns
      * @param trancheId tranche
@@ -578,7 +589,7 @@ contract Vault is
         }
 
         /* Return the realized value plus prorated returns */
-        return tranche.realizedValue + proratedReturns;
+        return _computeSolventValue(trancheId) + proratedReturns;
     }
 
     /**
@@ -587,7 +598,8 @@ contract Vault is
      * @return Tranche is solvent
      */
     function _isSolvent(TrancheId trancheId) internal view returns (bool) {
-        return _trancheState(trancheId).realizedValue != 0 || _lpToken(trancheId).totalSupply() == 0;
+        Tranche storage tranche = _trancheState(trancheId);
+        return tranche.realizedValue > tranche.pendingRedemptions || _lpToken(trancheId).totalSupply() == 0;
     }
 
     /**
@@ -613,7 +625,7 @@ contract Vault is
         if (totalSupply == 0) {
             return ONE_UD60X18;
         }
-        return PRBMathUD60x18.div(_trancheState(trancheId).realizedValue, totalSupply);
+        return PRBMathUD60x18.div(_computeSolventValue(trancheId), totalSupply);
     }
 
     /**
