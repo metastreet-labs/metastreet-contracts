@@ -221,7 +221,7 @@ contract Vault is
     /**
      * @notice Insolvent tranche
      */
-    error InsolventTranche();
+    error InsolventTranche(TrancheId trancheId);
 
     /**
      * @notice Purchase price too low
@@ -690,7 +690,7 @@ contract Vault is
      */
     function _deposit(TrancheId trancheId, uint256 amount) internal {
         /* Check tranche is solvent */
-        if (!_isSolvent(trancheId)) revert InsolventTranche();
+        if (!_isSolvent(trancheId)) revert InsolventTranche(trancheId);
 
         /* Compute current share price */
         uint256 currentSharePrice = _computeSharePrice(trancheId);
@@ -880,7 +880,7 @@ contract Vault is
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Check tranche is solvent */
-        if (!_isSolvent(trancheId)) revert InsolventTranche();
+        if (!_isSolvent(trancheId)) revert InsolventTranche(trancheId);
 
         /* Compute current redemption share price */
         uint256 currentRedemptionSharePrice = _computeRedemptionSharePrice(trancheId);

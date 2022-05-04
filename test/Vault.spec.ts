@@ -351,7 +351,7 @@ describe("Vault", function () {
         expect(await vault.redemptionSharePrice(trancheId)).to.equal(ethers.constants.Zero);
 
         await expect(vault.connect(accountDepositor).deposit(trancheId, depositAmount)).to.be.revertedWith(
-          "InsolventTranche()"
+          `InsolventTranche(${trancheId})`
         );
       });
     });
@@ -1114,7 +1114,7 @@ describe("Vault", function () {
 
       /* Attempt to redeem from junior tranche */
       await expect(vault.connect(accountDepositor).redeem(1, ethers.constants.One)).to.be.revertedWith(
-        "InsolventTranche()"
+        "InsolventTranche(1)"
       );
 
       /* Redeem cash from senior tranche */
@@ -1266,7 +1266,7 @@ describe("Vault", function () {
         expect(await vault.redemptionSharePrice(trancheId)).to.equal(ethers.constants.Zero);
 
         await expect(vault.connect(accountDepositor).redeem(trancheId, redemptionAmount)).to.be.revertedWith(
-          "InsolventTranche()"
+          `InsolventTranche(${trancheId})`
         );
       });
     });
