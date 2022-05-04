@@ -310,6 +310,16 @@ async function vaultRemoveCollateralLiquidator(vaultAddress: string, liquidator:
   await vault.revokeRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), liquidator);
 }
 
+async function vaultAddEmergencyAdmin(vaultAddress: string, emergencyAdmin: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  await vault.grantRole(await vault.EMERGENCY_ADMIN_ROLE(), emergencyAdmin);
+}
+
+async function vaultRemoveEmergencyAdmin(vaultAddress: string, emergencyAdmin: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  await vault.revokeRole(await vault.EMERGENCY_ADMIN_ROLE(), emergencyAdmin);
+}
+
 async function vaultServiceLoans(vaultAddress: string) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
 
@@ -327,6 +337,16 @@ async function vaultServiceLoans(vaultAddress: string) {
   }
 
   console.log("All loans serviced.");
+}
+
+async function vaultPause(vaultAddress: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  await vault.pause();
+}
+
+async function vaultUnpause(vaultAddress: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  await vault.unpause();
 }
 
 /******************************************************************************/
@@ -631,10 +651,33 @@ async function main() {
     .argument("liquidator", "Collateral liquidator address", parseAddress)
     .action(vaultRemoveCollateralLiquidator);
   program
+    .command("vault-add-emergency-admin")
+    .description("Add Vault emergency admin")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("emergency_admin", "Emergency admin address", parseAddress)
+    .action(vaultAddEmergencyAdmin);
+  program
+    .command("vault-remove-emergency-admin")
+    .description("Remove Vault emergency admin")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("emergency_admin", "Emergency admin address", parseAddress)
+    .action(vaultRemoveEmergencyAdmin);
+
+  program
     .command("vault-service-loans")
     .description("Service Vault loans")
     .argument("vault", "Vault address", parseAddress)
     .action(vaultServiceLoans);
+  program
+    .command("vault-pause")
+    .description("Pause Vault")
+    .argument("vault", "Vault address", parseAddress)
+    .action(vaultPause);
+  program
+    .command("vault-unpause")
+    .description("Unpause Vault")
+    .argument("vault", "Vault address", parseAddress)
+    .action(vaultUnpause);
 
   program
     .command("vault-lpo-info")
