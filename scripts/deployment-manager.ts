@@ -431,6 +431,24 @@ async function vaultLpoSetCollateralParameters(vaultAddress: string, token: stri
   await loanPriceOracle.setCollateralParameters(token, encodeCollateralParameters(collateralParameters));
 }
 
+async function vaultLpoAddParameterAdmin(vaultAddress: string, parameterAdmin: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as LoanPriceOracle;
+  await loanPriceOracle.grantRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
+}
+
+async function vaultLpoRemoveParameterAdmin(vaultAddress: string, parameterAdmin: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as LoanPriceOracle;
+  await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
+}
+
 async function vaultLpoPriceLoan(vaultAddress: string, noteToken: string, noteTokenId: BigNumber) {
   const vault = (await ethers.getContractAt("IVault", vaultAddress)) as IVault;
   const noteAdapter = (await ethers.getContractAt("INoteAdapter", await vault.noteAdapters(noteToken))) as INoteAdapter;
@@ -701,6 +719,19 @@ async function main() {
     .argument("token", "Collateral token address", parseAddress)
     .argument("path", "Path to JSON parameters")
     .action(vaultLpoSetCollateralParameters);
+  program
+    .command("vault-lpo-add-parameter-admin")
+    .description("Add Vault Loan Price Oracle parameter admin")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("parameter_admin", "Parameter admin address", parseAddress)
+    .action(vaultLpoAddParameterAdmin);
+  program
+    .command("vault-lpo-remove-parameter-admin")
+    .description("Remove Vault Loan Price Oracle parameter admin")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("parameter_admin", "Parameter admin address", parseAddress)
+    .action(vaultLpoRemoveParameterAdmin);
+
   program
     .command("vault-lpo-price-loan")
     .description("Use the Vault Loan Price Oracle to price a loan")
