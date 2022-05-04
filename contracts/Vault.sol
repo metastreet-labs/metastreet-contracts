@@ -163,7 +163,7 @@ contract Vault is
     /**
      * @notice Number of share price proration buckets
      */
-    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 6;
+    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 7;
 
     /**
      * @notice Total share price proration window in seconds
