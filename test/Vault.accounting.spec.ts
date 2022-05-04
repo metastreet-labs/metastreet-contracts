@@ -768,7 +768,7 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
       /* Tie up all capital in one loan */
-      const loanId1 = await createAndSellLoan(
+      await createAndSellLoan(
         lendingPlatform,
         mockLoanPriceOracle,
         vault,
@@ -803,7 +803,7 @@ describe("Vault Accounting", function () {
       await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
 
       /* Tie up all capital in one loan */
-      const loanId1 = await createAndSellLoan(
+      await createAndSellLoan(
         lendingPlatform,
         mockLoanPriceOracle,
         vault,
