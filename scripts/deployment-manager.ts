@@ -564,6 +564,10 @@ async function main() {
     .command("show")
     .description("Show current deployment")
     .action(() => deployment.dump());
+  program
+    .command("show-address")
+    .description("Show address of signer")
+    .action(async () => console.log((await ethers.getSigners())[0].address));
 
   program
     .command("beacon-deploy")
