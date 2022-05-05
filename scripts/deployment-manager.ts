@@ -4,6 +4,7 @@ import fs from "fs";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Network } from "@ethersproject/networks";
+import { Signer } from "@ethersproject/abstract-signer";
 import { getContractAddress } from "@ethersproject/address";
 
 import { VaultRegistry, Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPriceOracle } from "../typechain";
@@ -15,6 +16,12 @@ import {
   encodeCollateralParameters,
   computePiecewiseLinearModel,
 } from "../test/helpers/LoanPriceOracleHelpers";
+
+/******************************************************************************/
+/* Global Signer */
+/******************************************************************************/
+
+let signer: Signer | undefined;
 
 /******************************************************************************/
 /* Deployment */
@@ -73,8 +80,8 @@ async function beaconDeploy(deployment: Deployment) {
     return;
   }
 
-  const vaultFactory = await ethers.getContractFactory("Vault");
-  const lpTokenFactory = await ethers.getContractFactory("LPToken");
+  const vaultFactory = await ethers.getContractFactory("Vault", signer);
+  const lpTokenFactory = await ethers.getContractFactory("LPToken", signer);
 
   const vaultBeacon = await upgrades.deployBeacon(vaultFactory, { unsafeAllow: ["delegatecall"] });
   await vaultBeacon.deployed();
@@ -118,8 +125,8 @@ async function beaconUpgrade(deployment: Deployment) {
     return;
   }
 
-  const vaultFactory = await ethers.getContractFactory("Vault");
-  const lpTokenFactory = await ethers.getContractFactory("LPToken");
+  const vaultFactory = await ethers.getContractFactory("Vault", signer);
+  const lpTokenFactory = await ethers.getContractFactory("LPToken", signer);
 
   await upgrades.upgradeBeacon(deployment.vaultBeacon, vaultFactory, { unsafeAllow: ["delegatecall"] });
   await upgrades.upgradeBeacon(deployment.lpTokenBeacon, lpTokenFactory, { unsafeAllow: ["delegatecall"] });
@@ -135,7 +142,7 @@ async function registryDeploy(deployment: Deployment) {
     return;
   }
 
-  const vaultRegistryFactory = await ethers.getContractFactory("VaultRegistry");
+  const vaultRegistryFactory = await ethers.getContractFactory("VaultRegistry", signer);
 
   const vaultRegistry = await vaultRegistryFactory.deploy();
   await vaultRegistry.deployed();
@@ -168,7 +175,11 @@ async function registryRegister(deployment: Deployment, vaultAddress: string) {
     return;
   }
 
-  const vaultRegistry = (await ethers.getContractAt("IVaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  const vaultRegistry = (await ethers.getContractAt(
+    "IVaultRegistry",
+    deployment.vaultRegistry,
+    signer
+  )) as VaultRegistry;
   await vaultRegistry.registerVault(vaultAddress);
 }
 
@@ -178,7 +189,11 @@ async function registryUnregister(deployment: Deployment, vaultAddress: string) 
     return;
   }
 
-  const vaultRegistry = (await ethers.getContractAt("IVaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  const vaultRegistry = (await ethers.getContractAt(
+    "IVaultRegistry",
+    deployment.vaultRegistry,
+    signer
+  )) as VaultRegistry;
   await vaultRegistry.unregisterVault(vaultAddress);
 }
 
@@ -201,9 +216,9 @@ async function vaultDeploy(
     return;
   }
 
-  const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
-  const lpTokenFactory = await ethers.getContractFactory("LPToken");
-  const vaultFactory = await ethers.getContractFactory("Vault");
+  const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle", signer);
+  const lpTokenFactory = await ethers.getContractFactory("LPToken", signer);
+  const vaultFactory = await ethers.getContractFactory("Vault", signer);
 
   const loanPriceOracle = await loanPriceOracleFactory.deploy(currencyToken);
   await loanPriceOracle.deployed();
@@ -224,9 +239,15 @@ async function vaultDeploy(
   console.debug(`Junior LP Token:   ${juniorLPToken.address}`);
   console.debug();
 
-  const [account] = await ethers.getSigners();
-  const vaultAddress = getContractAddress({ from: account.address, nonce: (await account.getTransactionCount()) + 1 });
-  const vaultRegistry = (await ethers.getContractAt("VaultRegistry", deployment.vaultRegistry)) as VaultRegistry;
+  const vaultAddress = getContractAddress({
+    from: await signer!.getAddress(),
+    nonce: (await signer!.getTransactionCount()) + 1,
+  });
+  const vaultRegistry = (await ethers.getContractAt(
+    "VaultRegistry",
+    deployment.vaultRegistry,
+    signer
+  )) as VaultRegistry;
   await vaultRegistry.registerVault(vaultAddress);
 
   const vault = await upgrades.deployBeaconProxy(deployment.vaultBeacon, vaultFactory, [
@@ -281,47 +302,47 @@ async function vaultInfo(vaultAddress: string) {
 }
 
 async function vaultSetNoteAdapter(vaultAddress: string, noteToken: string, noteAdapter: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.setNoteAdapter(noteToken, noteAdapter);
 }
 
 async function vaultSetLoanPriceOracle(vaultAddress: string, loanPriceOracle: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.setLoanPriceOracle(loanPriceOracle);
 }
 
 async function vaultSetSeniorTrancheRate(vaultAddress: string, rate: BigNumber) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.setSeniorTrancheRate(rate.div(365 * 86400));
 }
 
 async function vaultSetAdminFeeRate(vaultAddress: string, rate: BigNumber) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.setAdminFeeRate(rate);
 }
 
 async function vaultAddCollateralLiquidator(vaultAddress: string, liquidator: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.grantRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), liquidator);
 }
 
 async function vaultRemoveCollateralLiquidator(vaultAddress: string, liquidator: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.revokeRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), liquidator);
 }
 
 async function vaultAddEmergencyAdmin(vaultAddress: string, emergencyAdmin: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.grantRole(await vault.EMERGENCY_ADMIN_ROLE(), emergencyAdmin);
 }
 
 async function vaultRemoveEmergencyAdmin(vaultAddress: string, emergencyAdmin: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.revokeRole(await vault.EMERGENCY_ADMIN_ROLE(), emergencyAdmin);
 }
 
 async function vaultServiceLoans(vaultAddress: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
 
   while (true) {
     const [upkeepNeeded, performData] = await vault.checkUpkeep("0x");
@@ -340,12 +361,12 @@ async function vaultServiceLoans(vaultAddress: string) {
 }
 
 async function vaultPause(vaultAddress: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.pause();
 }
 
 async function vaultUnpause(vaultAddress: string) {
-  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.unpause();
 }
 
@@ -375,7 +396,8 @@ async function vaultLpoSetMinimumLoanDuration(vaultAddress: string, duration: nu
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   const loanPriceOracle = (await ethers.getContractAt(
     "LoanPriceOracle",
-    await vault.loanPriceOracle()
+    await vault.loanPriceOracle(),
+    signer
   )) as LoanPriceOracle;
   await loanPriceOracle.setMinimumLoanDuration(duration);
 }
@@ -426,7 +448,8 @@ async function vaultLpoSetCollateralParameters(vaultAddress: string, token: stri
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   const loanPriceOracle = (await ethers.getContractAt(
     "LoanPriceOracle",
-    await vault.loanPriceOracle()
+    await vault.loanPriceOracle(),
+    signer
   )) as LoanPriceOracle;
   await loanPriceOracle.setCollateralParameters(token, encodeCollateralParameters(collateralParameters));
 }
@@ -435,7 +458,8 @@ async function vaultLpoAddParameterAdmin(vaultAddress: string, parameterAdmin: s
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   const loanPriceOracle = (await ethers.getContractAt(
     "LoanPriceOracle",
-    await vault.loanPriceOracle()
+    await vault.loanPriceOracle(),
+    signer
   )) as LoanPriceOracle;
   await loanPriceOracle.grantRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
 }
@@ -444,7 +468,8 @@ async function vaultLpoRemoveParameterAdmin(vaultAddress: string, parameterAdmin
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   const loanPriceOracle = (await ethers.getContractAt(
     "LoanPriceOracle",
-    await vault.loanPriceOracle()
+    await vault.loanPriceOracle(),
+    signer
   )) as LoanPriceOracle;
   await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
 }
@@ -489,7 +514,7 @@ async function vaultLpoPriceLoan(vaultAddress: string, noteToken: string, noteTo
 /******************************************************************************/
 
 async function noteAdapterDeploy(contractName: string, ...args: string[]) {
-  const noteAdapterFactory = await ethers.getContractFactory(contractName);
+  const noteAdapterFactory = await ethers.getContractFactory(contractName, signer);
 
   const noteAdapter = await noteAdapterFactory.deploy(...args[0]);
   await noteAdapter.deployed();
@@ -518,7 +543,7 @@ async function noteAdapterInfo(noteAdapterAddress: string) {
 /******************************************************************************/
 
 async function loanPriceOracleDeploy(currencyToken: string) {
-  const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
+  const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle", signer);
 
   const loanPriceOracle = await loanPriceOracleFactory.deploy(currencyToken);
   await loanPriceOracle.deployed();
@@ -573,6 +598,11 @@ async function main() {
     ? Deployment.fromFile(deploymentPath)
     : Deployment.fromScratch(network);
 
+  /* Load signer */
+  if (signer === undefined) {
+    signer = (await ethers.getSigners())[0];
+  }
+
   /* Program Commands */
   const program = new Command();
 
@@ -585,7 +615,7 @@ async function main() {
   program
     .command("show-address")
     .description("Show address of signer")
-    .action(async () => console.log((await ethers.getSigners())[0].address));
+    .action(async () => console.log(await signer!.getAddress()));
 
   program
     .command("beacon-deploy")
