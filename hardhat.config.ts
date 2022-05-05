@@ -25,6 +25,9 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
+    mainnet: {
+      url: process.env.MAINNET_URL || "",
+    },
     rinkeby: {
       url: process.env.RINKEBY_URL || "",
       accounts:
