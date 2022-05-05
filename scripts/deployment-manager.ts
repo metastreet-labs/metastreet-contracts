@@ -210,14 +210,14 @@ async function vaultDeploy(
   console.debug(`Loan Price Oracle: ${loanPriceOracle.address}`);
 
   const seniorLPToken = await upgrades.deployBeaconProxy(deployment.lpTokenBeacon, lpTokenFactory, [
-    "Senior LP Token",
+    "Senior LP " + name,
     seniorLPSymbol,
   ]);
   await seniorLPToken.deployed();
   console.debug(`Senior LP Token:   ${seniorLPToken.address}`);
 
   const juniorLPToken = await upgrades.deployBeaconProxy(deployment.lpTokenBeacon, lpTokenFactory, [
-    "Junior LP Token",
+    "Junior LP " + name,
     juniorLPSymbol,
   ]);
   await juniorLPToken.deployed();
