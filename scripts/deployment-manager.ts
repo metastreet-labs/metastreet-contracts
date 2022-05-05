@@ -6,6 +6,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Network } from "@ethersproject/networks";
 import { Signer } from "@ethersproject/abstract-signer";
 import { getContractAddress } from "@ethersproject/address";
+import { LedgerSigner } from "@anders-t/ethers-ledger";
 
 import { VaultRegistry, Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPriceOracle } from "../typechain";
 
@@ -600,7 +601,11 @@ async function main() {
 
   /* Load signer */
   if (signer === undefined) {
-    signer = (await ethers.getSigners())[0];
+    if (process.env.LEDGER_DERIVATION_PATH) {
+      signer = new LedgerSigner(ethers.provider, process.env.LEDGER_DERIVATION_PATH);
+    } else {
+      signer = (await ethers.getSigners())[0];
+    }
   }
 
   /* Program Commands */
