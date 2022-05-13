@@ -814,7 +814,7 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function deposit(TrancheId trancheId, uint256 amount) external whenNotPaused {
+    function deposit(TrancheId trancheId, uint256 amount) external whenNotPaused nonReentrant {
         /* Validate amount */
         if (amount == 0) revert ParameterOutOfBounds();
 
@@ -832,7 +832,7 @@ contract Vault is
         address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
-    ) external whenNotPaused {
+    ) external whenNotPaused nonReentrant {
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
@@ -851,7 +851,7 @@ contract Vault is
         uint256 noteTokenId,
         uint256 minPurchasePrice,
         uint256[2] calldata allocation
-    ) external whenNotPaused {
+    ) external whenNotPaused nonReentrant {
         /* Check allocations sum to one */
         if (allocation[0] + allocation[1] != ONE_UD60X18) revert ParameterOutOfBounds();
 
@@ -873,7 +873,7 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function redeem(TrancheId trancheId, uint256 shares) external whenNotPaused {
+    function redeem(TrancheId trancheId, uint256 shares) external whenNotPaused nonReentrant {
         /* Validate shares */
         if (shares == 0) revert ParameterOutOfBounds();
 
@@ -906,7 +906,7 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdraw(TrancheId trancheId, uint256 maxAmount) external whenNotPaused {
+    function withdraw(TrancheId trancheId, uint256 maxAmount) external whenNotPaused nonReentrant {
         Tranche storage tranche = _trancheState(trancheId);
 
         /* Calculate amount available to withdraw */
@@ -972,7 +972,7 @@ contract Vault is
     /**
      * @inheritdoc ILoanReceiver
      */
-    function onLoanRepaid(address noteToken, uint256 loanId) public {
+    function onLoanRepaid(address noteToken, uint256 loanId) public nonReentrant {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
@@ -1070,7 +1070,7 @@ contract Vault is
         address noteToken,
         uint256 loanId,
         uint256 proceeds
-    ) external onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
+    ) external nonReentrant onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
         /* Lookup loan state */
         Loan storage loan = _loans[noteToken][loanId];
 
@@ -1253,7 +1253,7 @@ contract Vault is
      * @param recipient Recipient account
      * @param amount Amount to withdraw
      */
-    function withdrawAdminFees(address recipient, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdrawAdminFees(address recipient, uint256 amount) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         if (recipient == address(0)) revert InvalidAddress();
         if (amount > _totalAdminFeeBalance) revert ParameterOutOfBounds();
 
