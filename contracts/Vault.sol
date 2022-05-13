@@ -585,7 +585,7 @@ contract Vault is
 
         /* Sum the prorated returns from pending returns in each time bucket */
         uint256 proratedReturns;
-        for (uint256 i = 0; i < SHARE_PRICE_PRORATION_BUCKETS; i++) {
+        for (uint256 i; i < SHARE_PRICE_PRORATION_BUCKETS; ++i) {
             /* Prorated Returns[i] = ((Elapsed Time + W * (N - 1 - i)) / (W * N)) * Pending Returns[i]  */
             proratedReturns += PRBMathUD60x18.div(
                 PRBMathUD60x18.mul(
@@ -1110,7 +1110,7 @@ contract Vault is
 
         /* For each note token */
         uint256 numNoteTokens = _noteTokens.length();
-        for (uint256 i = 0; i < numNoteTokens; i++) {
+        for (uint256 i; i < numNoteTokens; ++i) {
             /* Get note token */
             address noteToken = _noteTokens.at(i);
 
@@ -1125,7 +1125,7 @@ contract Vault is
             ) {
                 /* For each loan ID */
                 uint256 numLoans = _pendingLoans[timeBucket][noteToken].length;
-                for (uint256 j = 0; j < numLoans; j++) {
+                for (uint256 j; j < numLoans; ++j) {
                     /* Get loan ID */
                     uint256 loanId = _pendingLoans[timeBucket][noteToken][j];
 
