@@ -12,8 +12,10 @@ import { VaultRegistry, Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPrice
 
 import { FixedPoint } from "../test/helpers/FixedPointHelpers";
 import {
+  UtilizationParameters,
   CollateralParameters,
   PiecewiseLinearModel,
+  encodeUtilizationParameters,
   encodeCollateralParameters,
   computePiecewiseLinearModel,
 } from "../test/helpers/LoanPriceOracleHelpers";
@@ -372,6 +374,50 @@ async function vaultUnpause(vaultAddress: string) {
 }
 
 /******************************************************************************/
+/* Loan Price Oracle Helper Functions for Parameters */
+/******************************************************************************/
+
+type SerializedPiecewiseLinearModel = {
+  minRate: string;
+  targetRate: string;
+  maxRate: string;
+  target: string;
+  max: string;
+};
+
+type SerializedCollateralParameters = {
+  collateralValue: string;
+  loanToValueRateComponent: SerializedPiecewiseLinearModel;
+  durationRateComponent: SerializedPiecewiseLinearModel;
+  rateComponentWeights: [number, number, number];
+};
+
+type SerializedUtilizationParameters = SerializedPiecewiseLinearModel;
+
+function deserializePiecewiseLinearModel(serialized: SerializedPiecewiseLinearModel): PiecewiseLinearModel {
+  return computePiecewiseLinearModel({
+    minRate: FixedPoint.normalizeRate(serialized.minRate),
+    targetRate: FixedPoint.normalizeRate(serialized.targetRate),
+    maxRate: FixedPoint.normalizeRate(serialized.maxRate),
+    target: FixedPoint.from(serialized.target),
+    max: FixedPoint.from(serialized.max),
+  });
+}
+
+function deserializeUtilizationParameters(serialized: SerializedUtilizationParameters): UtilizationParameters {
+  return deserializePiecewiseLinearModel(serialized);
+}
+
+function deserializeCollateralParameters(serialized: SerializedCollateralParameters): CollateralParameters {
+  return {
+    collateralValue: ethers.utils.parseEther(serialized.collateralValue),
+    loanToValueRateComponent: deserializePiecewiseLinearModel(serialized.loanToValueRateComponent),
+    durationRateComponent: deserializePiecewiseLinearModel(serialized.durationRateComponent),
+    rateComponentWeights: serialized.rateComponentWeights,
+  };
+}
+
+/******************************************************************************/
 /* Loan Price Oracle Functions */
 /******************************************************************************/
 
@@ -403,43 +449,23 @@ async function vaultLpoSetMinimumLoanDuration(vaultAddress: string, duration: nu
   await loanPriceOracle.setMinimumLoanDuration(duration);
 }
 
+async function vaultLpoSetUtilizationParameters(vaultAddress: string, path: string) {
+  const serialized: SerializedUtilizationParameters = JSON.parse(fs.readFileSync(path, "utf-8"));
+  const utilizationParameters = deserializeUtilizationParameters(serialized);
+
+  console.log("Utilization Parameters:");
+  console.log(utilizationParameters);
+
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle(),
+    signer
+  )) as LoanPriceOracle;
+  await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
+}
+
 async function vaultLpoSetCollateralParameters(vaultAddress: string, token: string, path: string) {
-  type SerializedPiecewiseLinearModel = {
-    minRate: string;
-    targetRate: string;
-    maxRate: string;
-    target: string;
-    max: string;
-  };
-
-  type SerializedCollateralParameters = {
-    collateralValue: string;
-    utilizationRateComponent: SerializedPiecewiseLinearModel;
-    loanToValueRateComponent: SerializedPiecewiseLinearModel;
-    durationRateComponent: SerializedPiecewiseLinearModel;
-    rateComponentWeights: [number, number, number];
-  };
-
-  function deserializePiecewiseLinearModel(serialized: SerializedPiecewiseLinearModel): PiecewiseLinearModel {
-    return computePiecewiseLinearModel({
-      minRate: FixedPoint.normalizeRate(serialized.minRate),
-      targetRate: FixedPoint.normalizeRate(serialized.targetRate),
-      maxRate: FixedPoint.normalizeRate(serialized.maxRate),
-      target: FixedPoint.from(serialized.target),
-      max: FixedPoint.from(serialized.max),
-    });
-  }
-
-  function deserializeCollateralParameters(serialized: SerializedCollateralParameters): CollateralParameters {
-    return {
-      collateralValue: ethers.utils.parseEther(serialized.collateralValue),
-      utilizationRateComponent: deserializePiecewiseLinearModel(serialized.utilizationRateComponent),
-      loanToValueRateComponent: deserializePiecewiseLinearModel(serialized.loanToValueRateComponent),
-      durationRateComponent: deserializePiecewiseLinearModel(serialized.durationRateComponent),
-      rateComponentWeights: serialized.rateComponentWeights,
-    };
-  }
-
   const serialized: SerializedCollateralParameters = JSON.parse(fs.readFileSync(path, "utf-8"));
   const collateralParameters = deserializeCollateralParameters(serialized);
 
@@ -747,6 +773,12 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("duration", "Minimum loan duration (in seconds)", parseNumber)
     .action(vaultLpoSetMinimumLoanDuration);
+  program
+    .command("vault-lpo-set-utilization-parameters")
+    .description("Set Vault Loan Price Oracle utilization parameters")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("path", "Path to JSON parameters")
+    .action(vaultLpoSetUtilizationParameters);
   program
     .command("vault-lpo-set-collateral-parameters")
     .description("Set Vault Loan Price Oracle collateral parameters")

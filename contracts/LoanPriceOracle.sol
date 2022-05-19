@@ -62,6 +62,11 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     event MinimumLoanDurationUpdated(uint256 duration);
 
     /**
+     * @notice Emitted when utilization parameters are updated
+     */
+    event UtilizationParametersUpdated();
+
+    /**
      * @notice Emitted when collateral parameters are updated
      * @param collateralToken Address of collateral token
      */
@@ -90,18 +95,21 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     /**
      * @notice Collateral parameters
      * @param collateralValue Collateral value in UD60x18
-     * @param utilizationRateComponent Rate component model for utilization
      * @param loanToValueRateComponent Rate component model for loan to value
      * @param durationRateComponent Rate component model for duration
      * @param rateComponentWeights Weights for rate components, each 0 to 10000
      */
     struct CollateralParameters {
         uint256 collateralValue; /* UD60x18 */
-        PiecewiseLinearModel utilizationRateComponent;
         PiecewiseLinearModel loanToValueRateComponent;
         PiecewiseLinearModel durationRateComponent;
         uint16[3] rateComponentWeights; /* 0-10000 */
     }
+
+    /**
+     * @dev Rate component model for utilization
+     */
+    PiecewiseLinearModel private _utilizationParameters;
 
     /**
      * @dev Mapping of collateral token contract to collateral parameters
@@ -227,7 +235,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
         /* Compute discount rate components for utilization, loan-to-value, and duration */
         uint256[3] memory rateComponents = [
-            _computeRateComponent(collateralParameters.utilizationRateComponent, utilization, 0),
+            _computeRateComponent(_utilizationParameters, utilization, 0),
             _computeRateComponent(collateralParameters.loanToValueRateComponent, loanToValue, 1),
             _computeRateComponent(collateralParameters.durationRateComponent, loanTimeRemaining, 2)
         ];
@@ -248,6 +256,14 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     /**************************************************************************/
     /* Getters */
     /**************************************************************************/
+
+    /**
+     * @notice Get utilization parameters
+     * @return Utilization rate component model
+     */
+    function getUtilizationParameters() external view returns (PiecewiseLinearModel memory) {
+        return _utilizationParameters;
+    }
 
     /**
      * @notice Get collateral parameters for token contract
@@ -281,6 +297,22 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         minimumLoanDuration = duration;
 
         emit MinimumLoanDurationUpdated(duration);
+    }
+
+    /**
+     * @notice Set utilization parameters
+     *
+     * Emits a {UtilizationParametersUpdated} event.
+     *
+     * @param packedUtilizationParameters Utilization rate component model, ABI-encoded
+     */
+    function setUtilizationParameters(bytes calldata packedUtilizationParameters)
+        external
+        onlyRole(PARAMETER_ADMIN_ROLE)
+    {
+        _utilizationParameters = abi.decode(packedUtilizationParameters, (PiecewiseLinearModel));
+
+        emit UtilizationParametersUpdated();
     }
 
     /**

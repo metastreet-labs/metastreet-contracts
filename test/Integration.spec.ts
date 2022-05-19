@@ -21,7 +21,9 @@ import { initializeAccounts, createLoan, getBlockTimestamp, elapseTime } from ".
 import { FixedPoint } from "./helpers/FixedPointHelpers";
 import { DeterministicRandom } from "./helpers/RandomHelpers";
 import {
+  UtilizationParameters,
   CollateralParameters,
+  encodeUtilizationParameters,
   encodeCollateralParameters,
   computePiecewiseLinearModel,
 } from "./helpers/LoanPriceOracleHelpers";
@@ -48,15 +50,15 @@ describe("Integration", function () {
   let accountLiquidator: SignerWithAddress;
 
   /* LoanPriceOracle parameters */
+  const utilizationParameters: UtilizationParameters = computePiecewiseLinearModel({
+    minRate: FixedPoint.normalizeRate("0.05"),
+    targetRate: FixedPoint.normalizeRate("0.10"),
+    maxRate: FixedPoint.normalizeRate("2.00"),
+    target: FixedPoint.from("0.90"),
+    max: FixedPoint.from("1.00"),
+  });
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    utilizationRateComponent: computePiecewiseLinearModel({
-      minRate: FixedPoint.normalizeRate("0.05"),
-      targetRate: FixedPoint.normalizeRate("0.10"),
-      maxRate: FixedPoint.normalizeRate("2.00"),
-      target: FixedPoint.from("0.90"),
-      max: FixedPoint.from("1.00"),
-    }),
     loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
@@ -147,6 +149,7 @@ describe("Integration", function () {
     await juniorLPToken.transferOwnership(vault.address);
 
     /* Setup loan price oracle */
+    await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
     await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
 
     /* Setup vault */

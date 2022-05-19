@@ -7,7 +7,9 @@ import { extractEvent } from "../test/helpers/EventUtilities";
 import { elapseTime } from "../test/helpers/VaultHelpers";
 import { FixedPoint } from "../test/helpers/FixedPointHelpers";
 import {
+  UtilizationParameters,
   CollateralParameters,
+  encodeUtilizationParameters,
   encodeCollateralParameters,
   computePiecewiseLinearModel,
 } from "../test/helpers/LoanPriceOracleHelpers";
@@ -225,16 +227,17 @@ async function main() {
 
   console.log("");
 
-  /* Setup collateral parameters for loan price oracles */
+  /* Setup parameters for loan price oracles */
+  const utilizationParameters: UtilizationParameters = computePiecewiseLinearModel({
+    minRate: FixedPoint.normalizeRate("0.05"),
+    targetRate: FixedPoint.normalizeRate("0.10"),
+    maxRate: FixedPoint.normalizeRate("2.00"),
+    target: FixedPoint.from("0.90"),
+    max: FixedPoint.from("1.00"),
+  });
+
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    utilizationRateComponent: computePiecewiseLinearModel({
-      minRate: FixedPoint.normalizeRate("0.05"),
-      targetRate: FixedPoint.normalizeRate("0.10"),
-      maxRate: FixedPoint.normalizeRate("2.00"),
-      target: FixedPoint.from("0.90"),
-      max: FixedPoint.from("1.00"),
-    }),
     loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
@@ -252,11 +255,17 @@ async function main() {
     rateComponentWeights: [5000, 2500, 2500],
   };
 
+  await daiLoanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
+  console.log("Setup utilization parameters for DAI Loan Price Oracle");
+
   await daiLoanPriceOracle.setCollateralParameters(
     baycTokenContract.address,
     encodeCollateralParameters(collateralParameters)
   );
   console.log("Setup BAYC collateral parameters for DAI Loan Price Oracle");
+
+  await wethLoanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
+  console.log("Setup utilization parameters for WETH Loan Price Oracle");
 
   await wethLoanPriceOracle.setCollateralParameters(
     baycTokenContract.address,

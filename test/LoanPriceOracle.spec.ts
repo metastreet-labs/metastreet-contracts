@@ -9,7 +9,9 @@ import { expectEvent } from "./helpers/EventUtilities";
 import { randomAddress, getBlockTimestamp } from "./helpers/VaultHelpers";
 import { FixedPoint } from "./helpers/FixedPointHelpers";
 import {
+  UtilizationParameters,
   CollateralParameters,
+  encodeUtilizationParameters,
   encodeCollateralParameters,
   computePiecewiseLinearModel,
 } from "./helpers/LoanPriceOracleHelpers";
@@ -48,15 +50,16 @@ describe("LoanPriceOracle", function () {
 
   const minimumLoanDuration = 7 * 86400;
 
+  const utilizationParameters: UtilizationParameters = computePiecewiseLinearModel({
+    minRate: FixedPoint.normalizeRate("0.05"),
+    targetRate: FixedPoint.normalizeRate("0.10"),
+    maxRate: FixedPoint.normalizeRate("2.00"),
+    target: FixedPoint.from("0.90"),
+    max: FixedPoint.from("1.00"),
+  });
+
   const collateralParameters: CollateralParameters = {
     collateralValue: ethers.utils.parseEther("100"),
-    utilizationRateComponent: computePiecewiseLinearModel({
-      minRate: FixedPoint.normalizeRate("0.05"),
-      targetRate: FixedPoint.normalizeRate("0.10"),
-      maxRate: FixedPoint.normalizeRate("2.00"),
-      target: FixedPoint.from("0.90"),
-      max: FixedPoint.from("1.00"),
-    }),
     loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
@@ -94,6 +97,7 @@ describe("LoanPriceOracle", function () {
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
       await loanPriceOracle.setMinimumLoanDuration(minimumLoanDuration);
+      await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
       await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
     });
 
@@ -244,6 +248,27 @@ describe("LoanPriceOracle", function () {
     });
   });
 
+  describe("#setUtilizationParameters", async function () {
+    it("sets utilization parameters successfully", async function () {
+      const setTx = await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
+      await expectEvent(setTx, loanPriceOracle, "UtilizationParametersUpdated", {});
+
+      expect(await loanPriceOracle.getUtilizationParameters()).to.deep.equal(Object.values(utilizationParameters));
+    });
+    it("fails on invalid caller", async function () {
+      await expect(
+        loanPriceOracle
+          .connect(accounts[1])
+          .setUtilizationParameters(encodeUtilizationParameters(utilizationParameters))
+      ).to.be.revertedWith("AccessControl: account");
+
+      await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
+      await expect(
+        loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters))
+      ).to.be.revertedWith("AccessControl: account");
+    });
+  });
+
   describe("#setCollateralParameters", async function () {
     it("sets collateral parameters successfully", async function () {
       const setTx = await loanPriceOracle.setCollateralParameters(
@@ -256,9 +281,6 @@ describe("LoanPriceOracle", function () {
 
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
         collateralParameters.collateralValue
-      );
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).utilizationRateComponent).to.deep.equal(
-        Object.values(collateralParameters.utilizationRateComponent)
       );
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).loanToValueRateComponent).to.deep.equal(
         Object.values(collateralParameters.loanToValueRateComponent)

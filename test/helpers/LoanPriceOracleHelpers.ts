@@ -10,29 +10,38 @@ export type PiecewiseLinearModel = {
   max: BigNumber;
 };
 
+export type UtilizationParameters = PiecewiseLinearModel;
+
 export type CollateralParameters = {
   collateralValue: BigNumber;
-  utilizationRateComponent: PiecewiseLinearModel;
   loanToValueRateComponent: PiecewiseLinearModel;
   durationRateComponent: PiecewiseLinearModel;
   rateComponentWeights: [number, number, number];
 };
 
+export function encodeUtilizationParameters(utilizationParameters: PiecewiseLinearModel): string {
+  return ethers.utils.defaultAbiCoder.encode(
+    ["tuple(uint72, uint72, uint72, uint96, uint96)"],
+    [
+      [
+        utilizationParameters.offset,
+        utilizationParameters.slope1,
+        utilizationParameters.slope2,
+        utilizationParameters.target,
+        utilizationParameters.max,
+      ],
+    ]
+  );
+}
+
 export function encodeCollateralParameters(collateralParameters: CollateralParameters): string {
   return ethers.utils.defaultAbiCoder.encode(
     [
-      "tuple(uint256, tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), uint16[3])",
+      "tuple(uint256, tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), uint16[3])",
     ],
     [
       [
         collateralParameters.collateralValue,
-        [
-          collateralParameters.utilizationRateComponent.offset,
-          collateralParameters.utilizationRateComponent.slope1,
-          collateralParameters.utilizationRateComponent.slope2,
-          collateralParameters.utilizationRateComponent.target,
-          collateralParameters.utilizationRateComponent.max,
-        ],
         [
           collateralParameters.loanToValueRateComponent.offset,
           collateralParameters.loanToValueRateComponent.slope1,
