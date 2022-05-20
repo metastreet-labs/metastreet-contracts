@@ -158,12 +158,12 @@ contract Vault is
     /**
      * @notice Time bucket duration in seconds
      */
-    uint256 public constant TIME_BUCKET_DURATION = 15 days;
+    uint256 public constant TIME_BUCKET_DURATION = 7 days;
 
     /**
      * @notice Number of share price proration buckets
      */
-    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 7;
+    uint256 public constant SHARE_PRICE_PRORATION_BUCKETS = 14;
 
     /**
      * @notice Total share price proration window in seconds
