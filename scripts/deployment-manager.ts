@@ -8,7 +8,15 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { getContractAddress } from "@ethersproject/address";
 import { LedgerSigner } from "@anders-t/ethers-ledger";
 
-import { VaultRegistry, Vault, LoanPriceOracle, IVault, INoteAdapter, ILoanPriceOracle } from "../typechain";
+import {
+  VaultRegistry,
+  Vault,
+  LoanPriceOracle,
+  StaticCollateralOracle,
+  IVault,
+  INoteAdapter,
+  ILoanPriceOracle,
+} from "../typechain";
 
 import { FixedPoint } from "../test/helpers/FixedPointHelpers";
 import {
@@ -207,7 +215,7 @@ async function registryUnregister(deployment: Deployment, vaultAddress: string) 
 async function vaultDeploy(
   deployment: Deployment,
   name: string,
-  currencyToken: string,
+  collateralOracle: string,
   seniorLPSymbol: string,
   juniorLPSymbol: string
 ) {
@@ -223,7 +231,9 @@ async function vaultDeploy(
   const lpTokenFactory = await ethers.getContractFactory("LPToken", signer);
   const vaultFactory = await ethers.getContractFactory("Vault", signer);
 
-  const loanPriceOracle = await loanPriceOracleFactory.deploy(currencyToken);
+  const currencyToken = await (await ethers.getContractAt("ICollateralOracle", collateralOracle)).currencyToken();
+
+  const loanPriceOracle = await loanPriceOracleFactory.deploy(collateralOracle);
   await loanPriceOracle.deployed();
   console.debug(`Loan Price Oracle: ${loanPriceOracle.address}`);
 
@@ -386,7 +396,7 @@ type SerializedPiecewiseLinearModel = {
 };
 
 type SerializedCollateralParameters = {
-  collateralValue: string;
+  active: boolean;
   loanToValueRateComponent: SerializedPiecewiseLinearModel;
   durationRateComponent: SerializedPiecewiseLinearModel;
   rateComponentWeights: [number, number, number];
@@ -410,7 +420,7 @@ function deserializeUtilizationParameters(serialized: SerializedUtilizationParam
 
 function deserializeCollateralParameters(serialized: SerializedCollateralParameters): CollateralParameters {
   return {
-    collateralValue: ethers.utils.parseEther(serialized.collateralValue),
+    active: serialized.active,
     loanToValueRateComponent: deserializePiecewiseLinearModel(serialized.loanToValueRateComponent),
     durationRateComponent: deserializePiecewiseLinearModel(serialized.durationRateComponent),
     rateComponentWeights: serialized.rateComponentWeights,
@@ -429,12 +439,15 @@ async function vaultLpoInfo(vaultAddress: string) {
   )) as LoanPriceOracle;
 
   const implVersion = await loanPriceOracle.IMPLEMENTATION_VERSION();
+  const collateralOracle = await loanPriceOracle.collateralOracle();
   const currencyToken = await loanPriceOracle.currencyToken();
   const currencyTokenSymbol = await (await ethers.getContractAt("IERC20Metadata", currencyToken)).symbol();
   const minimumLoanDuration = await loanPriceOracle.minimumLoanDuration();
 
   console.log("LoanPriceOracle");
+  console.log(`  Address:            ${loanPriceOracle.address}`);
   console.log(`  Impl. Version:      ${implVersion}`);
+  console.log(`  Collateral Oracle:  ${collateralOracle}`);
   console.log(`  Currency Token:     ${currencyToken} (${currencyTokenSymbol})`);
   console.log(`  Min. Loan Duration: ${minimumLoanDuration.div(86400)} days (${minimumLoanDuration} seconds)`);
 }
@@ -481,6 +494,16 @@ async function vaultLpoSetCollateralParameters(vaultAddress: string, token: stri
   await loanPriceOracle.setCollateralParameters(token, encodeCollateralParameters(collateralParameters));
 }
 
+async function vaultLpoSetCollateralOracle(vaultAddress: string, collateralOracle: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle(),
+    signer
+  )) as LoanPriceOracle;
+  await loanPriceOracle.setCollateralOracle(collateralOracle);
+}
+
 async function vaultLpoAddParameterAdmin(vaultAddress: string, parameterAdmin: string) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
   const loanPriceOracle = (await ethers.getContractAt(
@@ -499,6 +522,48 @@ async function vaultLpoRemoveParameterAdmin(vaultAddress: string, parameterAdmin
     signer
   )) as LoanPriceOracle;
   await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
+}
+
+async function vaultLpoCoSetCollateralValue(vaultAddress: string, collateralToken: string, collateralValue: BigNumber) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as LoanPriceOracle;
+  const staticCollateralOracle = (await ethers.getContractAt(
+    "StaticCollateralOracle",
+    await loanPriceOracle.collateralOracle(),
+    signer
+  )) as StaticCollateralOracle;
+  await staticCollateralOracle.setCollateralValue(collateralToken, collateralValue);
+}
+
+async function vaultLpoCoAddParameterAdmin(vaultAddress: string, parameterAdmin: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as LoanPriceOracle;
+  const staticCollateralOracle = (await ethers.getContractAt(
+    "StaticCollateralOracle",
+    await loanPriceOracle.collateralOracle(),
+    signer
+  )) as StaticCollateralOracle;
+  await staticCollateralOracle.grantRole(await staticCollateralOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
+}
+
+async function vaultLpoCoRemoveParameterAdmin(vaultAddress: string, parameterAdmin: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress)) as Vault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "LoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as LoanPriceOracle;
+  const staticCollateralOracle = (await ethers.getContractAt(
+    "StaticCollateralOracle",
+    await loanPriceOracle.collateralOracle(),
+    signer
+  )) as StaticCollateralOracle;
+  await staticCollateralOracle.revokeRole(await staticCollateralOracle.PARAMETER_ADMIN_ROLE(), parameterAdmin);
 }
 
 async function vaultLpoPriceLoan(vaultAddress: string, noteToken: string, noteTokenId: BigNumber) {
@@ -566,13 +631,26 @@ async function noteAdapterInfo(noteAdapterAddress: string) {
 }
 
 /******************************************************************************/
+/* Collateral Oracle Deployment */
+/******************************************************************************/
+
+async function collateralOracleDeploy(currencyToken: string) {
+  const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle", signer);
+
+  const staticCollateralOracle = await staticCollateralOracleFactory.deploy(currencyToken);
+  await staticCollateralOracle.deployed();
+
+  console.log(staticCollateralOracle.address);
+}
+
+/******************************************************************************/
 /* Loan Price Oracle Deployment */
 /******************************************************************************/
 
-async function loanPriceOracleDeploy(currencyToken: string) {
+async function loanPriceOracleDeploy(collateralOracle: string) {
   const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle", signer);
 
-  const loanPriceOracle = await loanPriceOracleFactory.deploy(currencyToken);
+  const loanPriceOracle = await loanPriceOracleFactory.deploy(collateralOracle);
   await loanPriceOracle.deployed();
 
   console.log(loanPriceOracle.address);
@@ -684,11 +762,11 @@ async function main() {
     .command("vault-deploy")
     .description("Deploy Vault")
     .argument("name", "Name of Vault")
-    .argument("currency_token", "Currency token address", parseAddress)
+    .argument("collateral_oracle", "Collateral oracle address", parseAddress)
     .argument("senior_lp_symbol", "Senior LPToken symbol")
     .argument("junior_lp_symbol", "Junior LPToken symbol")
-    .action((name, currencyToken, seniorLPSymbol, juniorLPSymbol) =>
-      vaultDeploy(deployment, name, currencyToken, seniorLPSymbol, juniorLPSymbol)
+    .action((name, collateralOracle, seniorLPSymbol, juniorLPSymbol) =>
+      vaultDeploy(deployment, name, collateralOracle, seniorLPSymbol, juniorLPSymbol)
     );
   program
     .command("vault-info")
@@ -787,6 +865,12 @@ async function main() {
     .argument("path", "Path to JSON parameters")
     .action(vaultLpoSetCollateralParameters);
   program
+    .command("vault-lpo-set-collateral-oracle")
+    .description("Set Vault Loan Price Oracle collateral oracle")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("collateral_oracle", "Collateral oracle address", parseAddress)
+    .action(vaultLpoSetCollateralOracle);
+  program
     .command("vault-lpo-add-parameter-admin")
     .description("Add Vault Loan Price Oracle parameter admin")
     .argument("vault", "Vault address", parseAddress)
@@ -798,6 +882,25 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("parameter_admin", "Parameter admin address", parseAddress)
     .action(vaultLpoRemoveParameterAdmin);
+  program
+    .command("vault-lpo-co-set-collateral-value")
+    .description("Set Collateral Oracle collateral value")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("token", "Collateral token address", parseAddress)
+    .argument("value", "Collateral value", parseDecimal)
+    .action(vaultLpoCoSetCollateralValue);
+  program
+    .command("vault-lpo-co-add-parameter-admin")
+    .description("Add Vault Collateral Oracle parameter admin")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("parameter_admin", "Parameter admin address", parseAddress)
+    .action(vaultLpoCoAddParameterAdmin);
+  program
+    .command("vault-lpo-co-remove-parameter-admin")
+    .description("Remove Vault Collateral Oracle parameter admin")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("parameter_admin", "Parameter admin address", parseAddress)
+    .action(vaultLpoCoRemoveParameterAdmin);
 
   program
     .command("vault-lpo-price-loan")
@@ -820,9 +923,15 @@ async function main() {
     .action(noteAdapterInfo);
 
   program
+    .command("co-deploy")
+    .description("Deploy Collateral Oracle")
+    .argument("currency_token", "Currency token address", parseAddress)
+    .action(collateralOracleDeploy);
+
+  program
     .command("lpo-deploy")
     .description("Deploy Loan Price Oracle")
-    .argument("currency_token", "Currency token address", parseAddress)
+    .argument("collateral_oracle", "Collateral oracle address", parseAddress)
     .action(loanPriceOracleDeploy);
 
   /* Parse command */
