@@ -136,8 +136,8 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
         currencyToken = currencyToken_;
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(PARAMETER_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(PARAMETER_ADMIN_ROLE, msg.sender);
     }
 
     /**************************************************************************/
