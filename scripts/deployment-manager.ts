@@ -698,7 +698,7 @@ function parseBigNumber(value: string, _: string): BigNumber {
 async function main() {
   /* Load deployment */
   const network = await ethers.provider.getNetwork();
-  const deploymentPath = `deployments/${network.name}-${network.chainId}.json`;
+  const deploymentPath: string = process.env.DEPLOYMENT_PATH || `deployments/${network.name}-${network.chainId}.json`;
   const deployment: Deployment = fs.existsSync(deploymentPath)
     ? Deployment.fromFile(deploymentPath)
     : Deployment.fromScratch(network);
