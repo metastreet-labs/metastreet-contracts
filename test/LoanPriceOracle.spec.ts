@@ -3,7 +3,7 @@ import { ethers, network } from "hardhat";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
-import { TestERC20, TestERC721, LoanPriceOracle } from "../typechain";
+import { TestERC20, TestERC721, StaticCollateralOracle, LoanPriceOracle } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
 import { randomAddress, getBlockTimestamp } from "./helpers/VaultHelpers";
@@ -20,6 +20,7 @@ describe("LoanPriceOracle", function () {
   let accounts: SignerWithAddress[];
   let tok1: TestERC20;
   let nft1: TestERC721;
+  let staticCollateralOracle: StaticCollateralOracle;
   let loanPriceOracle: LoanPriceOracle;
   let snapshotId: string;
 
@@ -28,6 +29,7 @@ describe("LoanPriceOracle", function () {
 
     const testERC20Factory = await ethers.getContractFactory("TestERC20");
     const testERC721Factory = await ethers.getContractFactory("TestERC721");
+    const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle");
     const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
 
     tok1 = (await testERC20Factory.deploy("WETH", "WETH", 18, ethers.utils.parseEther("1000"))) as TestERC20;
@@ -36,7 +38,10 @@ describe("LoanPriceOracle", function () {
     nft1 = (await testERC721Factory.deploy("NFT 1", "NFT1", "https://nft1.com/token/")) as TestERC721;
     await nft1.deployed();
 
-    loanPriceOracle = (await loanPriceOracleFactory.deploy(tok1.address)) as LoanPriceOracle;
+    staticCollateralOracle = (await staticCollateralOracleFactory.deploy(tok1.address)) as StaticCollateralOracle;
+    await staticCollateralOracle.deployed();
+
+    loanPriceOracle = (await loanPriceOracleFactory.deploy(staticCollateralOracle.address)) as LoanPriceOracle;
     await loanPriceOracle.deployed();
   });
 
@@ -58,8 +63,10 @@ describe("LoanPriceOracle", function () {
     max: FixedPoint.from("1.00"),
   });
 
+  const collateralValue = ethers.utils.parseEther("100");
+
   const collateralParameters: CollateralParameters = {
-    collateralValue: ethers.utils.parseEther("100"),
+    active: true,
     loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
@@ -77,6 +84,20 @@ describe("LoanPriceOracle", function () {
     rateComponentWeights: [5000, 2500, 2500],
   };
 
+  describe("getters", async function () {
+    it("currency token matches collateral oracle", async function () {
+      expect(await loanPriceOracle.currencyToken()).to.equal(tok1.address);
+    });
+    it("roles are correct", async function () {
+      expect(
+        await loanPriceOracle.hasRole(await staticCollateralOracle.DEFAULT_ADMIN_ROLE(), accounts[0].address)
+      ).to.equal(true);
+      expect(
+        await loanPriceOracle.hasRole(await staticCollateralOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address)
+      ).to.equal(true);
+    });
+  });
+
   describe("constants", async function () {
     it("matches implementation version", async function () {
       expect(await loanPriceOracle.IMPLEMENTATION_VERSION()).to.equal("1.0");
@@ -89,13 +110,22 @@ describe("LoanPriceOracle", function () {
       const tok2 = (await testERC20Factory.deploy("TOK2", "TOK2", 6, ethers.utils.parseEther("1000000"))) as TestERC20;
       await tok2.deployed();
 
+      const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle");
+      const staticCollateralOracle2 = (await staticCollateralOracleFactory.deploy(
+        tok2.address
+      )) as StaticCollateralOracle;
+      await staticCollateralOracle2.deployed();
+
       const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
-      await expect(loanPriceOracleFactory.deploy(tok2.address)).to.be.revertedWith("UnsupportedTokenDecimals()");
+      await expect(loanPriceOracleFactory.deploy(staticCollateralOracle2.address)).to.be.revertedWith(
+        "UnsupportedTokenDecimals()"
+      );
     });
   });
 
   describe("#priceLoan", async function () {
     beforeEach("setup token parameters", async () => {
+      await staticCollateralOracle.setCollateralValue(nft1.address, collateralValue);
       await loanPriceOracle.setMinimumLoanDuration(minimumLoanDuration);
       await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
       await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
@@ -279,9 +309,7 @@ describe("LoanPriceOracle", function () {
         collateralToken: nft1.address,
       });
 
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
-        collateralParameters.collateralValue
-      );
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).active).to.equal(true);
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).loanToValueRateComponent).to.deep.equal(
         Object.values(collateralParameters.loanToValueRateComponent)
       );
@@ -297,7 +325,6 @@ describe("LoanPriceOracle", function () {
 
       const collateralParametersUpdate: CollateralParameters = {
         ...collateralParameters,
-        collateralValue: ethers.utils.parseEther("125"),
         durationRateComponent: computePiecewiseLinearModel({
           minRate: FixedPoint.normalizeRate("0.05"),
           targetRate: FixedPoint.normalizeRate("0.15"),
@@ -312,9 +339,7 @@ describe("LoanPriceOracle", function () {
         encodeCollateralParameters(collateralParametersUpdate)
       );
 
-      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).collateralValue).to.equal(
-        collateralParametersUpdate.collateralValue
-      );
+      expect((await loanPriceOracle.getCollateralParameters(nft1.address)).active).to.equal(true);
       expect((await loanPriceOracle.getCollateralParameters(nft1.address)).durationRateComponent).to.deep.equal(
         Object.values(collateralParametersUpdate.durationRateComponent)
       );
@@ -340,7 +365,7 @@ describe("LoanPriceOracle", function () {
       /* Disable collateral token 1 */
       await loanPriceOracle.setCollateralParameters(
         collateralTokens[1],
-        encodeCollateralParameters({ ...collateralParameters, collateralValue: ethers.constants.Zero })
+        encodeCollateralParameters({ ...collateralParameters, active: false })
       );
 
       expect([...(await loanPriceOracle.supportedCollateralTokens())].sort()).to.deep.equal(
@@ -381,7 +406,11 @@ describe("LoanPriceOracle", function () {
     it("sets minimum loan duration successfully", async function () {
       const duration = 14 * 86400;
 
-      await loanPriceOracle.setMinimumLoanDuration(duration);
+      const setTx = await loanPriceOracle.setMinimumLoanDuration(duration);
+      await expectEvent(setTx, loanPriceOracle, "MinimumLoanDurationUpdated", {
+        duration,
+      });
+
       expect(await loanPriceOracle.minimumLoanDuration()).to.equal(duration);
     });
     it("fails on invalid caller", async function () {
@@ -391,6 +420,43 @@ describe("LoanPriceOracle", function () {
 
       await loanPriceOracle.revokeRole(await loanPriceOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
       await expect(loanPriceOracle.setMinimumLoanDuration(7 * 86400)).to.be.revertedWith("AccessControl: account");
+    });
+  });
+
+  describe("#setCollateralOracle", async function () {
+    it("sets collateral oracle successfully", async function () {
+      const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle");
+      const staticCollateralOracle2 = (await staticCollateralOracleFactory.deploy(
+        tok1.address
+      )) as StaticCollateralOracle;
+      await staticCollateralOracle2.deployed();
+
+      const setTx = await loanPriceOracle.setCollateralOracle(staticCollateralOracle2.address);
+      await expectEvent(setTx, loanPriceOracle, "CollateralOracleUpdated", {
+        collateralOracle: staticCollateralOracle2.address,
+      });
+
+      expect(await loanPriceOracle.collateralOracle()).to.equal(staticCollateralOracle2.address);
+    });
+    it("fails on unsupported token decimals", async function () {
+      const testERC20Factory = await ethers.getContractFactory("TestERC20");
+      const tok2 = (await testERC20Factory.deploy("TOK2", "TOK2", 6, ethers.utils.parseEther("1000000"))) as TestERC20;
+      await tok2.deployed();
+
+      const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle");
+      const staticCollateralOracle2 = (await staticCollateralOracleFactory.deploy(
+        tok2.address
+      )) as StaticCollateralOracle;
+      await staticCollateralOracle2.deployed();
+
+      await expect(loanPriceOracle.setCollateralOracle(staticCollateralOracle2.address)).to.be.revertedWith(
+        "UnsupportedTokenDecimals()"
+      );
+    });
+    it("fails on invalid caller", async function () {
+      await expect(loanPriceOracle.connect(accounts[1]).setCollateralOracle(randomAddress())).to.be.revertedWith(
+        "AccessControl: account"
+      );
     });
   });
 

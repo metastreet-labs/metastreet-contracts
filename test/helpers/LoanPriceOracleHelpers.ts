@@ -13,7 +13,7 @@ export type PiecewiseLinearModel = {
 export type UtilizationParameters = PiecewiseLinearModel;
 
 export type CollateralParameters = {
-  collateralValue: BigNumber;
+  active: boolean;
   loanToValueRateComponent: PiecewiseLinearModel;
   durationRateComponent: PiecewiseLinearModel;
   rateComponentWeights: [number, number, number];
@@ -37,11 +37,11 @@ export function encodeUtilizationParameters(utilizationParameters: PiecewiseLine
 export function encodeCollateralParameters(collateralParameters: CollateralParameters): string {
   return ethers.utils.defaultAbiCoder.encode(
     [
-      "tuple(uint256, tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), uint16[3])",
+      "tuple(bool, tuple(uint72, uint72, uint72, uint96, uint96), tuple(uint72, uint72, uint72, uint96, uint96), uint16[3])",
     ],
     [
       [
-        collateralParameters.collateralValue,
+        collateralParameters.active,
         [
           collateralParameters.loanToValueRateComponent.offset,
           collateralParameters.loanToValueRateComponent.slope1,

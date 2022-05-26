@@ -11,6 +11,7 @@ import {
   TestLendingPlatform,
   TestNoteToken,
   TestNoteAdapter,
+  StaticCollateralOracle,
   LoanPriceOracle,
   Vault,
   LPToken,
@@ -34,6 +35,7 @@ describe("Integration", function () {
   let nft1: TestERC721;
   let lendingPlatform: TestLendingPlatform;
   let noteToken: TestNoteToken;
+  let staticCollateralOracle: StaticCollateralOracle;
   let loanPriceOracle: LoanPriceOracle;
   let testNoteAdapter: TestNoteAdapter;
   let lpTokenBeacon: Contract;
@@ -50,6 +52,7 @@ describe("Integration", function () {
   let accountLiquidator: SignerWithAddress;
 
   /* LoanPriceOracle parameters */
+  const collateralValue = ethers.utils.parseEther("100");
   const utilizationParameters: UtilizationParameters = computePiecewiseLinearModel({
     minRate: FixedPoint.normalizeRate("0.05"),
     targetRate: FixedPoint.normalizeRate("0.10"),
@@ -58,7 +61,7 @@ describe("Integration", function () {
     max: FixedPoint.from("1.00"),
   });
   const collateralParameters: CollateralParameters = {
-    collateralValue: ethers.utils.parseEther("100"),
+    active: true,
     loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
@@ -83,6 +86,7 @@ describe("Integration", function () {
     const testERC721Factory = await ethers.getContractFactory("TestERC721");
     const testLendingPlatformFactory = await ethers.getContractFactory("TestLendingPlatform");
     const testNoteAdapterFactory = await ethers.getContractFactory("TestNoteAdapter");
+    const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle");
     const loanPriceOracleFactory = await ethers.getContractFactory("LoanPriceOracle");
     const lpTokenFactory = await ethers.getContractFactory("LPToken");
     const vaultFactory = await ethers.getContractFactory("Vault");
@@ -110,8 +114,12 @@ describe("Integration", function () {
     testNoteAdapter = (await testNoteAdapterFactory.deploy(lendingPlatform.address)) as TestNoteAdapter;
     await testNoteAdapter.deployed();
 
+    /* Deploy collateral oracle */
+    staticCollateralOracle = (await staticCollateralOracleFactory.deploy(tok1.address)) as StaticCollateralOracle;
+    await staticCollateralOracle.deployed();
+
     /* Deploy loan price oracle */
-    loanPriceOracle = (await loanPriceOracleFactory.deploy(tok1.address)) as LoanPriceOracle;
+    loanPriceOracle = (await loanPriceOracleFactory.deploy(staticCollateralOracle.address)) as LoanPriceOracle;
     await loanPriceOracle.deployed();
 
     /* Deploy LPToken Beacon */
@@ -149,6 +157,7 @@ describe("Integration", function () {
     await juniorLPToken.transferOwnership(vault.address);
 
     /* Setup loan price oracle */
+    await staticCollateralOracle.setCollateralValue(nft1.address, collateralValue);
     await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
     await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
 

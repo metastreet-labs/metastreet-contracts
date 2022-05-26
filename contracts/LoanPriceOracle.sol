@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 
+import "./interfaces/ICollateralOracle.sol";
 import "./interfaces/ILoanPriceOracle.sol";
 
 /**
@@ -72,6 +73,12 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      */
     event CollateralParametersUpdated(address indexed collateralToken);
 
+    /**
+     * @notice Emitted when collateral oracle is updated
+     * @param collateralOracle Address of collateral oracle
+     */
+    event CollateralOracleUpdated(address collateralOracle);
+
     /**************************************************************************/
     /* State */
     /**************************************************************************/
@@ -94,13 +101,13 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
     /**
      * @notice Collateral parameters
-     * @param collateralValue Collateral value in UD60x18
+     * @param active Collateral is supported
      * @param loanToValueRateComponent Rate component model for loan to value
      * @param durationRateComponent Rate component model for duration
      * @param rateComponentWeights Weights for rate components, each 0 to 10000
      */
     struct CollateralParameters {
-        uint256 collateralValue; /* UD60x18 */
+        bool active;
         PiecewiseLinearModel loanToValueRateComponent;
         PiecewiseLinearModel durationRateComponent;
         uint16[3] rateComponentWeights; /* 0-10000 */
@@ -122,9 +129,9 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     EnumerableSet.AddressSet private _collateralTokens;
 
     /**
-     * @inheritdoc ILoanPriceOracle
+     * @dev Collateral oracle
      */
-    IERC20 public immutable override currencyToken;
+    ICollateralOracle public collateralOracle;
 
     /**
      * @notice Minimum loan duration in seconds
@@ -137,12 +144,13 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
     /**
      * @notice LoanPriceOracle constructor
-     * @param currencyToken_ Currency token used for pricing
+     * @param collateralOracle_ Collateral oracle
      */
-    constructor(IERC20 currencyToken_) {
-        if (IERC20Metadata(address(currencyToken_)).decimals() != 18) revert UnsupportedTokenDecimals();
+    constructor(ICollateralOracle collateralOracle_) {
+        if (IERC20Metadata(address(collateralOracle_.currencyToken())).decimals() != 18)
+            revert UnsupportedTokenDecimals();
 
-        currencyToken = currencyToken_;
+        collateralOracle = collateralOracle_;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PARAMETER_ADMIN_ROLE, msg.sender);
@@ -213,7 +221,6 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         uint256 utilization
     ) external view returns (uint256) {
         /* Unused variables */
-        collateralTokenId;
         duration;
 
         /* Validate minimum loan duration */
@@ -223,15 +230,18 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
         /* Look up collateral parameters */
         CollateralParameters storage collateralParameters = _parameters[collateralToken];
-        if (collateralParameters.collateralValue == 0) {
+        if (!collateralParameters.active) {
             revert UnsupportedCollateral();
         }
+
+        /* Look up collateral value */
+        uint256 collateralValue = collateralOracle.collateralValue(collateralToken, collateralTokenId);
 
         /* Calculate loan time remaining */
         uint256 loanTimeRemaining = PRBMathUD60x18.fromUint(maturity - block.timestamp);
 
         /* Calculate loan to value */
-        uint256 loanToValue = PRBMathUD60x18.div(principal, collateralParameters.collateralValue);
+        uint256 loanToValue = PRBMathUD60x18.div(principal, collateralValue);
 
         /* Compute discount rate components for utilization, loan-to-value, and duration */
         uint256[3] memory rateComponents = [
@@ -256,6 +266,13 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     /**************************************************************************/
     /* Getters */
     /**************************************************************************/
+
+    /**
+     * @inheritdoc ILoanPriceOracle
+     */
+    function currencyToken() external view returns (IERC20) {
+        return collateralOracle.currencyToken();
+    }
 
     /**
      * @notice Get utilization parameters
@@ -339,12 +356,28 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
             10000
         ) revert ParameterOutOfBounds(4);
 
-        if (_parameters[collateralToken].collateralValue != 0) {
+        if (_parameters[collateralToken].active) {
             _collateralTokens.add(collateralToken);
         } else {
             _collateralTokens.remove(collateralToken);
         }
 
         emit CollateralParametersUpdated(collateralToken);
+    }
+
+    /**
+     * @notice Set collateral collateral oracle
+     *
+     * Emits a {CollateralOracleUpdated} event.
+     *
+     * @param collateralOracle_ Collateral oracle contract
+     */
+    function setCollateralOracle(address collateralOracle_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (IERC20Metadata(address(ICollateralOracle(collateralOracle_).currencyToken())).decimals() != 18)
+            revert UnsupportedTokenDecimals();
+
+        collateralOracle = ICollateralOracle(collateralOracle_);
+
+        emit CollateralOracleUpdated(collateralOracle_);
     }
 }

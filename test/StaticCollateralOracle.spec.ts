@@ -45,17 +45,6 @@ describe("StaticCollateralOracle", function () {
     });
   });
 
-  describe("constructor", async function () {
-    it("fails on unsupported currency token decimals", async function () {
-      const testERC20Factory = await ethers.getContractFactory("TestERC20");
-      const tok2 = (await testERC20Factory.deploy("TOK2", "TOK2", 6, ethers.utils.parseEther("1000000"))) as TestERC20;
-      await tok2.deployed();
-
-      const staticCollateralOracleFactory = await ethers.getContractFactory("StaticCollateralOracle");
-      await expect(staticCollateralOracleFactory.deploy(tok2.address)).to.be.revertedWith("UnsupportedTokenDecimals()");
-    });
-  });
-
   describe("getters", async function () {
     it("currency token matches constructor", async function () {
       expect(await staticCollateralOracle.currencyToken()).to.equal(tok1.address);
@@ -105,6 +94,11 @@ describe("StaticCollateralOracle", function () {
     it("fails on invalid caller", async function () {
       await expect(
         staticCollateralOracle.connect(accounts[1]).setCollateralValue(nft1.address, ethers.utils.parseEther("123"))
+      ).to.be.revertedWith("AccessControl: account");
+
+      await staticCollateralOracle.revokeRole(await staticCollateralOracle.PARAMETER_ADMIN_ROLE(), accounts[0].address);
+      await expect(
+        staticCollateralOracle.setCollateralValue(nft1.address, ethers.utils.parseEther("123"))
       ).to.be.revertedWith("AccessControl: account");
     });
   });
