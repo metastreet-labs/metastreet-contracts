@@ -23,6 +23,7 @@ async function main() {
   const TestLendingPlatformFactory = await ethers.getContractFactory("TestLendingPlatform", accounts[9]);
   const VaultRegistry = await ethers.getContractFactory("VaultRegistry", accounts[9]);
   const TestNoteAdapter = await ethers.getContractFactory("TestNoteAdapter", accounts[9]);
+  const StaticCollateralOracle = await ethers.getContractFactory("StaticCollateralOracle", accounts[9]);
   const LoanPriceOracle = await ethers.getContractFactory("LoanPriceOracle", accounts[9]);
   const LPToken = await ethers.getContractFactory("LPToken", accounts[9]);
   const Vault = await ethers.getContractFactory("Vault", accounts[9]);
@@ -78,13 +79,23 @@ async function main() {
   await wethTestNoteAdapter.deployed();
   console.log("WETH Test Note Adapter: ", wethTestNoteAdapter.address);
 
+  /* Deploy Static Collateral Oracle for DAI */
+  const daiStaticCollateralOracle = await StaticCollateralOracle.deploy(daiTokenContract.address);
+  await daiStaticCollateralOracle.deployed();
+  console.log("DAI Collateral Oracle:  ", daiStaticCollateralOracle.address);
+
+  /* Deploy Static Collateral Oracle for WETH */
+  const wethStaticCollateralOracle = await StaticCollateralOracle.deploy(wethTokenContract.address);
+  await wethStaticCollateralOracle.deployed();
+  console.log("WETH Collateral Oracle: ", wethStaticCollateralOracle.address);
+
   /* Deploy Loan Price Oracle for DAI */
-  const daiLoanPriceOracle = await LoanPriceOracle.deploy(daiTokenContract.address);
+  const daiLoanPriceOracle = await LoanPriceOracle.deploy(daiStaticCollateralOracle.address);
   await daiLoanPriceOracle.deployed();
   console.log("DAI Loan Price Oracle:  ", daiLoanPriceOracle.address);
 
   /* Deploy Loan Price Oracle for WETH */
-  const wethLoanPriceOracle = await LoanPriceOracle.deploy(wethTokenContract.address);
+  const wethLoanPriceOracle = await LoanPriceOracle.deploy(wethStaticCollateralOracle.address);
   await wethLoanPriceOracle.deployed();
   console.log("WETH Loan Price Oracle: ", wethLoanPriceOracle.address);
 
@@ -236,8 +247,10 @@ async function main() {
     max: FixedPoint.from("1.00"),
   });
 
+  const collateralValue = ethers.utils.parseEther("100");
+
   const collateralParameters: CollateralParameters = {
-    collateralValue: ethers.utils.parseEther("100"),
+    active: true,
     loanToValueRateComponent: computePiecewiseLinearModel({
       minRate: FixedPoint.normalizeRate("0.05"),
       targetRate: FixedPoint.normalizeRate("0.10"),
@@ -255,6 +268,9 @@ async function main() {
     rateComponentWeights: [5000, 2500, 2500],
   };
 
+  await daiStaticCollateralOracle.setCollateralValue(baycTokenContract.address, collateralValue);
+  console.log("Setup collateral value for DAI Collateral Oracle");
+
   await daiLoanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
   console.log("Setup utilization parameters for DAI Loan Price Oracle");
 
@@ -263,6 +279,9 @@ async function main() {
     encodeCollateralParameters(collateralParameters)
   );
   console.log("Setup BAYC collateral parameters for DAI Loan Price Oracle");
+
+  await wethStaticCollateralOracle.setCollateralValue(baycTokenContract.address, collateralValue);
+  console.log("Setup collateral value for WETH Collateral Oracle");
 
   await wethLoanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
   console.log("Setup utilization parameters for WETH Loan Price Oracle");
