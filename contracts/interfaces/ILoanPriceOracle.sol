@@ -60,4 +60,22 @@ interface ILoanPriceOracle {
         uint256 maturity,
         uint256 utilization
     ) external view returns (uint256);
+
+    /**
+     * @notice Price a loan's repayment, collateralized by the specified token
+     * contract and token id
+     * @param collateralToken Collateral token contract
+     * @param collateralTokenId Collateral token ID
+     * @param principal Principal value of loan, in UD60x18
+     * @param duration Duration of loan, in seconds
+     * @param utilization Vault fund utilization, in UD60x18
+     * @return Repayment price of loan, in UD60x18
+     */
+    function priceLoanRepayment(
+        address collateralToken,
+        uint256 collateralTokenId,
+        uint256 principal,
+        uint256 duration,
+        uint256 utilization
+    ) external view returns (uint256);
 }

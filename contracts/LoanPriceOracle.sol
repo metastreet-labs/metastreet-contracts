@@ -204,6 +204,31 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
             );
     }
 
+    /**
+     * @dev Compute the discount rate
+     * @param collateralParameters Collateral parameters
+     * @param utilization Utilization in UD60x18
+     * @param loanToValue Loan to value in UD60x18
+     * @param loanTimeRemaining Loan time remaining in UD60x18
+     * @return Discount rate in UD60x18
+     */
+    function _computeDiscountRate(
+        CollateralParameters storage collateralParameters,
+        uint256 utilization,
+        uint256 loanToValue,
+        uint256 loanTimeRemaining
+    ) internal view returns (uint256) {
+        /* Compute discount rate components for utilization, loan-to-value, and duration */
+        uint256[3] memory rateComponents = [
+            _computeRateComponent(_utilizationParameters, utilization, 0),
+            _computeRateComponent(collateralParameters.loanToValueRateComponent, loanToValue, 1),
+            _computeRateComponent(collateralParameters.durationRateComponent, loanTimeRemaining, 2)
+        ];
+
+        /* Calculate discount rate from components */
+        return _computeWeightedRate(collateralParameters.rateComponentWeights, rateComponents);
+    }
+
     /**************************************************************************/
     /* Primary API */
     /**************************************************************************/
@@ -219,7 +244,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         uint256 duration,
         uint256 maturity,
         uint256 utilization
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         /* Unused variables */
         duration;
 
@@ -243,15 +268,8 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         /* Calculate loan to value */
         uint256 loanToValue = PRBMathUD60x18.div(principal, collateralValue);
 
-        /* Compute discount rate components for utilization, loan-to-value, and duration */
-        uint256[3] memory rateComponents = [
-            _computeRateComponent(_utilizationParameters, utilization, 0),
-            _computeRateComponent(collateralParameters.loanToValueRateComponent, loanToValue, 1),
-            _computeRateComponent(collateralParameters.durationRateComponent, loanTimeRemaining, 2)
-        ];
-
-        /* Calculate discount rate from components */
-        uint256 discountRate = _computeWeightedRate(collateralParameters.rateComponentWeights, rateComponents);
+        /* Calculate discount rate */
+        uint256 discountRate = _computeDiscountRate(collateralParameters, utilization, loanToValue, loanTimeRemaining);
 
         /* Calculate purchase price */
         /* Purchase Price = Loan Repayment Value / (1 + Discount Rate * t) */
@@ -261,6 +279,46 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         );
 
         return purchasePrice;
+    }
+
+    /**
+     * @inheritdoc ILoanPriceOracle
+     */
+    function priceLoanRepayment(
+        address collateralToken,
+        uint256 collateralTokenId,
+        uint256 principal,
+        uint256 duration,
+        uint256 utilization
+    ) external view override returns (uint256) {
+        /* Validate minimum loan duration */
+        if (duration < minimumLoanDuration) {
+            revert InsufficientTimeRemaining();
+        }
+
+        /* Look up collateral parameters */
+        CollateralParameters storage collateralParameters = _parameters[collateralToken];
+        if (!collateralParameters.active) {
+            revert UnsupportedCollateral();
+        }
+
+        /* Look up collateral value */
+        uint256 collateralValue = collateralOracle.collateralValue(collateralToken, collateralTokenId);
+
+        /* Calculate loan to value */
+        uint256 loanToValue = PRBMathUD60x18.div(principal, collateralValue);
+
+        /* Convert duration */
+        duration = PRBMathUD60x18.fromUint(duration);
+
+        /* Calculate discount rate */
+        uint256 discountRate = _computeDiscountRate(collateralParameters, utilization, loanToValue, duration);
+
+        /* Calculate repayment */
+        /* Loan Repayment Value = Principal * (1 + Discount Rate * t) */
+        uint256 repayment = PRBMathUD60x18.mul(principal, ONE_UD60X18 + PRBMathUD60x18.mul(discountRate, duration));
+
+        return repayment;
     }
 
     /**************************************************************************/

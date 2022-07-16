@@ -278,6 +278,150 @@ describe("LoanPriceOracle", function () {
     });
   });
 
+  describe("#priceLoanRepayment", async function () {
+    beforeEach("setup token parameters", async () => {
+      await staticCollateralOracle.setCollateralValue(nft1.address, collateralValue);
+      await loanPriceOracle.setMinimumLoanDuration(minimumLoanDuration);
+      await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));
+      await loanPriceOracle.setCollateralParameters(nft1.address, encodeCollateralParameters(collateralParameters));
+    });
+
+    it("price loan repayment on utilization component", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 30 * 86400;
+      const utilization1 = FixedPoint.from("0.25");
+      const utilization2 = FixedPoint.from("0.95");
+
+      /* Override weights */
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [10000, 0, 0] })
+      );
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization1)).to.equal(
+        ethers.utils.parseEther("20.105022831063680000")
+      );
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization2)).to.equal(
+        ethers.utils.parseEther("21.726027397262720000")
+      );
+    });
+    it("price loan repayment on loan-to-value component", async function () {
+      const principal1 = ethers.utils.parseEther("20");
+      const principal2 = ethers.utils.parseEther("40");
+      const duration = 30 * 86400;
+      const utilization = FixedPoint.from("0.90");
+
+      /* Override weights */
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 10000, 0] })
+      );
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal1, duration, utilization)).to.equal(
+        ethers.utils.parseEther("20.136986301353600000")
+      );
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal2, duration, utilization)).to.equal(
+        ethers.utils.parseEther("42.410958904030720000")
+      );
+    });
+    it("price loan repayment on duration component", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration1 = 20 * 86400;
+      const duration2 = 60 * 86400;
+      const utilization = FixedPoint.from("0.90");
+
+      /* Override weights */
+      await loanPriceOracle.setCollateralParameters(
+        nft1.address,
+        encodeCollateralParameters({ ...collateralParameters, rateComponentWeights: [0, 0, 10000] })
+      );
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration1, utilization)).to.equal(
+        ethers.utils.parseEther("20.091283245021440000")
+      );
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration2, utilization)).to.equal(
+        ethers.utils.parseEther("23.451862366104320000")
+      );
+    });
+    it("price loan repayment on all components", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 35 * 86400;
+      const utilization = FixedPoint.from("0.85");
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)).to.equal(
+        ethers.utils.parseEther("20.257012498957760000")
+      );
+    });
+    it("price loan repayment matches price loan", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 35 * 86400;
+      const maturity = (await getBlockTimestamp()) + duration;
+      const utilization = FixedPoint.from("0.85");
+
+      const repayment = await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization);
+      expect(
+        await loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.equal(principal);
+    });
+    it("price loan for zero principal", async function () {
+      const principal = ethers.constants.Zero;
+      const duration = 35 * 86400;
+      const utilization = FixedPoint.from("0.85");
+
+      expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)).to.equal(
+        ethers.utils.parseEther("0")
+      );
+    });
+    it("fails on insufficient time remaining", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 1 * 86400;
+      const utilization = FixedPoint.from("0.90");
+
+      await expect(
+        loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
+      ).to.be.revertedWith("InsufficientTimeRemaining()");
+    });
+    it("fails on unsupported token contract", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 30 * 86400;
+      const utilization = FixedPoint.from("0.90");
+
+      await expect(
+        loanPriceOracle.priceLoanRepayment(tok1.address, 1234, principal, duration, utilization)
+      ).to.be.revertedWith("UnsupportedCollateral()");
+    });
+    it("fails on parameter out of bounds (utilization)", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 30 * 86400;
+      const utilization = FixedPoint.from("1.10"); /* not actually possible */
+
+      await expect(
+        loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
+      ).to.be.revertedWith("ParameterOutOfBounds(0)");
+    });
+    it("fails on parameters out of bounds (loan to value)", async function () {
+      const principal = ethers.utils.parseEther("100");
+      const duration = 60 * 86400;
+      const utilization = FixedPoint.from("0.90");
+
+      await expect(
+        loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
+      ).to.be.revertedWith("ParameterOutOfBounds(1)");
+    });
+    it("fails on parameter out of bounds (duration)", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const duration = 120 * 86400;
+      const utilization = FixedPoint.from("0.90");
+
+      await expect(
+        loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
+      ).to.be.revertedWith("ParameterOutOfBounds(2)");
+    });
+  });
+
   describe("#setUtilizationParameters", async function () {
     it("sets utilization parameters successfully", async function () {
       const setTx = await loanPriceOracle.setUtilizationParameters(encodeUtilizationParameters(utilizationParameters));

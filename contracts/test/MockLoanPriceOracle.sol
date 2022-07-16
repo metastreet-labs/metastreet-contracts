@@ -77,6 +77,26 @@ contract MockLoanPriceOracle is ILoanPriceOracle {
     }
 
     /**
+     * @inheritdoc ILoanPriceOracle
+     */
+    function priceLoanRepayment(
+        address collateralToken,
+        uint256 collateralTokenId,
+        uint256 principal,
+        uint256 duration,
+        uint256 utilization
+    ) external pure returns (uint256) {
+        collateralToken;
+        collateralTokenId;
+        principal;
+        duration;
+        utilization;
+
+        /* Unused */
+        return 0;
+    }
+
+    /**
      * @notice Set a mock error to be reverted by priceLoan()
      * @param error Mock error
      */
