@@ -601,6 +601,25 @@ async function vaultLpoPriceLoan(vaultAddress: string, noteToken: string, noteTo
   console.log(`Loan Price:          ${ethers.utils.formatEther(price)}`);
 }
 
+async function vaultLpoPriceLoanRepayment(
+  vaultAddress: string,
+  token: string,
+  tokenId: BigNumber,
+  principal: BigNumber,
+  duration: number
+) {
+  const vault = (await ethers.getContractAt("IVault", vaultAddress)) as IVault;
+  const loanPriceOracle = (await ethers.getContractAt(
+    "ILoanPriceOracle",
+    await vault.loanPriceOracle()
+  )) as ILoanPriceOracle;
+
+  const utilization = await vault.utilization();
+
+  const repayment = await loanPriceOracle.priceLoanRepayment(token, tokenId, principal, duration, utilization);
+  console.log(`Repayment:  ${ethers.utils.formatEther(repayment)}`);
+}
+
 /******************************************************************************/
 /* Note Adapter Functions */
 /******************************************************************************/
@@ -909,6 +928,15 @@ async function main() {
     .argument("token", "Note token address", parseAddress)
     .argument("token_id", "Note token ID", parseBigNumber)
     .action(vaultLpoPriceLoan);
+  program
+    .command("vault-lpo-price-loan-repayment")
+    .description("Use the Vault Loan Price Oracle to price a loan repayment")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("token", "Token address", parseAddress)
+    .argument("token_id", "Token ID", parseBigNumber)
+    .argument("principal", "Principal", parseDecimal)
+    .argument("duration", "duration", parseNumber)
+    .action(vaultLpoPriceLoanRepayment);
 
   program
     .command("note-adapter-deploy")
