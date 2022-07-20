@@ -299,11 +299,11 @@ describe("LoanPriceOracle", function () {
       );
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization1)).to.equal(
-        ethers.utils.parseEther("20.105022831063680000")
+        ethers.utils.parseEther("20.105022831063680001")
       );
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization2)).to.equal(
-        ethers.utils.parseEther("21.726027397262720000")
+        ethers.utils.parseEther("21.726027397262720001")
       );
     });
     it("price loan repayment on loan-to-value component", async function () {
@@ -319,11 +319,11 @@ describe("LoanPriceOracle", function () {
       );
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal1, duration, utilization)).to.equal(
-        ethers.utils.parseEther("20.136986301353600000")
+        ethers.utils.parseEther("20.136986301353600001")
       );
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal2, duration, utilization)).to.equal(
-        ethers.utils.parseEther("42.410958904030720000")
+        ethers.utils.parseEther("42.410958904030720001")
       );
     });
     it("price loan repayment on duration component", async function () {
@@ -339,11 +339,11 @@ describe("LoanPriceOracle", function () {
       );
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration1, utilization)).to.equal(
-        ethers.utils.parseEther("20.091283245021440000")
+        ethers.utils.parseEther("20.091283245021440001")
       );
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration2, utilization)).to.equal(
-        ethers.utils.parseEther("23.451862366104320000")
+        ethers.utils.parseEther("23.451862366104320001")
       );
     });
     it("price loan repayment on all components", async function () {
@@ -352,7 +352,7 @@ describe("LoanPriceOracle", function () {
       const utilization = FixedPoint.from("0.85");
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)).to.equal(
-        ethers.utils.parseEther("20.257012498957760000")
+        ethers.utils.parseEther("20.257012498957760001")
       );
     });
     it("price loan repayment matches price loan", async function () {
@@ -372,7 +372,7 @@ describe("LoanPriceOracle", function () {
       const utilization = FixedPoint.from("0.85");
 
       expect(await loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)).to.equal(
-        ethers.utils.parseEther("0")
+        ethers.utils.parseEther("0.000000000000000001")
       );
     });
     it("fails on insufficient time remaining", async function () {

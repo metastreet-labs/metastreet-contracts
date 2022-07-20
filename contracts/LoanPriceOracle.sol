@@ -316,7 +316,8 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
 
         /* Calculate repayment */
         /* Loan Repayment Value = Principal * (1 + Discount Rate * t) */
-        uint256 repayment = PRBMathUD60x18.mul(principal, ONE_UD60X18 + PRBMathUD60x18.mul(discountRate, duration));
+        uint256 repayment = PRBMathUD60x18.mul(principal, ONE_UD60X18 + PRBMathUD60x18.mul(discountRate, duration)) + 1;
+        /* Add margin to ensure priceLoan(priceLoanRepayment(...)) == [principal, principal + 1] */
 
         return repayment;
     }
