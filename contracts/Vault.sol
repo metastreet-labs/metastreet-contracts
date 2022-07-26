@@ -153,7 +153,7 @@ contract Vault is
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.0";
+    string public constant IMPLEMENTATION_VERSION = "1.1";
 
     /**
      * @notice Time bucket duration in seconds
