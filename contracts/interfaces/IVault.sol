@@ -196,12 +196,13 @@ interface IVault is ILoanReceiver {
      * @param noteToken Note token contract
      * @param noteTokenId Note token ID
      * @param minPurchasePrice Minimum purchase price in currency tokens
+     * @return Executed purchase price in currency tokens
      */
     function sellNote(
         address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
-    ) external;
+    ) external returns (uint256);
 
     /**
      * @notice Sell a note to the vault and deposit its proceeds into one or
@@ -215,13 +216,14 @@ interface IVault is ILoanReceiver {
      * @param noteTokenId Note token ID
      * @param minPurchasePrice Minimum purchase price in currency tokens
      * @param allocation Allocation for each tranche as a percentage in UD60x18
+     * @return Executed purchase price in currency tokens
      */
     function sellNoteAndDeposit(
         address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice,
         uint256[2] calldata allocation
-    ) external;
+    ) external returns (uint256);
 
     /**
      * @notice Redeem LP tokens in exchange for currency tokens. Currency

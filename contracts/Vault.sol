@@ -832,7 +832,7 @@ contract Vault is
         address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant returns (uint256) {
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
@@ -841,6 +841,8 @@ contract Vault is
 
         /* Transfer cash from vault to user */
         _currencyToken.safeTransfer(msg.sender, purchasePrice);
+
+        return purchasePrice;
     }
 
     /**
@@ -851,7 +853,7 @@ contract Vault is
         uint256 noteTokenId,
         uint256 minPurchasePrice,
         uint256[2] calldata allocation
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant returns (uint256) {
         /* Check allocations sum to one */
         if (allocation[0] + allocation[1] != ONE_UD60X18) revert ParameterOutOfBounds();
 
@@ -868,6 +870,8 @@ contract Vault is
 
         /* Transfer promissory note from user to vault */
         IERC721(noteToken).safeTransferFrom(msg.sender, address(this), noteTokenId);
+
+        return purchasePrice;
     }
 
     /**
