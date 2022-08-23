@@ -174,6 +174,13 @@ interface IVault is ILoanReceiver {
      */
     function utilization() external view returns (uint256);
 
+    /**
+     * @notice Get utilization with added loan balanace
+     * @param additionalLoanBalance Additional loan balance in currency tokens
+     * @return Utilization in UD60x18, between 0 to 1
+     */
+    function utilization(uint256 additionalLoanBalance) external view returns (uint256);
+
     /**************************************************************************/
     /* User API */
     /**************************************************************************/

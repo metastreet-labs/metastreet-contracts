@@ -575,7 +575,7 @@ async function vaultLpoPriceLoan(vaultAddress: string, noteToken: string, noteTo
   )) as ILoanPriceOracle;
 
   const loanInfo = await noteAdapter.getLoanInfo(noteTokenId);
-  const utilization = await vault.utilization();
+  const utilization = await vault["utilization()"]();
 
   console.log(`Collateral Token:    ${loanInfo.collateralToken}`);
   console.log(`Collateral Token ID: ${loanInfo.collateralTokenId.toString()}`);
@@ -614,7 +614,7 @@ async function vaultLpoPriceLoanRepayment(
     await vault.loanPriceOracle()
   )) as ILoanPriceOracle;
 
-  const utilization = await vault.utilization();
+  const utilization = await vault["utilization()"]();
 
   const repayment = await loanPriceOracle.priceLoanRepayment(token, tokenId, principal, duration, utilization);
   console.log(`Repayment:  ${ethers.utils.formatEther(repayment)}`);

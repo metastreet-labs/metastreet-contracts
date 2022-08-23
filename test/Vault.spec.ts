@@ -248,7 +248,7 @@ describe("Vault", function () {
       expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
       expect(await vault.seniorTrancheRate()).to.be.gt(ethers.constants.Zero);
       expect(await vault.adminFeeRate()).to.equal(ethers.constants.Zero);
-      expect(await vault.utilization()).to.equal(ethers.constants.Zero);
+      expect(await vault["utilization()"]()).to.equal(ethers.constants.Zero);
     });
   });
 
@@ -2365,8 +2365,15 @@ describe("Vault", function () {
         /* Sell note to vault */
         await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
 
-        expect(await vault.utilization()).to.equal(FixedPoint.from(utilization).div(100));
+        expect(await vault["utilization()"]()).to.equal(FixedPoint.from(utilization).div(100));
       });
+    });
+    it(`returns correct utilization with added loan balance`, async function () {
+      await vault.connect(accountDepositor).deposit(0, ethers.utils.parseEther("10"));
+      expect(await vault["utilization()"]()).to.equal(ethers.constants.Zero);
+      expect(await vault["utilization(uint256)"](ethers.utils.parseEther("2.5"))).to.equal(
+        ethers.utils.parseEther("0.25")
+      );
     });
   });
 

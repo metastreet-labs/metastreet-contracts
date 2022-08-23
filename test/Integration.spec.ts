@@ -230,7 +230,7 @@ describe("Integration", function () {
         repayment,
         duration,
         (await lendingPlatform.loans(loanId)).startTime.add(duration),
-        await vault.utilization()
+        await vault["utilization()"]()
       );
 
       /* Sell note to vault */
@@ -305,7 +305,7 @@ describe("Integration", function () {
         repayment,
         duration,
         (await lendingPlatform.loans(loanId)).startTime.add(duration),
-        await vault.utilization()
+        await vault["utilization()"]()
       );
 
       /* Sell note to vault */
@@ -384,7 +384,7 @@ describe("Integration", function () {
         repayment,
         duration,
         (await lendingPlatform.loans(loanId)).startTime.add(duration),
-        await vault.utilization()
+        await vault["utilization()"]()
       );
 
       /* Sell note to vault */
@@ -490,7 +490,7 @@ describe("Integration", function () {
 
       while (numLoansProcessed < numTotalLoans || activeLoans.length > 0) {
         /* Get current vault utilization and cash availble */
-        const utilization = await vault.utilization();
+        const utilization = await vault["utilization()"]();
         const balanceState = await vault.balanceState();
         const cashAvailable = balanceState.totalCashBalance;
 
@@ -698,7 +698,7 @@ describe("Integration", function () {
         repayment,
         duration,
         (await lendingPlatform.loans(loanId)).startTime.add(duration),
-        await vault.utilization()
+        await vault["utilization()"]()
       );
 
       /* Sell note to vault */

@@ -403,7 +403,14 @@ contract Vault is
      * @inheritdoc IVault
      */
     function utilization() external view returns (uint256) {
-        return _computeUtilization();
+        return _computeUtilization(0);
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function utilization(uint256 additionalLoanBalance) external view returns (uint256) {
+        return _computeUtilization(additionalLoanBalance);
     }
 
     /**************************************************************************/
@@ -639,12 +646,13 @@ contract Vault is
 
     /**
      * @dev Compute utilization
+     * @param additionalLoanBalance Additional loan balance in currency tokens
      * @return Utilization in UD60x18, between 0 and 1
      */
-    function _computeUtilization() internal view returns (uint256) {
+    function _computeUtilization(uint256 additionalLoanBalance) internal view returns (uint256) {
         uint256 totalLoanBalance = _totalLoanBalance();
         uint256 totalBalance = _totalCashBalance + totalLoanBalance;
-        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(totalLoanBalance, totalBalance);
+        return (totalBalance == 0) ? 0 : PRBMathUD60x18.div(totalLoanBalance + additionalLoanBalance, totalBalance);
     }
 
     /**
@@ -739,7 +747,7 @@ contract Vault is
             loanInfo.repayment,
             loanInfo.duration,
             loanInfo.maturity,
-            _computeUtilization()
+            _computeUtilization(0)
         );
 
         /* Validate purchase price */
