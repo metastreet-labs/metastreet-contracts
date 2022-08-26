@@ -130,16 +130,23 @@ async function beaconShow(deployment: Deployment) {
   }
 }
 
-async function beaconUpgrade(deployment: Deployment) {
-  if (!deployment.vaultBeacon || !deployment.lpTokenBeacon) {
-    console.error("Beacons not yet deployed.");
+async function beaconUpgradeVault(deployment: Deployment) {
+  if (!deployment.vaultBeacon) {
+    console.error("Beacon not yet deployed.");
     return;
   }
 
   const vaultFactory = await ethers.getContractFactory("Vault", signer);
-  const lpTokenFactory = await ethers.getContractFactory("LPToken", signer);
-
   await upgrades.upgradeBeacon(deployment.vaultBeacon, vaultFactory, { unsafeAllow: ["delegatecall"] });
+}
+
+async function beaconUpgradeLPToken(deployment: Deployment) {
+  if (!deployment.lpTokenBeacon) {
+    console.error("Beacon not yet deployed.");
+    return;
+  }
+
+  const lpTokenFactory = await ethers.getContractFactory("LPToken", signer);
   await upgrades.upgradeBeacon(deployment.lpTokenBeacon, lpTokenFactory, { unsafeAllow: ["delegatecall"] });
 }
 
@@ -754,9 +761,13 @@ async function main() {
     .description("Show beacons")
     .action(() => beaconShow(deployment));
   program
-    .command("beacon-upgrade")
-    .description("Upgrade beacon implementations")
-    .action(() => beaconUpgrade(deployment));
+    .command("beacon-upgrade-vault")
+    .description("Upgrade beacon implementation for Vault")
+    .action(() => beaconUpgradeVault(deployment));
+  program
+    .command("beacon-upgrade-lptoken")
+    .description("Upgrade beacon implementation for LPToken")
+    .action(() => beaconUpgradeLPToken(deployment));
 
   program
     .command("registry-deploy")
