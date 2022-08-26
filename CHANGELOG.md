@@ -1,3 +1,7 @@
+* Vault v1.2 - 08/25/2022
+    * Add additional `utilization()` getter to return utilization computed with
+      additional loan balance.
+
 * Vault v1.1 - 07/25/2022
     * Modify `sellNote()` and `sellNoteAndDeposit()` APIs to return executed
       purchase price.
