@@ -100,4 +100,4 @@ npx hardhat run --network localhost scripts/deploy-simulation.ts
 
 ## License
 
-TBD
+MetaStreet v1 Contracts are primary BUSL-1.1 [licensed](LICENSE). Interfaces are MIT [licensed](contracts/interfaces/LICENSE).
