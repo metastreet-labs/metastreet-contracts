@@ -30,12 +30,6 @@ Start hardhat network:
 npm run node
 ```
 
-Deploy simulation environment (after starting hardhat network in another shell):
-
-```
-npx hardhat run --network localhost scripts/deploy-simulation.ts
-```
-
 ## Additional Targets
 
 - Format contracts (prettier): `npm run format`
