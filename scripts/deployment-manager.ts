@@ -321,7 +321,9 @@ async function vaultInfo(vaultAddress: string) {
   }
 }
 
-async function vaultSetNoteAdapter(vaultAddress: string, noteToken: string, noteAdapter: string) {
+async function vaultSetNoteAdapter(vaultAddress: string, noteAdapter: string) {
+  const noteToken = await (await ethers.getContractAt("INoteAdapter", noteAdapter)).noteToken();
+
   const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.setNoteAdapter(noteToken, noteAdapter);
 }
@@ -819,7 +821,6 @@ async function main() {
     .command("vault-set-note-adapter")
     .description("Set Vault note adapter")
     .argument("vault", "Vault address", parseAddress)
-    .argument("note_token", "Note token address", parseAddress)
     .argument("note_adapter", "Note adapter address", parseAddress)
     .action(vaultSetNoteAdapter);
   program
