@@ -7,7 +7,9 @@ import "contracts/interfaces/INoteAdapter.sol";
 /* NFTfiV2 Interfaces (subset) */
 /**************************************************************************/
 
-interface IDirectLoanBase {
+interface IDirectLoan {
+    function LOAN_TYPE() external view returns (bytes32);
+
     function loanIdToLoan(uint32)
         external
         view
@@ -86,7 +88,6 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
 
     IDirectLoanCoordinator private immutable _directLoanCoordinator;
     ISmartNft private immutable _noteToken;
-    IDirectLoanBase private immutable _directLoanContract;
 
     /**************************************************************************/
     /* Constructor */
@@ -99,7 +100,6 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
     constructor(IDirectLoanCoordinator directLoanCoordinator) {
         _directLoanCoordinator = directLoanCoordinator;
         _noteToken = ISmartNft(directLoanCoordinator.promissoryNoteToken());
-        _directLoanContract = IDirectLoanBase(_directLoanCoordinator.getContractFromType(SUPPORTED_LOAN_TYPE));
     }
 
     /**************************************************************************/
@@ -133,14 +133,17 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
         /* Lookup loan data */
         IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));
 
-        /* Vadiate loan contract matches */
-        if (loanData.loanContract != address(_directLoanContract)) return false;
-
         /* Validate loan is active */
         if (loanData.status != IDirectLoanCoordinator.StatusType.NEW) return false;
 
+        /* Get loan contract */
+        IDirectLoan loanContract = IDirectLoan(loanData.loanContract);
+
+        /* Validate loan type matches */
+        if (loanContract.LOAN_TYPE() != SUPPORTED_LOAN_TYPE) return false;
+
         /* Lookup loan currency token */
-        (, , , address loanERC20Denomination, , , , , , , ) = _directLoanContract.loanIdToLoan(uint32(loanId));
+        (, , , address loanERC20Denomination, , , , , , , ) = loanContract.loanIdToLoan(uint32(loanId));
 
         /* Validate loan currency token matches */
         if (loanERC20Denomination != currencyToken) return false;
@@ -155,6 +158,12 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
         /* Lookup loan id */
         (, uint256 loanId) = _noteToken.loans(noteTokenId);
 
+        /* Lookup loan data */
+        IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));
+
+        /* Get loan contract */
+        IDirectLoan loanContract = IDirectLoan(loanData.loanContract);
+
         /* Lookup loan terms */
         (
             uint256 loanPrincipalAmount,
@@ -168,7 +177,7 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
             uint64 loanStartTime,
             address nftCollateralContract,
             address borrower
-        ) = _directLoanContract.loanIdToLoan(uint32(loanId));
+        ) = loanContract.loanIdToLoan(uint32(loanId));
 
         /* Calculate admin fee */
         uint256 adminFee = ((maximumRepaymentAmount - loanPrincipalAmount) * uint256(loanAdminFeeInBasisPoints)) /
@@ -194,7 +203,10 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
      * @inheritdoc INoteAdapter
      */
     function getLiquidateCalldata(uint256 loanId) external view returns (address, bytes memory) {
-        return (address(_directLoanContract), abi.encodeWithSignature("liquidateOverdueLoan(uint32)", uint32(loanId)));
+        /* Lookup loan data for loan contract */
+        IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));
+
+        return (loanData.loanContract, abi.encodeWithSignature("liquidateOverdueLoan(uint32)", uint32(loanId)));
     }
 
     /**
@@ -230,13 +242,13 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
      * @inheritdoc INoteAdapter
      */
     function isExpired(uint256 loanId) external view returns (bool) {
+        /* Lookup loan data for loan contract */
+        IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));
+
         /* Lookup loan terms */
-        (, , , , uint32 loanDuration, , , , uint64 loanStartTime, , ) = _directLoanContract.loanIdToLoan(
+        (, , , , uint32 loanDuration, , , , uint64 loanStartTime, , ) = IDirectLoan(loanData.loanContract).loanIdToLoan(
             uint32(loanId)
         );
-
-        /* Lookup loan data */
-        IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));
 
         return
             loanData.status == IDirectLoanCoordinator.StatusType.NEW && block.timestamp > loanStartTime + loanDuration;
