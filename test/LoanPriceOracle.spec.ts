@@ -276,6 +276,17 @@ describe("LoanPriceOracle", function () {
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
       ).to.be.revertedWith("ParameterOutOfBounds(2)");
     });
+    it("fails on parameter out of bounds (purchase price)", async function () {
+      const principal = ethers.utils.parseEther("20");
+      const repayment = ethers.utils.parseEther("70");
+      const duration = 60 * 86400;
+      const maturity = (await getBlockTimestamp()) + duration;
+      const utilization = FixedPoint.from("0.90");
+
+      await expect(
+        loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
+      ).to.be.revertedWith("ParameterOutOfBounds(3)");
+    });
   });
 
   describe("#priceLoanRepayment", async function () {

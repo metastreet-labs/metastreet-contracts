@@ -278,6 +278,12 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
             ONE_UD60X18 + PRBMathUD60x18.mul(discountRate, loanTimeRemaining)
         );
 
+        /* Validate purchase price is less than 10% over max LTV */
+        if (
+            PRBMathUD60x18.div(purchasePrice, collateralValue) >
+            PRBMathUD60x18.mul(collateralParameters.loanToValueRateComponent.max, ONE_UD60X18 + ONE_UD60X18 / 10)
+        ) revert ParameterOutOfBounds(3);
+
         return purchasePrice;
     }
 
