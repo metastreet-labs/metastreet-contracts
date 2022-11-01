@@ -1,3 +1,6 @@
+* LoanPriceOracle v1.2 - 10/31/2022
+    * Add purchase price validation to `priceLoan()`.
+
 * NFTfiV2NoteAdapter v1.1 - 09/24/2022
     * Improve support for loan contract upgrades by modifying getters to look
       up loan contract dynamically.
