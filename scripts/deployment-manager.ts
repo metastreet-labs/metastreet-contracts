@@ -328,6 +328,13 @@ async function vaultSetNoteAdapter(vaultAddress: string, noteAdapter: string) {
   await vault.setNoteAdapter(noteToken, noteAdapter);
 }
 
+async function vaultDisableNoteAdapter(vaultAddress: string, noteAdapter: string) {
+  const noteToken = await (await ethers.getContractAt("INoteAdapter", noteAdapter)).noteToken();
+
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
+  await vault.setNoteAdapter(noteToken, ethers.constants.AddressZero);
+}
+
 async function vaultSetLoanPriceOracle(vaultAddress: string, loanPriceOracle: string) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.setLoanPriceOracle(loanPriceOracle);
@@ -823,6 +830,12 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("note_adapter", "Note adapter address", parseAddress)
     .action(vaultSetNoteAdapter);
+  program
+    .command("vault-disable-note-adapter")
+    .description("Disable Vault note adapter")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("note_adapter", "Note adapter address", parseAddress)
+    .action(vaultDisableNoteAdapter);
   program
     .command("vault-set-loan-price-oracle")
     .description("Set Vault Loan Price Oracle")
