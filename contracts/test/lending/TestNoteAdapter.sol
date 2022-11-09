@@ -104,9 +104,11 @@ contract TestNoteAdapter is INoteAdapter {
         TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(noteTokenId);
 
         /* Collect collateral assets */
-        AssetInfo[] memory collateralAssets = new AssetInfo[](1);
-        collateralAssets[0].token = loanTerms.collateralAssets[0].token;
-        collateralAssets[0].tokenId = loanTerms.collateralAssets[0].tokenId;
+        AssetInfo[] memory collateralAssets = new AssetInfo[](loanTerms.collateralAssets.length);
+        for (uint256 i; i < loanTerms.collateralAssets.length; i++) {
+            collateralAssets[i].token = loanTerms.collateralAssets[i].token;
+            collateralAssets[i].tokenId = loanTerms.collateralAssets[i].tokenId;
+        }
 
         return collateralAssets;
     }
