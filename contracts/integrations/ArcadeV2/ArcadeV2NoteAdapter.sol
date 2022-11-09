@@ -46,7 +46,7 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.0";
+    string public constant IMPLEMENTATION_VERSION = "1.1";
 
     /**
      * @notice Interest rate denominator used for calculating repayment
