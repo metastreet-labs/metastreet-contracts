@@ -75,7 +75,7 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.1";
+    string public constant IMPLEMENTATION_VERSION = "1.2";
 
     /**
      * @notice Supported loan type
