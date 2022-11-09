@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "contracts/interfaces/INoteAdapter.sol";
 
 import "./LoanLibrary.sol";
+import "./IVaultFactory.sol";
+import "./IVaultInventoryReporter.sol";
 
 /**************************************************************************/
 /* ArcadeV2 Interfaces (subset) */
@@ -17,6 +19,12 @@ interface ILoanCore {
     function borrowerNote() external returns (IERC721);
 
     function lenderNote() external returns (IERC721);
+}
+
+interface IVaultDepositRouter {
+    function factory() external returns (address);
+
+    function reporter() external returns (IVaultInventoryReporter);
 }
 
 interface IRepaymentController {
@@ -51,6 +59,15 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
     uint256 public constant BASIS_POINTS_DENOMINATOR = 10_000;
 
     /**************************************************************************/
+    /* Errors */
+    /**************************************************************************/
+
+    /**
+     * @notice Unsupported collateral item
+     */
+    error UnsupportedCollateralItem();
+
+    /**************************************************************************/
     /* Properties */
     /**************************************************************************/
 
@@ -58,6 +75,8 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
     IERC721 private immutable _borrowerNote;
     IERC721 private immutable _lenderNote;
     IRepaymentController private immutable _repaymentController;
+    IVaultFactory private immutable _vaultFactory;
+    IVaultInventoryReporter private immutable _vaultInventoryReporter;
 
     /**************************************************************************/
     /* Constructor */
@@ -67,11 +86,17 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
      * @notice ArcadeV2NoteAdapter constructor
      * @param loanCore Loan core contract
      */
-    constructor(ILoanCore loanCore, IRepaymentController repaymentController) {
+    constructor(
+        ILoanCore loanCore,
+        IRepaymentController repaymentController,
+        IVaultDepositRouter vaultDepositRouter
+    ) {
         _loanCore = loanCore;
         _borrowerNote = loanCore.borrowerNote();
         _lenderNote = loanCore.lenderNote();
         _repaymentController = repaymentController;
+        _vaultFactory = IVaultFactory(vaultDepositRouter.factory());
+        _vaultInventoryReporter = vaultDepositRouter.reporter();
     }
 
     /**************************************************************************/
@@ -149,9 +174,27 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
         LoanLibrary.LoanData memory loanData = _loanCore.getLoan(noteTokenId);
 
         /* Collect collateral assets */
-        AssetInfo[] memory collateralAssets = new AssetInfo[](1);
-        collateralAssets[0].token = loanData.terms.collateralAddress;
-        collateralAssets[0].tokenId = loanData.terms.collateralId;
+        AssetInfo[] memory collateralAssets;
+        if (
+            loanData.terms.collateralAddress == address(_vaultFactory) &&
+            _vaultFactory.isInstance(address(uint160(loanData.terms.collateralId)))
+        ) {
+            /* Enumerate vault inventory */
+            IVaultInventoryReporter.Item[] memory items = _vaultInventoryReporter.enumerateOrFail(
+                address(uint160(loanData.terms.collateralId))
+            );
+
+            /* Translate vault inventory to asset infos */
+            collateralAssets = new AssetInfo[](items.length);
+            for (uint256 i; i < items.length; i++) {
+                if (items[i].itemType != IVaultInventoryReporter.ItemType.ERC_721) revert UnsupportedCollateralItem();
+                collateralAssets[i] = AssetInfo({token: items[i].tokenAddress, tokenId: items[i].tokenId});
+            }
+        } else {
+            collateralAssets = new AssetInfo[](1);
+            collateralAssets[0].token = loanData.terms.collateralAddress;
+            collateralAssets[0].tokenId = loanData.terms.collateralId;
+        }
 
         return collateralAssets;
     }
