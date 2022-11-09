@@ -202,6 +202,32 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
+    function getLoanAssets(uint256 noteTokenId) external view returns (AssetInfo[] memory) {
+        /* Lookup loan id */
+        (, uint256 loanId) = _noteToken.loans(noteTokenId);
+
+        /* Lookup loan data */
+        IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));
+
+        /* Get loan contract */
+        IDirectLoan loanContract = IDirectLoan(loanData.loanContract);
+
+        /* Lookup loan terms */
+        (, , uint256 nftCollateralId, , , , , , , address nftCollateralContract, ) = loanContract.loanIdToLoan(
+            uint32(loanId)
+        );
+
+        /* Collect collateral assets */
+        AssetInfo[] memory collateralAssets = new AssetInfo[](1);
+        collateralAssets[0].token = nftCollateralContract;
+        collateralAssets[0].tokenId = nftCollateralId;
+
+        return collateralAssets;
+    }
+
+    /**
+     * @inheritdoc INoteAdapter
+     */
     function getLiquidateCalldata(uint256 loanId) external view returns (address, bytes memory) {
         /* Lookup loan data for loan contract */
         IDirectLoanCoordinator.Loan memory loanData = _directLoanCoordinator.getLoanData(uint32(loanId));

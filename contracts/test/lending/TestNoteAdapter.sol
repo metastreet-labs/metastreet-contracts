@@ -99,6 +99,21 @@ contract TestNoteAdapter is INoteAdapter {
     /**
      * @inheritdoc INoteAdapter
      */
+    function getLoanAssets(uint256 noteTokenId) external view returns (AssetInfo[] memory) {
+        /* Get loan terms from lending platform */
+        TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(noteTokenId);
+
+        /* Collect collateral assets */
+        AssetInfo[] memory collateralAssets = new AssetInfo[](1);
+        collateralAssets[0].token = loanTerms.collateralAssets[0].token;
+        collateralAssets[0].tokenId = loanTerms.collateralAssets[0].tokenId;
+
+        return collateralAssets;
+    }
+
+    /**
+     * @inheritdoc INoteAdapter
+     */
     function getLiquidateCalldata(uint256 loanId) external view returns (address, bytes memory) {
         return (address(_lendingPlatform), abi.encodeWithSignature("liquidate(uint256)", loanId));
     }

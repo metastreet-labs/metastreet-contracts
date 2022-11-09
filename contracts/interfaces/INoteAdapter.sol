@@ -13,6 +13,16 @@ interface INoteAdapter {
     /**************************************************************************/
 
     /**
+     * @notice Asset information
+     * @param token Token contract
+     * @param tokenId Token ID
+     */
+    struct AssetInfo {
+        address token;
+        uint256 tokenId;
+    }
+
+    /**
      * @notice Loan information
      * @param loanId Loan ID
      * @param borrower Borrower
@@ -66,6 +76,13 @@ interface INoteAdapter {
      * @return Loan information
      */
     function getLoanInfo(uint256 noteTokenId) external view returns (LoanInfo memory);
+
+    /**
+     * @notice Get loan collateral assets
+     * @param noteTokenId Note token ID
+     * @return Loan collateral assets
+     */
+    function getLoanAssets(uint256 noteTokenId) external view returns (AssetInfo[] memory);
 
     /**
      * @notice Get target and calldata to liquidate loan
