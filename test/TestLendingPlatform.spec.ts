@@ -118,8 +118,8 @@ describe("TestLendingPlatform", function () {
     expect(loanTerms.repayment).to.equal(repayment);
     expect(loanTerms.startTime).to.equal((await ethers.provider.getBlock(lendTx.blockHash!)).timestamp);
     expect(loanTerms.duration).to.equal(duration);
-    expect(loanTerms.collateralToken).to.equal(nft1.address);
-    expect(loanTerms.collateralTokenId).to.equal(1234);
+    expect(loanTerms.collateralAssets[0].token).to.equal(nft1.address);
+    expect(loanTerms.collateralAssets[0].tokenId).to.equal(1234);
 
     /* Check early liquidate fails */
     await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan not expired");
@@ -147,6 +147,189 @@ describe("TestLendingPlatform", function () {
     });
     await expectEvent(repayTx, lendingPlatform, "LoanRepaid", { loanId: loanId });
     expect(await nft1.ownerOf(collateralTokenId)).to.equal(borrower.address);
+    expect(await tok1.balanceOf(borrower.address)).to.equal(ethers.constants.Zero);
+    expect(await tok1.balanceOf(lender.address)).to.equal(repayment);
+    expect(await noteToken.exists(loanId)).to.equal(false);
+
+    /* Check loan is complete */
+    expect((await lendingPlatform.loans(loanId)).status).to.equal(2);
+
+    /* Check subsequent repayment fails */
+    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Loan already complete");
+    /* Check subsequent liquidate fails */
+    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan already complete");
+  });
+
+  it("lend against multiple and repay", async function () {
+    const borrower = accounts[1];
+    const lender = accounts[2];
+    const principal = ethers.utils.parseEther("10");
+    const repayment = ethers.utils.parseEther("10.42");
+    const duration = 30 * 86400;
+    const collateralTokenIds = [1234, 2345, 3456];
+
+    /* Mint NFT to borrower */
+    for (const collateralTokenId of collateralTokenIds) {
+      await nft1.mint(borrower.address, collateralTokenId);
+      expect(await nft1.ownerOf(collateralTokenId)).to.equal(accounts[1].address);
+    }
+
+    /* Approve lending platform to transfer NFT */
+    await nft1.connect(borrower).setApprovalForAll(lendingPlatform.address, true);
+
+    /* Approve lending platform to transfer token (for repayment) */
+    await tok1.connect(borrower).approve(lendingPlatform.address, ethers.constants.MaxUint256);
+
+    /* Transfer TOK1 to lender */
+    await tok1.transfer(lender.address, principal);
+    expect(await tok1.balanceOf(lender.address)).to.equal(principal);
+
+    /* Approve lending platform to transfer token */
+    await tok1.connect(lender).approve(lendingPlatform.address, ethers.constants.MaxUint256);
+
+    /* Create a loan */
+    const lendTx = await lendingPlatform.lendAgainstMultiple(
+      borrower.address,
+      lender.address,
+      [
+        { token: nft1.address, tokenId: collateralTokenIds[0] },
+        { token: nft1.address, tokenId: collateralTokenIds[1] },
+        { token: nft1.address, tokenId: collateralTokenIds[2] },
+      ],
+      principal,
+      repayment,
+      duration
+    );
+
+    const loanId = (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
+
+    await expectEvent(
+      lendTx,
+      nft1,
+      "Transfer",
+      {
+        from: borrower.address,
+        to: lendingPlatform.address,
+        tokenId: collateralTokenIds[0],
+      },
+      0
+    );
+    await expectEvent(
+      lendTx,
+      nft1,
+      "Transfer",
+      {
+        from: borrower.address,
+        to: lendingPlatform.address,
+        tokenId: collateralTokenIds[1],
+      },
+      1
+    );
+    await expectEvent(
+      lendTx,
+      nft1,
+      "Transfer",
+      {
+        from: borrower.address,
+        to: lendingPlatform.address,
+        tokenId: collateralTokenIds[2],
+      },
+      2
+    );
+    await expectEvent(lendTx, tok1, "Transfer", {
+      from: lender.address,
+      to: borrower.address,
+      value: principal,
+    });
+    await expectEvent(lendTx, noteToken, "Transfer", {
+      from: ethers.constants.AddressZero,
+      to: lender.address,
+      tokenId: loanId,
+    });
+    await expectEvent(lendTx, lendingPlatform, "LoanCreated", {
+      loanId: loanId,
+      borrower: borrower.address,
+      lender: lender.address,
+    });
+    expect(await nft1.ownerOf(collateralTokenIds[0])).to.equal(lendingPlatform.address);
+    expect(await nft1.ownerOf(collateralTokenIds[1])).to.equal(lendingPlatform.address);
+    expect(await nft1.ownerOf(collateralTokenIds[2])).to.equal(lendingPlatform.address);
+    expect(await tok1.balanceOf(borrower.address)).to.equal(principal);
+    expect(await tok1.balanceOf(lender.address)).to.equal(ethers.constants.Zero);
+    expect(await noteToken.exists(loanId)).to.equal(true);
+    expect(await noteToken.ownerOf(loanId)).to.equal(lender.address);
+
+    /* Validate loan details */
+    const loanTerms = await lendingPlatform.loans(loanId);
+    expect(loanTerms.status).to.equal(1);
+    expect(loanTerms.borrower).to.equal(borrower.address);
+    expect(loanTerms.principal).to.equal(principal);
+    expect(loanTerms.repayment).to.equal(repayment);
+    expect(loanTerms.startTime).to.equal((await ethers.provider.getBlock(lendTx.blockHash!)).timestamp);
+    expect(loanTerms.duration).to.equal(duration);
+    expect(loanTerms.collateralAssets[0].token).to.equal(nft1.address);
+    expect(loanTerms.collateralAssets[0].tokenId).to.equal(1234);
+    expect(loanTerms.collateralAssets[1].token).to.equal(nft1.address);
+    expect(loanTerms.collateralAssets[1].tokenId).to.equal(2345);
+    expect(loanTerms.collateralAssets[2].token).to.equal(nft1.address);
+    expect(loanTerms.collateralAssets[2].tokenId).to.equal(3456);
+
+    /* Check early liquidate fails */
+    await expect(lendingPlatform.liquidate(loanId)).to.be.revertedWith("Loan not expired");
+
+    /* Transfer interest to borrower */
+    await tok1.transfer(borrower.address, repayment.sub(principal));
+
+    /* Repay loan */
+    const repayTx = await lendingPlatform.connect(borrower).repay(loanId, false);
+
+    await expectEvent(repayTx, tok1, "Transfer", {
+      from: borrower.address,
+      to: lender.address,
+      value: repayment,
+    });
+    await expectEvent(
+      repayTx,
+      nft1,
+      "Transfer",
+      {
+        from: lendingPlatform.address,
+        to: borrower.address,
+        tokenId: collateralTokenIds[0],
+      },
+      0
+    );
+    await expectEvent(
+      repayTx,
+      nft1,
+      "Transfer",
+      {
+        from: lendingPlatform.address,
+        to: borrower.address,
+        tokenId: collateralTokenIds[1],
+      },
+      1
+    );
+    await expectEvent(
+      repayTx,
+      nft1,
+      "Transfer",
+      {
+        from: lendingPlatform.address,
+        to: borrower.address,
+        tokenId: collateralTokenIds[2],
+      },
+      2
+    );
+    await expectEvent(repayTx, noteToken, "Transfer", {
+      from: lender.address,
+      to: ethers.constants.AddressZero,
+      tokenId: loanId,
+    });
+    await expectEvent(repayTx, lendingPlatform, "LoanRepaid", { loanId: loanId });
+    expect(await nft1.ownerOf(collateralTokenIds[0])).to.equal(borrower.address);
+    expect(await nft1.ownerOf(collateralTokenIds[1])).to.equal(borrower.address);
+    expect(await nft1.ownerOf(collateralTokenIds[2])).to.equal(borrower.address);
     expect(await tok1.balanceOf(borrower.address)).to.equal(ethers.constants.Zero);
     expect(await tok1.balanceOf(lender.address)).to.equal(repayment);
     expect(await noteToken.exists(loanId)).to.equal(false);
@@ -221,6 +404,115 @@ describe("TestLendingPlatform", function () {
     });
     await expectEvent(liquidateTx, lendingPlatform, "LoanLiquidated", { loanId: loanId });
     expect(await nft1.ownerOf(collateralTokenId)).to.equal(lender.address);
+    expect(await tok1.balanceOf(borrower.address)).to.equal(principal);
+    expect(await tok1.balanceOf(lender.address)).to.equal(ethers.constants.Zero);
+    expect(await noteToken.exists(loanId)).to.equal(false);
+
+    /* Check loan is complete */
+    expect((await lendingPlatform.loans(loanId)).status).to.equal(3);
+
+    /* Check subsequent liquidate fails */
+    await expect(lendingPlatform.connect(lender).liquidate(loanId)).to.be.revertedWith("Loan already complete");
+    /* Check subsequent repayment fails */
+    await expect(lendingPlatform.repay(loanId, false)).to.be.revertedWith("Loan already complete");
+  });
+
+  it("lend against multiple and liquidate", async function () {
+    const borrower = accounts[1];
+    const lender = accounts[2];
+    const principal = ethers.utils.parseEther("10");
+    const repayment = ethers.utils.parseEther("10.42");
+    const duration = 30 * 86400;
+    const collateralTokenIds = [1234, 2345, 3456];
+
+    /* Mint NFT to borrower */
+    for (const collateralTokenId of collateralTokenIds) {
+      await nft1.mint(borrower.address, collateralTokenId);
+      expect(await nft1.ownerOf(collateralTokenId)).to.equal(accounts[1].address);
+    }
+
+    /* Approve lending platform to transfer NFT */
+    await nft1.connect(borrower).setApprovalForAll(lendingPlatform.address, true);
+
+    /* Transfer TOK1 to lender */
+    await tok1.transfer(lender.address, principal);
+    expect(await tok1.balanceOf(lender.address)).to.equal(principal);
+
+    /* Approve lending platform to transfer token */
+    await tok1.connect(lender).approve(lendingPlatform.address, ethers.constants.MaxUint256);
+
+    /* Create a loan */
+    const lendTx = await lendingPlatform.lendAgainstMultiple(
+      borrower.address,
+      lender.address,
+      [
+        { token: nft1.address, tokenId: collateralTokenIds[0] },
+        { token: nft1.address, tokenId: collateralTokenIds[1] },
+        { token: nft1.address, tokenId: collateralTokenIds[2] },
+      ],
+      principal,
+      repayment,
+      duration
+    );
+
+    const loanId = (await extractEvent(lendTx, lendingPlatform, "LoanCreated")).args.loanId;
+
+    /* Check early liquidate fails */
+    await expect(lendingPlatform.connect(lender).liquidate(loanId)).to.be.revertedWith("Loan not expired");
+
+    /* Wait for loan expiration */
+    const lendTimestamp = (await ethers.provider.getBlock(lendTx.blockHash!)).timestamp;
+    await network.provider.send("evm_setNextBlockTimestamp", [lendTimestamp + duration + 1]);
+    await network.provider.send("evm_mine");
+
+    /* Check liquidate fails from wrong account */
+    await expect(lendingPlatform.connect(accounts[3]).liquidate(loanId)).to.be.revertedWith("Invalid caller");
+
+    /* Liquidate loan */
+    const liquidateTx = await lendingPlatform.connect(lender).liquidate(loanId);
+
+    await expectEvent(
+      liquidateTx,
+      nft1,
+      "Transfer",
+      {
+        from: lendingPlatform.address,
+        to: lender.address,
+        tokenId: collateralTokenIds[0],
+      },
+      0
+    );
+    await expectEvent(
+      liquidateTx,
+      nft1,
+      "Transfer",
+      {
+        from: lendingPlatform.address,
+        to: lender.address,
+        tokenId: collateralTokenIds[1],
+      },
+      1
+    );
+    await expectEvent(
+      liquidateTx,
+      nft1,
+      "Transfer",
+      {
+        from: lendingPlatform.address,
+        to: lender.address,
+        tokenId: collateralTokenIds[2],
+      },
+      2
+    );
+    await expectEvent(liquidateTx, noteToken, "Transfer", {
+      from: lender.address,
+      to: ethers.constants.AddressZero,
+      tokenId: loanId,
+    });
+    await expectEvent(liquidateTx, lendingPlatform, "LoanLiquidated", { loanId: loanId });
+    expect(await nft1.ownerOf(collateralTokenIds[0])).to.equal(lender.address);
+    expect(await nft1.ownerOf(collateralTokenIds[1])).to.equal(lender.address);
+    expect(await nft1.ownerOf(collateralTokenIds[2])).to.equal(lender.address);
     expect(await tok1.balanceOf(borrower.address)).to.equal(principal);
     expect(await tok1.balanceOf(lender.address)).to.equal(ethers.constants.Zero);
     expect(await noteToken.exists(loanId)).to.equal(false);

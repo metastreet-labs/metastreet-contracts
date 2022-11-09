@@ -89,8 +89,8 @@ contract TestNoteAdapter is INoteAdapter {
             maturity: loanTerms.startTime + loanTerms.duration,
             duration: loanTerms.duration,
             currencyToken: address(_lendingPlatform.currencyToken()),
-            collateralToken: loanTerms.collateralToken,
-            collateralTokenId: loanTerms.collateralTokenId
+            collateralToken: loanTerms.collateralAssets[0].token,
+            collateralTokenId: loanTerms.collateralAssets[0].tokenId
         });
 
         return loanInfo;
@@ -111,14 +111,14 @@ contract TestNoteAdapter is INoteAdapter {
         TestLendingPlatform.LoanTerms memory loanTerms = _lendingPlatform.loans(loanId);
 
         /* Dummy operation to test unwrap call in Vault withdrawCollateral() */
-        if (IERC721(loanTerms.collateralToken).ownerOf(loanTerms.collateralTokenId) == msg.sender) {
+        if (IERC721(loanTerms.collateralAssets[0].token).ownerOf(loanTerms.collateralAssets[0].tokenId) == msg.sender) {
             return (
-                loanTerms.collateralToken,
+                loanTerms.collateralAssets[0].token,
                 abi.encodeWithSignature(
                     "transferFrom(address,address,uint256)",
                     msg.sender,
                     msg.sender,
-                    loanTerms.collateralTokenId
+                    loanTerms.collateralAssets[0].tokenId
                 )
             );
         } else {

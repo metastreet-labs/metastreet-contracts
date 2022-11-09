@@ -56,6 +56,16 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
     }
 
     /**
+     * @notice Collateral asset
+     * @param token Token contract
+     * @param tokenId Token ID
+     */
+    struct CollateralAsset {
+        address token;
+        uint256 tokenId;
+    }
+
+    /**
      * @notice Loan terms
      * @param status Loan status
      * @param borrower Borrower
@@ -63,8 +73,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
      * @param repayment Repayment amount
      * @param startTime Start timestamp
      * @param duration Duration in seconds
-     * @param collateralToken Collateral token contract
-     * @param collateralTokenId Collateral token ID
+     * @param collateralAssets Collateral assets
      */
     struct LoanTerms {
         LoanStatus status;
@@ -73,8 +82,7 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         uint256 repayment;
         uint64 startTime;
         uint32 duration;
-        address collateralToken;
-        uint256 collateralTokenId;
+        CollateralAsset[] collateralAssets;
     }
 
     /**************************************************************************/
@@ -148,6 +156,31 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         uint256 repayment,
         uint32 duration
     ) external {
+        CollateralAsset[] memory collateralAssets = new CollateralAsset[](1);
+        collateralAssets[0] = CollateralAsset({token: address(collateralToken), tokenId: collateralTokenId});
+        lendAgainstMultiple(borrower, lender, collateralAssets, principal, repayment, duration);
+    }
+
+    /**
+     * @notice Create a new loan against multiple collateral assets
+     *
+     * Emits a {LoanCreated} event.
+     *
+     * @param borrower Borrower
+     * @param lender Lender
+     * @param collateralAssets Collateral assets
+     * @param principal Principal amount
+     * @param repayment Repayment amount
+     * @param duration Duration in seconds
+     */
+    function lendAgainstMultiple(
+        address borrower,
+        address lender,
+        CollateralAsset[] memory collateralAssets,
+        uint256 principal,
+        uint256 repayment,
+        uint32 duration
+    ) public {
         require(repayment >= principal, "Repayment less than principal");
 
         uint256 loanId = _loanId++;
@@ -159,10 +192,11 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         loan.repayment = repayment;
         loan.startTime = uint64(block.timestamp);
         loan.duration = duration;
-        loan.collateralToken = address(collateralToken);
-        loan.collateralTokenId = collateralTokenId;
 
-        collateralToken.safeTransferFrom(borrower, address(this), collateralTokenId);
+        for (uint256 i; i < collateralAssets.length; i++) {
+            loan.collateralAssets.push(collateralAssets[i]);
+            IERC721(collateralAssets[i].token).safeTransferFrom(borrower, address(this), collateralAssets[i].tokenId);
+        }
         currencyToken.safeTransferFrom(lender, borrower, principal);
         noteToken.mint(lender, loanId);
 
@@ -189,7 +223,12 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
         address noteOwner = noteToken.ownerOf(loanId);
 
         currencyToken.safeTransferFrom(loan.borrower, noteOwner, loan.repayment);
-        IERC721(loan.collateralToken).safeTransferFrom(address(this), loan.borrower, loan.collateralTokenId);
+        for (uint256 i; i < loan.collateralAssets.length; i++)
+            IERC721(loan.collateralAssets[i].token).safeTransferFrom(
+                address(this),
+                loan.borrower,
+                loan.collateralAssets[i].tokenId
+            );
         noteToken.burn(loanId);
 
         if (callback && ERC165Checker.supportsInterface(noteOwner, type(ILoanReceiver).interfaceId))
@@ -215,11 +254,12 @@ contract TestLendingPlatform is Ownable, ERC721Holder, ERC165 {
 
         loan.status = LoanStatus.Liquidated;
 
-        IERC721(loan.collateralToken).safeTransferFrom(
-            address(this),
-            noteToken.ownerOf(loanId),
-            loan.collateralTokenId
-        );
+        for (uint256 i; i < loan.collateralAssets.length; i++)
+            IERC721(loan.collateralAssets[i].token).safeTransferFrom(
+                address(this),
+                noteToken.ownerOf(loanId),
+                loan.collateralAssets[i].tokenId
+            );
         noteToken.burn(loanId);
 
         emit LoanLiquidated(loanId);
