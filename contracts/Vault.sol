@@ -745,16 +745,30 @@ contract Vault is
         /* Get loan info */
         INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(noteTokenId);
 
-        /* Get loan purchase price */
-        uint256 purchasePrice = _loanPriceOracle.priceLoan(
-            loanInfo.collateralToken,
-            loanInfo.collateralTokenId,
-            loanInfo.principal,
-            loanInfo.repayment,
-            loanInfo.duration,
-            loanInfo.maturity,
-            _computeUtilization(0)
-        );
+        /* Compute loan purchase price */
+        uint256 purchasePrice = 0;
+        {
+            /* Get loan assets */
+            INoteAdapter.AssetInfo[] memory collateralAssets = noteAdapter.getLoanAssets(noteTokenId);
+
+            /* Calculate principal and repayment per asset */
+            uint256 collateralCount = PRBMathUD60x18.fromUint(collateralAssets.length);
+            uint256 principalPerAsset = PRBMathUD60x18.div(loanInfo.principal, collateralCount);
+            uint256 repaymentPerAsset = PRBMathUD60x18.div(loanInfo.repayment, collateralCount);
+
+            /* For each collateral asset */
+            for (uint256 i; i < collateralAssets.length; ++i) {
+                purchasePrice += _loanPriceOracle.priceLoan(
+                    collateralAssets[i].token,
+                    collateralAssets[i].tokenId,
+                    principalPerAsset,
+                    repaymentPerAsset,
+                    loanInfo.duration,
+                    loanInfo.maturity,
+                    _computeUtilization(purchasePrice)
+                );
+            }
+        }
 
         /* Validate purchase price */
         if (purchasePrice < minPurchasePrice) revert PurchasePriceTooLow();

@@ -22,6 +22,7 @@ import {
   LoanStatus,
   initializeAccounts,
   createLoan,
+  createLoanAgainstMultiple,
   createAndSellLoan,
   cycleLoan,
   cycleLoanDefault,
@@ -563,6 +564,63 @@ describe("Vault", function () {
       expect((await vault.loanState(noteToken.address, loanId)).maturityTimeBucket).to.be.gt(ethers.constants.Zero);
       expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
     });
+    it("sells note with multiple collateral", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoanAgainstMultiple(
+        lendingPlatform,
+        nft1,
+        3,
+        accountBorrower,
+        accountLender,
+        principal.mul(3),
+        repayment.mul(3),
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(principal);
+
+      /* Sell note to vault */
+      const sellTx = await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal.mul(3));
+      await expectEvent(sellTx, tok1, "Transfer", {
+        from: vault.address,
+        to: accountLender.address,
+        value: principal.mul(3),
+      });
+      await expectEvent(sellTx, noteToken, "Transfer", {
+        from: accountLender.address,
+        to: vault.address,
+        tokenId: loanId,
+      });
+      await expectEvent(sellTx, vault, "NotePurchased", {
+        account: accountLender.address,
+        noteToken: noteToken.address,
+        noteTokenId: loanId,
+        loanId: loanId,
+        purchasePrice: principal.mul(3),
+      });
+
+      /* Check state after sale */
+      expect((await vault.balanceState()).totalCashBalance).to.equal(
+        depositAmounts[0].add(depositAmounts[1]).sub(principal.mul(3))
+      );
+      expect((await vault.balanceState()).totalLoanBalance).to.equal(principal.mul(3));
+      expect((await vault.balanceState()).totalWithdrawalBalance).to.equal(ethers.constants.Zero);
+      expect((await vault.loanState(noteToken.address, loanId)).collateralToken).to.equal(nft1.address);
+      expect((await vault.loanState(noteToken.address, loanId)).purchasePrice).to.equal(principal.mul(3));
+      expect((await vault.loanState(noteToken.address, loanId)).repayment).to.equal(repayment.mul(3));
+      expect((await vault.loanState(noteToken.address, loanId)).maturityTimeBucket).to.be.gt(ethers.constants.Zero);
+      expect((await vault.loanState(noteToken.address, loanId)).status).to.equal(LoanStatus.Active);
+    });
     it("fails on unsupported note token", async function () {
       await expect(
         vault.connect(accountLender).sellNote(ethers.constants.AddressZero, 1, ethers.utils.parseEther("2"))
@@ -598,6 +656,30 @@ describe("Vault", function () {
         "PurchasePriceTooLow()"
       );
     });
+    it("fails on low purchase price for multiple collateral", async function () {
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Create loan */
+      const loanId = await createLoanAgainstMultiple(
+        lendingPlatform,
+        nft1,
+        3,
+        accountBorrower,
+        accountLender,
+        principal.mul(3),
+        repayment.mul(3),
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("1.9"));
+
+      await expect(
+        vault.connect(accountLender).sellNote(noteToken.address, loanId, principal.mul(3))
+      ).to.be.revertedWith("PurchasePriceTooLow()");
+    });
     it("fails on high purchase price", async function () {
       const purchasePrice = ethers.utils.parseEther("3.0");
       const principal = ethers.utils.parseEther("2.0");
@@ -612,6 +694,31 @@ describe("Vault", function () {
         accountLender,
         principal,
         repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(purchasePrice);
+
+      await expect(vault.connect(accountLender).sellNote(noteToken.address, loanId, purchasePrice)).to.be.revertedWith(
+        "PurchasePriceTooHigh()"
+      );
+    });
+    it("fails on high purchase price for multiple collateral", async function () {
+      const purchasePrice = ethers.utils.parseEther("3.0");
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Create loan */
+      const loanId = await createLoanAgainstMultiple(
+        lendingPlatform,
+        nft1,
+        3,
+        accountBorrower,
+        accountLender,
+        principal.mul(3),
+        repayment.mul(3),
         duration
       );
 
