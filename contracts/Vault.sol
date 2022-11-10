@@ -725,6 +725,38 @@ contract Vault is
     }
 
     /**
+     * @dev Calculate purchase price of a loan
+     * @param loanInfo Loan info
+     */
+    function _priceLoan(INoteAdapter.LoanInfo memory loanInfo, INoteAdapter.AssetInfo[] memory collateralAssets)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 purchasePrice = 0;
+
+        /* Calculate principal and repayment per asset */
+        uint256 collateralCount = PRBMathUD60x18.fromUint(collateralAssets.length);
+        uint256 principalPerAsset = PRBMathUD60x18.div(loanInfo.principal, collateralCount);
+        uint256 repaymentPerAsset = PRBMathUD60x18.div(loanInfo.repayment, collateralCount);
+
+        /* For each collateral asset */
+        for (uint256 i; i < collateralAssets.length; ++i) {
+            purchasePrice += _loanPriceOracle.priceLoan(
+                collateralAssets[i].token,
+                collateralAssets[i].tokenId,
+                principalPerAsset,
+                repaymentPerAsset,
+                loanInfo.duration,
+                loanInfo.maturity,
+                _computeUtilization(purchasePrice)
+            );
+        }
+
+        return purchasePrice;
+    }
+
+    /**
      * @dev Calculate purchase price of note and update tranche state with note
      * purchase
      * @param noteToken Note token contract
@@ -746,29 +778,7 @@ contract Vault is
         INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(noteTokenId);
 
         /* Compute loan purchase price */
-        uint256 purchasePrice = 0;
-        {
-            /* Get loan assets */
-            INoteAdapter.AssetInfo[] memory collateralAssets = noteAdapter.getLoanAssets(noteTokenId);
-
-            /* Calculate principal and repayment per asset */
-            uint256 collateralCount = PRBMathUD60x18.fromUint(collateralAssets.length);
-            uint256 principalPerAsset = PRBMathUD60x18.div(loanInfo.principal, collateralCount);
-            uint256 repaymentPerAsset = PRBMathUD60x18.div(loanInfo.repayment, collateralCount);
-
-            /* For each collateral asset */
-            for (uint256 i; i < collateralAssets.length; ++i) {
-                purchasePrice += _loanPriceOracle.priceLoan(
-                    collateralAssets[i].token,
-                    collateralAssets[i].tokenId,
-                    principalPerAsset,
-                    repaymentPerAsset,
-                    loanInfo.duration,
-                    loanInfo.maturity,
-                    _computeUtilization(purchasePrice)
-                );
-            }
-        }
+        uint256 purchasePrice = _priceLoan(loanInfo, noteAdapter.getLoanAssets(noteTokenId));
 
         /* Validate purchase price */
         if (purchasePrice < minPurchasePrice) revert PurchasePriceTooLow();
@@ -851,6 +861,23 @@ contract Vault is
 
         /* Transfer cash from user to vault */
         _currencyToken.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    /**
+     * @inheritdoc IVault
+     */
+    function priceNote(address noteToken, uint256 noteTokenId) external view returns (uint256) {
+        /* Lookup note adapter */
+        INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
+
+        /* Check if loan parameters are supported */
+        if (!noteAdapter.isSupported(noteTokenId, address(_currencyToken))) revert UnsupportedNoteParameters();
+
+        /* Get loan info */
+        INoteAdapter.LoanInfo memory loanInfo = noteAdapter.getLoanInfo(noteTokenId);
+
+        /* Compute loan purchase price */
+        return _priceLoan(loanInfo, noteAdapter.getLoanAssets(noteTokenId));
     }
 
     /**

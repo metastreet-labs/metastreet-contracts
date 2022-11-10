@@ -196,6 +196,15 @@ interface IVault is ILoanReceiver {
     function deposit(TrancheId trancheId, uint256 amount) external;
 
     /**
+     * @notice Price a note
+     *
+     * @param noteToken Note token contract
+     * @param noteTokenId Note token ID
+     * @return Purchase price in currency tokens
+     */
+    function priceNote(address noteToken, uint256 noteTokenId) external view returns (uint256);
+
+    /**
      * @notice Sell a note to the vault
      *
      * Emits a {NotePurchased} event.

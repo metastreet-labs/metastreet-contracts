@@ -501,6 +501,62 @@ describe("Vault", function () {
     });
   });
 
+  describe("#priceNote", async function () {
+    it("prices a note", async function () {
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("1.9"));
+
+      /* Price the note */
+      expect(await vault.priceNote(noteToken.address, loanId)).to.equal(ethers.utils.parseEther("1.9"));
+    });
+    it("prices a note with multiple collateral", async function () {
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Create loan */
+      const loanId = await createLoanAgainstMultiple(
+        lendingPlatform,
+        nft1,
+        3,
+        accountBorrower,
+        accountLender,
+        principal.mul(3),
+        repayment.mul(3),
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(ethers.utils.parseEther("1.9"));
+
+      /* Price the note */
+      expect(await vault.priceNote(noteToken.address, loanId)).to.equal(ethers.utils.parseEther("1.9").mul(3));
+    });
+    it("fails on unsupported note token", async function () {
+      await expect(vault.priceNote(ethers.constants.AddressZero, 1)).to.be.revertedWith("UnsupportedNoteToken()");
+    });
+    it("fails on unsupported note parameters", async function () {
+      await mockLoanPriceOracle.setError(0 /* MockError.Unsupported */);
+
+      await expect(vault.priceNote(noteToken.address, 1)).to.be.revertedWith("UnsupportedNoteParameters()");
+    });
+  });
+
   describe("#sellNote", async function () {
     it("sells note", async function () {
       const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
