@@ -1,3 +1,10 @@
+* Vault v1.3 - 11/18/2022
+    * Add default constructor to disable initialization of implementation
+      contract.
+* LPToken v1.1 - 11/18/2022
+    * Add default constructor to disable initialization of implementation
+      contract.
+
 * LoanPriceOracle v1.2 - 10/31/2022
     * Add purchase price validation to `priceLoan()`.
 
