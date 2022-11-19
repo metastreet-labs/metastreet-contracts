@@ -157,7 +157,7 @@ describe("Vault", function () {
 
   describe("constants", async function () {
     it("matches implementation version", async function () {
-      expect(await vault.IMPLEMENTATION_VERSION()).to.equal("1.3");
+      expect(await vault.IMPLEMENTATION_VERSION()).to.equal("1.4");
     });
   });
 
