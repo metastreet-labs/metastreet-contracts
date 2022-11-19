@@ -1,14 +1,16 @@
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
+import type { Contract } from "ethers";
 import { LPToken } from "../typechain";
 
 import { expectEvent } from "./helpers/EventUtilities";
 
 describe("LPToken", function () {
   let accounts: SignerWithAddress[];
+  let lpTokenBeacon: Contract;
   let lpToken: LPToken;
   let accountDepositor: SignerWithAddress;
   let snapshotId: string;
@@ -18,10 +20,16 @@ describe("LPToken", function () {
 
     const lpTokenFactory = await ethers.getContractFactory("LPToken");
 
+    /* Deploy LPToken Beacon */
+    lpTokenBeacon = await upgrades.deployBeacon(lpTokenFactory);
+    await lpTokenBeacon.deployed();
+
     /* Deploy Senior LP token */
-    lpToken = (await lpTokenFactory.deploy()) as LPToken;
+    lpToken = (await upgrades.deployBeaconProxy(lpTokenBeacon.address, lpTokenFactory, [
+      "Senior LP Token",
+      "msLP-TEST-WETH",
+    ])) as LPToken;
     await lpToken.deployed();
-    await lpToken.initialize("Senior LP Token", "msLP-TEST-WETH");
 
     /* Setup account */
     accountDepositor = accounts[4];
@@ -38,6 +46,18 @@ describe("LPToken", function () {
   describe("constants", async function () {
     it("matches expected implementation", async function () {
       expect(await lpToken.IMPLEMENTATION_VERSION()).to.equal("1.0");
+    });
+  });
+
+  describe("#initialize", async function () {
+    it("fails on implementation contract", async function () {
+      const lpTokenFactory = await ethers.getContractFactory("LPToken");
+      const testLPToken = (await lpTokenFactory.deploy()) as LPToken;
+      await testLPToken.deployed();
+
+      await expect(testLPToken.initialize("Senior LP Token", "msLP-TEST-WETH")).to.be.revertedWith(
+        "Initializable: contract is already initialized"
+      );
     });
   });
 

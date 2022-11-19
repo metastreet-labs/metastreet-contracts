@@ -38,6 +38,7 @@ describe("Vault", function () {
   let noteToken: TestNoteToken;
   let mockLoanPriceOracle: MockLoanPriceOracle;
   let testNoteAdapter: TestNoteAdapter;
+  let lpTokenBeacon: Contract;
   let vaultBeacon: Contract;
   let vault: Vault;
   let seniorLPToken: LPToken;
@@ -88,15 +89,23 @@ describe("Vault", function () {
     mockLoanPriceOracle = (await mockLoanPriceOracleFactory.deploy(tok1.address)) as MockLoanPriceOracle;
     await mockLoanPriceOracle.deployed();
 
-    /* Deploy Senior LP token */
-    seniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
-    await seniorLPToken.deployed();
-    await seniorLPToken.initialize("Senior LP Token", "msLP-TEST-WETH");
+    /* Deploy LPToken Beacon */
+    lpTokenBeacon = await upgrades.deployBeacon(lpTokenFactory);
+    await lpTokenBeacon.deployed();
 
-    /* Deploy Junior LP token */
-    juniorLPToken = (await lpTokenFactory.deploy()) as LPToken;
+    /* Deploy Senior LP Token */
+    seniorLPToken = (await upgrades.deployBeaconProxy(lpTokenBeacon.address, lpTokenFactory, [
+      "Senior LP Token",
+      "msLP-TEST-WETH",
+    ])) as LPToken;
+    await seniorLPToken.deployed();
+
+    /* Deploy Junior LP Token */
+    juniorLPToken = (await upgrades.deployBeaconProxy(lpTokenBeacon.address, lpTokenFactory, [
+      "Junior LP Token",
+      "mjLP-TEST-WETH",
+    ])) as LPToken;
     await juniorLPToken.deployed();
-    await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
 
     /* Deploy vault */
     vaultBeacon = await upgrades.deployBeacon(vaultFactory, { unsafeAllow: ["delegatecall"] });

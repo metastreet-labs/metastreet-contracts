@@ -71,6 +71,12 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /**************************************************************************/
 
     /**
+     * @notice LPToken constructor (for implementation)
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor() initializer {}
+
+    /**
      * @notice LPToken constructor (for proxy)
      * @param name Token name
      * @param symbol Token symbol
