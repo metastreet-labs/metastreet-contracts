@@ -45,7 +45,7 @@ describe("LPToken", function () {
 
   describe("constants", async function () {
     it("matches expected implementation", async function () {
-      expect(await lpToken.IMPLEMENTATION_VERSION()).to.equal("1.0");
+      expect(await lpToken.IMPLEMENTATION_VERSION()).to.equal("1.1");
     });
   });
 
