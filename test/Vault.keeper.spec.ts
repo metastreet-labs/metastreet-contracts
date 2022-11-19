@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
+import type { Contract } from "ethers";
 import {
   TestERC20,
   TestERC721,
@@ -27,6 +28,7 @@ describe("Vault Keeper Integration", function () {
   let noteToken: TestNoteToken;
   let mockLoanPriceOracle: MockLoanPriceOracle;
   let testNoteAdapter: TestNoteAdapter;
+  let vaultBeacon: Contract;
   let vault: Vault;
   let seniorLPToken: LPToken;
   let juniorLPToken: LPToken;
@@ -87,15 +89,16 @@ describe("Vault Keeper Integration", function () {
     await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
 
     /* Deploy vault */
-    vault = (await vaultFactory.deploy()) as Vault;
-    await vault.deployed();
-    await vault.initialize(
+    vaultBeacon = await upgrades.deployBeacon(vaultFactory, { unsafeAllow: ["delegatecall"] });
+    await vaultBeacon.deployed();
+    vault = (await upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
       "Test Vault",
       tok1.address,
       mockLoanPriceOracle.address,
       seniorLPToken.address,
-      juniorLPToken.address
-    );
+      juniorLPToken.address,
+    ])) as Vault;
+    await vault.deployed();
 
     /* Transfer ownership of LP tokens to Vault */
     await seniorLPToken.transferOwnership(vault.address);

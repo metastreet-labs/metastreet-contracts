@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
+import type { Contract } from "ethers";
 import {
   TestERC20,
   TestERC721,
@@ -37,6 +38,7 @@ describe("Vault", function () {
   let noteToken: TestNoteToken;
   let mockLoanPriceOracle: MockLoanPriceOracle;
   let testNoteAdapter: TestNoteAdapter;
+  let vaultBeacon: Contract;
   let vault: Vault;
   let seniorLPToken: LPToken;
   let juniorLPToken: LPToken;
@@ -97,15 +99,16 @@ describe("Vault", function () {
     await juniorLPToken.initialize("Junior LP Token", "mjLP-TEST-WETH");
 
     /* Deploy vault */
-    vault = (await vaultFactory.deploy()) as Vault;
-    await vault.deployed();
-    await vault.initialize(
+    vaultBeacon = await upgrades.deployBeacon(vaultFactory, { unsafeAllow: ["delegatecall"] });
+    await vaultBeacon.deployed();
+    vault = (await upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
       "Test Vault",
       tok1.address,
       mockLoanPriceOracle.address,
       seniorLPToken.address,
-      juniorLPToken.address
-    );
+      juniorLPToken.address,
+    ])) as Vault;
+    await vault.deployed();
 
     /* Transfer ownership of LP tokens to Vault */
     await seniorLPToken.transferOwnership(vault.address);
@@ -149,7 +152,7 @@ describe("Vault", function () {
   });
 
   describe("#initialize", async function () {
-    it("fails on invalid addresses", async function () {
+    it("fails on implementation contract", async function () {
       const vaultFactory = await ethers.getContractFactory("Vault");
       const testVault = (await vaultFactory.deploy()) as Vault;
       await testVault.deployed();
@@ -157,41 +160,54 @@ describe("Vault", function () {
       await expect(
         testVault.initialize(
           "Test Vault",
-          ethers.constants.AddressZero,
+          tok1.address,
           mockLoanPriceOracle.address,
           seniorLPToken.address,
           juniorLPToken.address
         )
+      ).to.be.revertedWith("Initializable: contract is already initialized");
+    });
+    it("fails on invalid addresses", async function () {
+      const vaultFactory = await ethers.getContractFactory("Vault");
+
+      await expect(
+        upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
+          "Test Vault",
+          ethers.constants.AddressZero,
+          mockLoanPriceOracle.address,
+          seniorLPToken.address,
+          juniorLPToken.address,
+        ])
       ).to.be.revertedWith("InvalidAddress()");
 
       await expect(
-        testVault.initialize(
+        upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
           "Test Vault",
           tok1.address,
           ethers.constants.AddressZero,
           seniorLPToken.address,
-          juniorLPToken.address
-        )
+          juniorLPToken.address,
+        ])
       ).to.be.revertedWith("InvalidAddress()");
 
       await expect(
-        testVault.initialize(
+        upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
           "Test Vault",
           tok1.address,
           mockLoanPriceOracle.address,
           ethers.constants.AddressZero,
-          juniorLPToken.address
-        )
+          juniorLPToken.address,
+        ])
       ).to.be.revertedWith("InvalidAddress()");
 
       await expect(
-        testVault.initialize(
+        upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
           "Test Vault",
           tok1.address,
           mockLoanPriceOracle.address,
           seniorLPToken.address,
-          ethers.constants.AddressZero
-        )
+          ethers.constants.AddressZero,
+        ])
       ).to.be.revertedWith("InvalidAddress()");
     });
     it("fails on unsupported currency token decimals", async function () {
@@ -200,17 +216,15 @@ describe("Vault", function () {
       await tok2.deployed();
 
       const vaultFactory = await ethers.getContractFactory("Vault");
-      const testVault = (await vaultFactory.deploy()) as Vault;
-      await testVault.deployed();
 
       await expect(
-        testVault.initialize(
+        upgrades.deployBeaconProxy(vaultBeacon.address, vaultFactory, [
           "Test Vault",
           tok2.address,
           mockLoanPriceOracle.address,
           seniorLPToken.address,
-          juniorLPToken.address
-        )
+          juniorLPToken.address,
+        ])
       ).to.be.revertedWith("UnsupportedTokenDecimals()");
     });
   });

@@ -304,6 +304,12 @@ contract Vault is
     /**************************************************************************/
 
     /**
+     * @notice Vault constructor (for implementation)
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor() initializer {}
+
+    /**
      * @notice Vault constructor (for proxy)
      * @param name_ Vault name
      * @param currencyToken_ Currency token contract
