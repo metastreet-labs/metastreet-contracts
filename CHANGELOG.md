@@ -1,3 +1,13 @@
+* Vault v1.4 - 11/21/2022
+    * Add `getLoanAssets()` API to INoteAdapter.
+    * Add `priceNote()` getter API to IVault.
+    * Add support for pricing collateral bundles.
+* ArcadeV2NoteAdapter v1.1 - 11/21/2022
+    * Implement new `getLoanAssets()` API in INoteAdapter.
+    * Add support for collateral bundles.
+* NFTfiV2NoteAdapter v1.2 - 11/21/2022
+    * Implement new `getLoanAssets()` API in INoteAdapter.
+
 * Vault v1.3 - 11/18/2022
     * Add default constructor to disable initialization of implementation
       contract.
