@@ -1,3 +1,7 @@
+* NFTfiV2NoteAdapter v1.3 - 11/30/2022
+    * Add support for `DIRECT_LOAN_FIXED_COLLECTION` loan type for loans made
+      from collection offers.
+
 * Vault v1.4 - 11/21/2022
     * Add `getLoanAssets()` API to INoteAdapter.
     * Add `priceNote()` getter API to IVault.
