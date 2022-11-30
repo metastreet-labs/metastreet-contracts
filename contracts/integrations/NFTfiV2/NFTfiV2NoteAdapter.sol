@@ -80,7 +80,8 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
     /**
      * @notice Supported loan type
      */
-    bytes32 public constant SUPPORTED_LOAN_TYPE = bytes32("DIRECT_LOAN_FIXED_REDEPLOY");
+    bytes32 public constant SUPPORTED_LOAN_TYPE1 = bytes32("DIRECT_LOAN_FIXED_REDEPLOY");
+    bytes32 public constant SUPPORTED_LOAN_TYPE2 = bytes32("DIRECT_LOAN_FIXED_COLLECTION");
 
     /**************************************************************************/
     /* Properties */
@@ -140,7 +141,8 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
         IDirectLoan loanContract = IDirectLoan(loanData.loanContract);
 
         /* Validate loan type matches */
-        if (loanContract.LOAN_TYPE() != SUPPORTED_LOAN_TYPE) return false;
+        bytes32 loanType = loanContract.LOAN_TYPE();
+        if (loanType != SUPPORTED_LOAN_TYPE1 && loanType != SUPPORTED_LOAN_TYPE2) return false;
 
         /* Lookup loan currency token */
         (, , , address loanERC20Denomination, , , , , , , ) = loanContract.loanIdToLoan(uint32(loanId));
