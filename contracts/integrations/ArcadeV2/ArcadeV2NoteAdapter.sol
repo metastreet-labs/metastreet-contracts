@@ -67,6 +67,11 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
      */
     error UnsupportedCollateralItem();
 
+    /**
+     * @notice Unreported collateral inventory
+     */
+    error UnreportedCollateralInventory();
+
     /**************************************************************************/
     /* Properties */
     /**************************************************************************/
@@ -183,6 +188,9 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
             IVaultInventoryReporter.Item[] memory items = _vaultInventoryReporter.enumerateOrFail(
                 address(uint160(loanData.terms.collateralId))
             );
+
+            /* Check if vault inventory is empty */
+            if (items.length == 0) revert UnreportedCollateralInventory();
 
             /* Translate vault inventory to asset infos */
             collateralAssets = new AssetInfo[](items.length);
