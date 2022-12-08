@@ -1,3 +1,7 @@
+* ArcadeV2NoteAdapter v1.2 - 12/08/2022
+    * Add `UnreportedCollateralInventory()` error for collateral bundles missing
+      inventory reporting.
+
 * NFTfiV2NoteAdapter v1.3 - 11/30/2022
     * Add support for `DIRECT_LOAN_FIXED_COLLECTION` loan type for loans made
       from collection offers.
