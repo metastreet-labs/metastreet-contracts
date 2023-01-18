@@ -100,7 +100,7 @@ describe("LoanPriceOracle", function () {
 
   describe("constants", async function () {
     it("matches implementation version", async function () {
-      expect(await loanPriceOracle.IMPLEMENTATION_VERSION()).to.equal("1.2");
+      expect(await loanPriceOracle.IMPLEMENTATION_VERSION()).to.equal(ethers.utils.hexlify(ethers.utils.toUtf8Bytes("1.2")));
     });
   });
 

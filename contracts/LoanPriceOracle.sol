@@ -22,7 +22,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.2";
+    bytes3 public constant IMPLEMENTATION_VERSION = "1.2";
 
     /**
      * @notice One in UD60x18
