@@ -1,3 +1,6 @@
+* NFTfiV2NoteAdapter v1.4 - 03/15/2023
+    * Add support for collateral bundles.
+
 * Vault v1.5 - 02/27/2023
     * Add support for optional note seller approval.
 
