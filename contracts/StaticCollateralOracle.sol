@@ -16,7 +16,7 @@ contract StaticCollateralOracle is AccessControl, ICollateralOracle {
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.0";
+    bytes3 public constant IMPLEMENTATION_VERSION = "1.0";
 
     /**************************************************************************/
     /* Access Control Roles */

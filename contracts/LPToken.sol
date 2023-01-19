@@ -45,7 +45,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.1";
+    bytes3 public constant IMPLEMENTATION_VERSION = "1.1";
 
     /**************************************************************************/
     /* Errors */

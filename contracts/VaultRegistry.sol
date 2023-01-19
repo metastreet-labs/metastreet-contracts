@@ -19,7 +19,7 @@ contract VaultRegistry is Ownable, IVaultRegistry {
     /**
      * @notice Implementation version
      */
-    string public constant IMPLEMENTATION_VERSION = "1.0";
+    bytes3 public constant IMPLEMENTATION_VERSION = "1.0";
 
     /**************************************************************************/
     /* State */
