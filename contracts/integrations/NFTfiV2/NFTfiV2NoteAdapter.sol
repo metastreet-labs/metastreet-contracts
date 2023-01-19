@@ -3,6 +3,8 @@ pragma solidity 0.8.9;
 
 import "contracts/interfaces/INoteAdapter.sol";
 
+import "./IERC998ERC721TopDownEnumerable.sol";
+
 /**************************************************************************/
 /* NFTfiV2 Interfaces (subset) */
 /**************************************************************************/
@@ -56,6 +58,11 @@ interface ISmartNft {
     function exists(uint256 _tokenId) external view returns (bool);
 }
 
+interface IImmutableBundle {
+    function bundler() external view returns (address);
+    function bundleOfImmutable(uint256 immutableId) external view returns (uint256);
+}
+
 /**************************************************************************/
 /* Note Adapter Implementation */
 /**************************************************************************/
@@ -85,6 +92,7 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
 
     IDirectLoanCoordinator private immutable _directLoanCoordinator;
     ISmartNft private immutable _noteToken;
+    IImmutableBundle private immutable _immutableBundle;
 
     /**************************************************************************/
     /* Constructor */
@@ -94,9 +102,10 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
      * @notice NFTfiV2NoteAdapter constructor
      * @param directLoanCoordinator Direct loan coordinator contract
      */
-    constructor(IDirectLoanCoordinator directLoanCoordinator) {
+    constructor(IDirectLoanCoordinator directLoanCoordinator, IImmutableBundle bundle) {
         _directLoanCoordinator = directLoanCoordinator;
         _noteToken = ISmartNft(directLoanCoordinator.promissoryNoteToken());
+        _immutableBundle = IImmutableBundle(bundle);
     }
 
     /**************************************************************************/
@@ -216,9 +225,35 @@ contract NFTfiV2NoteAdapter is INoteAdapter {
         );
 
         /* Collect collateral assets */
-        AssetInfo[] memory collateralAssets = new AssetInfo[](1);
-        collateralAssets[0].token = nftCollateralContract;
-        collateralAssets[0].tokenId = nftCollateralId;
+        AssetInfo[] memory collateralAssets;
+        if (nftCollateralContract == address(_immutableBundle)) {
+            /* Look up bundle contract and id */
+            IERC998ERC721TopDownEnumerable bundleContract = IERC998ERC721TopDownEnumerable(_immutableBundle.bundler());
+            uint256 bundleId = _immutableBundle.bundleOfImmutable(nftCollateralId);
+
+            /* Count total number of assets */
+            uint256 totalContracts = bundleContract.totalChildContracts(bundleId);
+            uint256 totalAssets = 0;
+            for (uint256 i; i < totalContracts; i++) {
+                totalAssets += bundleContract.totalChildTokens(bundleId, bundleContract.childContractByIndex(bundleId, i));
+            }
+
+            /* Look up assets */
+            collateralAssets = new AssetInfo[](totalAssets);
+            uint256 k = 0;
+            for (uint256 i; i < totalContracts; i++) {
+                address tokenAddress = bundleContract.childContractByIndex(bundleId, i);
+                uint256 totalChildTokens = bundleContract.totalChildTokens(bundleId, tokenAddress);
+                for (uint256 j; j < totalChildTokens; j++) {
+                    uint256 tokenId = bundleContract.childTokenByIndex(bundleId, tokenAddress, j);
+                    collateralAssets[k++] = AssetInfo({token: tokenAddress, tokenId: tokenId});
+                }
+             }
+        } else {
+            collateralAssets = new AssetInfo[](1);
+            collateralAssets[0].token = nftCollateralContract;
+            collateralAssets[0].tokenId = nftCollateralId;
+        }
 
         return collateralAssets;
     }
