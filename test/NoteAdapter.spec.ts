@@ -7,6 +7,7 @@ import { ethers, network } from "hardhat";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import {
+  IAddressProvider__factory,
   IDirectLoanCoordinator__factory,
   IDirectLoan__factory,
   IERC721__factory,
@@ -21,24 +22,23 @@ const WETH_TOKEN = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 const BASIS_POINTS_DENOMINATOR = 10_000;
 
 describe("Note Adapters", function () {
-  /* skip test if no MAINNET_URL env variable */
-  if (!process.env.MAINNET_URL) {
-    console.log("\nSkipping note adapter mainnet fork test - no MAINNET_URL env variable found");
-    return;
-  }
-
   let snapshotId: string;
   let noteAdapter: INoteAdapter;
 
-  before("fork mainnet", async () => {
-    /* block from Jan 31 2023 */
+  before("fork mainnet", async function () {
+    /* skip test if no MAINNET_URL env variable */
+    if (!process.env.MAINNET_URL) {
+      this.skip();
+    }
+
+    /* block from Feb 07 2023 */
     await network.provider.request({
       method: "hardhat_reset",
       params: [
         {
           forking: {
             jsonRpcUrl: process.env.MAINNET_URL,
-            blockNumber: 16528861,
+            blockNumber: 16575682,
           },
         },
       ],
@@ -58,12 +58,15 @@ describe("Note Adapters", function () {
   });
 
   describe("XY3NoteAdapter", async () => {
-    const XY3_ADDRESS = "0xC28F7Ee92Cd6619e8eEC6A70923079fBAFb86196";
-    const XY3_NOTE_TOKEN_ADDRESS = "0x0E258c84Df0f8728ae4A6426EA5FD163Eb6b9D1B";
+    const XY3_ADDRESS = "0xFa4D5258804D7723eb6A934c11b1bd423bC31623";
 
-    /* cool cat */
-    const XY3_LOAN_ID = 4715;
-    const XY3_NOTE_TOKEN_ID = BigNumber.from("4307497666888050624");
+    /* notes */
+    let lenderNote: string;
+    let borrowerNote: string;
+
+    /* moon bird */
+    const XY3_LOAN_ID = 10476;
+    const XY3_NOTE_TOKEN_ID = BigNumber.from("1955385066090783700");
 
     /* xy3 loan details */
     let borrowAmount: BigNumber;
@@ -75,15 +78,25 @@ describe("Note Adapters", function () {
     let _borrower: string; /* borrower */
 
     before("deploy fixture", async () => {
+      const ixy3 = IXY3__factory.connect(XY3_ADDRESS, ethers.provider);
+      const addressProvider = await ixy3.getAddressProvider();
+
+      lenderNote = await IAddressProvider__factory.connect(addressProvider, ethers.provider).getLenderNote();
+      borrowerNote = await IAddressProvider__factory.connect(addressProvider, ethers.provider).getBorrowerNote();
+
       /* deploy test noteAdapter */
       const x2y2NoteAdapter = await ethers.getContractFactory("XY3NoteAdapter");
 
-      noteAdapter = (await x2y2NoteAdapter.deploy(XY3_ADDRESS, XY3_NOTE_TOKEN_ADDRESS)) as INoteAdapter;
+      noteAdapter = (await x2y2NoteAdapter.deploy(XY3_ADDRESS)) as INoteAdapter;
       await noteAdapter.deployed();
 
       /* get loan details from contract and assign to note adapter scoped variables */
-      [borrowAmount, repayAmount, nftTokenId, , loanDuration, , loanStart, nftAsset, _borrower, ,] =
-        await IXY3__factory.connect(XY3_ADDRESS, ethers.provider).loanDetails(XY3_LOAN_ID);
+      [borrowAmount, repayAmount, nftTokenId, , loanDuration, , loanStart, nftAsset, ,] = await ixy3.loanDetails(
+        XY3_LOAN_ID
+      );
+
+      /* get borrower details from contract */
+      _borrower = await IERC721__factory.connect(borrowerNote, ethers.provider).ownerOf(XY3_NOTE_TOKEN_ID);
     });
 
     describe("note and address", async () => {
@@ -92,7 +105,7 @@ describe("Note Adapters", function () {
       });
 
       it("returns correct note token address", async () => {
-        expect(await noteAdapter.noteToken()).to.equal(XY3_NOTE_TOKEN_ADDRESS);
+        expect(await noteAdapter.noteToken()).to.equal(lenderNote);
       });
     });
 
@@ -102,12 +115,11 @@ describe("Note Adapters", function () {
       });
 
       it("returns false on non-existent token ID", async () => {
-        expect(await noteAdapter.isSupported(BigNumber.from("5698387920423443805"), WETH_TOKEN)).to.equal(false);
+        expect(await noteAdapter.isSupported(BigNumber.from("1955385066090783799"), WETH_TOKEN)).to.equal(false);
       });
 
       it("returns false for inactive (repaid) loan", async () => {
-        /* repaid in txn 0x8a91afaeceacf88a4180dbb9dc3244406c4eb0e9708fa797344c257d30594e64 */
-        expect(await noteAdapter.isSupported(BigNumber.from("6104004959707999123"), WETH_TOKEN)).to.equal(false);
+        expect(await noteAdapter.isSupported(BigNumber.from("4468936665517476250"), WETH_TOKEN)).to.equal(false);
       });
     });
 
@@ -168,8 +180,7 @@ describe("Note Adapters", function () {
 
     describe("#isRepaid", async () => {
       it("returns true for repaid loan", async () => {
-        /* repaid in txn 0x8a91afaeceacf88a4180dbb9dc3244406c4eb0e9708fa797344c257d30594e64 */
-        expect(await noteAdapter.isRepaid(3691)).to.equal(true);
+        expect(await noteAdapter.isRepaid(10322)).to.equal(true);
       });
 
       it("returns false for active loan", async () => {
@@ -179,8 +190,7 @@ describe("Note Adapters", function () {
 
     describe("#isLiquidated", async () => {
       it("returns true for liquidated loan", async () => {
-        /* repaid in txn 0x2648f623096f20fc6430fc8c2a76c4970f937ec9826a64da445e02b5dd52294f */
-        expect(await noteAdapter.isLiquidated(3663)).to.equal(true);
+        expect(await noteAdapter.isLiquidated(10322)).to.equal(true);
       });
 
       it("returns false for active loan", async () => {
@@ -205,9 +215,9 @@ describe("Note Adapters", function () {
     const DIRECT_LOAN_FIXED_REDEPLOY = "0x8252Df1d8b29057d1Afe3062bf5a64D503152BC8";
     const NFTFI_NOTE_TOKEN_ADDRESS = "0x5660E206496808F7b5cDB8C56A696a96AE5E9b23";
 
-    /* wrapped punk */
-    const NFTFI_LOAN_ID = 23360;
-    const NFTFI_NOTE_TOKEN_ID = BigNumber.from("2896420040608988986");
+    /* world of women */
+    const NFTFI_LOAN_ID = 24290;
+    const NFTFI_NOTE_TOKEN_ID = BigNumber.from("3470274519206011530");
 
     /* loan data */
     let loanContract: string;
@@ -266,17 +276,15 @@ describe("Note Adapters", function () {
       });
 
       it("returns false on non-existent token ID", async () => {
-        expect(await noteAdapter.isSupported(BigNumber.from("5698387920423443805"), WETH_TOKEN)).to.equal(false);
+        expect(await noteAdapter.isSupported(BigNumber.from("3470274519206011529"), WETH_TOKEN)).to.equal(false);
       });
 
       it("returns false on USDC loan", async () => {
-        /* transaction 0x530d84d412bc59b095839dd47b0cf91287daf85b4612b3cfb998010eff60ffab */
-        expect(await noteAdapter.isSupported(BigNumber.from("18221251482556693931"), WETH_TOKEN)).to.equal(false);
+        expect(await noteAdapter.isSupported(BigNumber.from("16792144585544622812"), WETH_TOKEN)).to.equal(false);
       });
 
       it("returns false for inactive (repaid) loan", async () => {
-        /* repaid in txn 0x8a91afaeceacf88a4180dbb9dc3244406c4eb0e9708fa797344c257d30594e64 */
-        expect(await noteAdapter.isSupported(BigNumber.from("5077543603509491697"), WETH_TOKEN)).to.equal(false);
+        expect(await noteAdapter.isSupported(BigNumber.from("13308423289920683228"), WETH_TOKEN)).to.equal(false);
       });
     });
 
@@ -333,8 +341,7 @@ describe("Note Adapters", function () {
 
     describe("#isRepaid", async () => {
       it("returns true for repaid loan", async () => {
-        /* transaction 0x63c82bacd6f9cead887cffdfdc9ec325433d4bb57c94cc09815423885dc52e46 */
-        expect(await noteAdapter.isRepaid(19900)).to.equal(true);
+        expect(await noteAdapter.isRepaid(23983)).to.equal(true);
       });
 
       it("returns false for active loan", async () => {
@@ -344,8 +351,7 @@ describe("Note Adapters", function () {
 
     describe("#isLiquidated", async () => {
       it("returns true for liquidated loan", async () => {
-        /* transaction 0x4242515898dcba7aab30796c2485b9b35de2ebd595f4150979b249a96facfc1e */
-        expect(await noteAdapter.isLiquidated(15876)).to.equal(true);
+        expect(await noteAdapter.isLiquidated(19785)).to.equal(true);
       });
 
       it("returns false for active loan", async () => {
@@ -365,7 +371,7 @@ describe("Note Adapters", function () {
     });
   });
 
-  describe("ArcadeNoteAdapter", async () => {
+  describe("ArcadeV2NoteAdapter", async () => {
     const LOAN_CORE = "0x81b2F8Fc75Bab64A6b144aa6d2fAa127B4Fa7fD9";
     const REPAYMENT_CONTROLLER = "0xb39dAB85FA05C381767FF992cCDE4c94619993d4";
     const VAULT_DEPOSIT_ROUTER = "0xFDda20a20cb4249e73e3356f468DdfdfB61483F6";
@@ -374,7 +380,7 @@ describe("Note Adapters", function () {
     const LENDER_NOTE = "0x349A026A43FFA8e2Ab4c4e59FCAa93F87Bd8DdeE";
 
     /* loanId and note tokenId are same on Arcade */
-    const ARCADE_LOAN_ID = 872;
+    const ARCADE_LOAN_ID = 954;
 
     /* arcade distinguishes between repaid and liquidated loans */
     const REPAID_ARCADE_LOAN_ID = 511;
