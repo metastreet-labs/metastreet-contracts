@@ -1,3 +1,6 @@
+* XY3NoteAdapter v1.0 - 02/23/2023
+    * Initial release.
+
 * ArcadeV2NoteAdapter v1.2 - 12/08/2022
     * Add `UnreportedCollateralInventory()` error for collateral bundles missing
       inventory reporting.
