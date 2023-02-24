@@ -252,7 +252,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(0)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 0);
     });
     it("fails on parameters out of bounds (loan to value)", async function () {
       const principal = ethers.utils.parseEther("100");
@@ -263,7 +263,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(1)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 1);
     });
     it("fails on parameter out of bounds (duration)", async function () {
       const principal = ethers.utils.parseEther("20");
@@ -274,7 +274,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(2)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 2);
     });
     it("fails on parameter out of bounds (purchase price)", async function () {
       const principal = ethers.utils.parseEther("20");
@@ -285,7 +285,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoan(nft1.address, 1234, principal, repayment, duration, maturity, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(3)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 3);
     });
   });
 
@@ -411,7 +411,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(0)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 0);
     });
     it("fails on parameters out of bounds (loan to value)", async function () {
       const principal = ethers.utils.parseEther("100");
@@ -420,7 +420,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(1)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 1);
     });
     it("fails on parameter out of bounds (duration)", async function () {
       const principal = ethers.utils.parseEther("20");
@@ -429,7 +429,7 @@ describe("LoanPriceOracle", function () {
 
       await expect(
         loanPriceOracle.priceLoanRepayment(nft1.address, 1234, principal, duration, utilization)
-      ).to.be.revertedWith("ParameterOutOfBounds(2)");
+      ).to.be.revertedWith("ParameterOutOfBounds", 2);
     });
   });
 
