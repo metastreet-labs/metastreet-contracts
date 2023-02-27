@@ -91,11 +91,7 @@ contract ArcadeV2NoteAdapter is INoteAdapter {
      * @notice ArcadeV2NoteAdapter constructor
      * @param loanCore Loan core contract
      */
-    constructor(
-        ILoanCore loanCore,
-        IRepaymentController repaymentController,
-        IVaultDepositRouter vaultDepositRouter
-    ) {
+    constructor(ILoanCore loanCore, IRepaymentController repaymentController, IVaultDepositRouter vaultDepositRouter) {
         _loanCore = loanCore;
         _borrowerNote = loanCore.borrowerNote();
         _lenderNote = loanCore.lenderNote();

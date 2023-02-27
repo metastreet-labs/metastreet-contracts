@@ -103,10 +103,10 @@ contract StaticCollateralOracle is AccessControl, ICollateralOracle {
      * @param collateralToken Collateral token contract
      * @param collateralValue_ Collateral value
      */
-    function setCollateralValue(address collateralToken, uint256 collateralValue_)
-        external
-        onlyRole(PARAMETER_ADMIN_ROLE)
-    {
+    function setCollateralValue(
+        address collateralToken,
+        uint256 collateralValue_
+    ) external onlyRole(PARAMETER_ADMIN_ROLE) {
         if (collateralToken == address(0)) revert InvalidAddress();
 
         _collateralValue[collateralToken] = collateralValue_;

@@ -434,7 +434,9 @@ contract Vault is
      * @return depositSharePrice Deposit share price in UD60x18
      * @return redemptionSharePrice_ Redemption share price in UD60x18
      */
-    function trancheState(TrancheId trancheId)
+    function trancheState(
+        TrancheId trancheId
+    )
         external
         view
         returns (
@@ -728,11 +730,10 @@ contract Vault is
      * @dev Calculate purchase price of a loan
      * @param loanInfo Loan info
      */
-    function _priceLoan(INoteAdapter.LoanInfo memory loanInfo, INoteAdapter.AssetInfo[] memory collateralAssets)
-        internal
-        view
-        returns (uint256)
-    {
+    function _priceLoan(
+        INoteAdapter.LoanInfo memory loanInfo,
+        INoteAdapter.AssetInfo[] memory collateralAssets
+    ) internal view returns (uint256) {
         uint256 purchasePrice = 0;
 
         /* Calculate principal and repayment per asset */
@@ -763,11 +764,7 @@ contract Vault is
      * @param noteTokenId Note token ID
      * @param minPurchasePrice Minimum purchase price in currency tokens
      */
-    function _sellNote(
-        address noteToken,
-        uint256 noteTokenId,
-        uint256 minPurchasePrice
-    ) internal returns (uint256) {
+    function _sellNote(address noteToken, uint256 noteTokenId, uint256 minPurchasePrice) internal returns (uint256) {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
@@ -995,11 +992,10 @@ contract Vault is
     /**
      * @inheritdoc IVault
      */
-    function withdrawCollateral(address noteToken, uint256 loanId)
-        external
-        nonReentrant
-        onlyRole(COLLATERAL_LIQUIDATOR_ROLE)
-    {
+    function withdrawCollateral(
+        address noteToken,
+        uint256 loanId
+    ) external nonReentrant onlyRole(COLLATERAL_LIQUIDATOR_ROLE) {
         /* Lookup note adapter */
         INoteAdapter noteAdapter = _getNoteAdapter(noteToken);
 
@@ -1332,12 +1328,9 @@ contract Vault is
     /**
      * @inheritdoc IERC165
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(AccessControlUpgradeable, ERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(AccessControlUpgradeable, ERC165) returns (bool) {
         return
             interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             interfaceId == type(IERC721Receiver).interfaceId ||

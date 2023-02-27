@@ -169,11 +169,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, LPToken
      * @param processedRedemptionQueue Current value of vault's processed
      * redemption queue
      */
-    function withdraw(
-        address account,
-        uint256 currencyAmount,
-        uint256 processedRedemptionQueue
-    ) external onlyOwner {
+    function withdraw(address account, uint256 currencyAmount, uint256 processedRedemptionQueue) external onlyOwner {
         Redemption storage redemption = _redemptions[account];
 
         if (redemptionAvailable(account, processedRedemptionQueue) < currencyAmount) revert InvalidAmount();

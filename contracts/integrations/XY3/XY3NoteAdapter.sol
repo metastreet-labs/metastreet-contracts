@@ -25,18 +25,20 @@ interface IXY3 {
     }
 
     /* IXY3 */
-    function loanDetails(uint32)
+    function loanDetails(
+        uint32
+    )
         external
         view
         returns (
-            uint256, /* borrowAmount */
-            uint256, /* repayAmount */
-            uint256, /* nftTokenId */
-            address, /* borrowAsset */
-            uint32, /* loanDuration */
-            uint16, /* adminShare */
-            uint64, /* loanStart */
-            address, /* nftAsset */
+            uint256 /* borrowAmount */,
+            uint256 /* repayAmount */,
+            uint256 /* nftTokenId */,
+            address /* borrowAsset */,
+            uint32 /* loanDuration */,
+            uint16 /* adminShare */,
+            uint64 /* loanStart */,
+            address /* nftAsset */,
             bool /* isCollection */
         );
 
@@ -55,7 +57,7 @@ interface IXY3Nft is IERC721 {
     /* Xy3Nft */
     struct Ticket {
         uint256 loanId;
-        address minter; /* xy3 address */
+        address minter /* xy3 address */;
     }
 
     /* public state variable in Xy3Nft */

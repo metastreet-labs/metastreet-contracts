@@ -214,11 +214,7 @@ interface IVault is ILoanReceiver {
      * @param minPurchasePrice Minimum purchase price in currency tokens
      * @return Executed purchase price in currency tokens
      */
-    function sellNote(
-        address noteToken,
-        uint256 noteTokenId,
-        uint256 minPurchasePrice
-    ) external returns (uint256);
+    function sellNote(address noteToken, uint256 noteTokenId, uint256 minPurchasePrice) external returns (uint256);
 
     /**
      * @notice Sell a note to the vault and deposit its proceeds into one or
@@ -292,9 +288,5 @@ interface IVault is ILoanReceiver {
      * @param loanId Loan ID
      * @param proceeds Proceeds from collateral liquidation in currency tokens
      */
-    function onCollateralLiquidated(
-        address noteToken,
-        uint256 loanId,
-        uint256 proceeds
-    ) external;
+    function onCollateralLiquidated(address noteToken, uint256 loanId, uint256 proceeds) external;
 }

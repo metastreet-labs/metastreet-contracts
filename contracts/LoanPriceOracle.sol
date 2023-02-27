@@ -110,7 +110,7 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
         bool active;
         PiecewiseLinearModel loanToValueRateComponent;
         PiecewiseLinearModel durationRateComponent;
-        uint16[3] rateComponentWeights; /* 0-10000 */
+        uint16[3] rateComponentWeights /* 0-10000 */;
     }
 
     /**
@@ -190,11 +190,10 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      * @param components Components to weight, each UD60x18
      * @return Weighted rate in UD60x18
      */
-    function _computeWeightedRate(uint16[3] storage weights, uint256[3] memory components)
-        internal
-        view
-        returns (uint256)
-    {
+    function _computeWeightedRate(
+        uint16[3] storage weights,
+        uint256[3] memory components
+    ) internal view returns (uint256) {
         return
             PRBMathUD60x18.div(
                 PRBMathUD60x18.mul(components[0], PRBMathUD60x18.fromUint(weights[0])) +
@@ -388,10 +387,9 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      *
      * @param packedUtilizationParameters Utilization rate component model, ABI-encoded
      */
-    function setUtilizationParameters(bytes calldata packedUtilizationParameters)
-        external
-        onlyRole(PARAMETER_ADMIN_ROLE)
-    {
+    function setUtilizationParameters(
+        bytes calldata packedUtilizationParameters
+    ) external onlyRole(PARAMETER_ADMIN_ROLE) {
         _utilizationParameters = abi.decode(packedUtilizationParameters, (PiecewiseLinearModel));
 
         emit UtilizationParametersUpdated();
@@ -405,10 +403,10 @@ contract LoanPriceOracle is AccessControl, ILoanPriceOracle {
      * @param collateralToken Collateral token contract
      * @param packedCollateralParameters Collateral parameters, ABI-encoded
      */
-    function setCollateralParameters(address collateralToken, bytes calldata packedCollateralParameters)
-        external
-        onlyRole(PARAMETER_ADMIN_ROLE)
-    {
+    function setCollateralParameters(
+        address collateralToken,
+        bytes calldata packedCollateralParameters
+    ) external onlyRole(PARAMETER_ADMIN_ROLE) {
         if (collateralToken == address(0)) revert InvalidAddress();
 
         _parameters[collateralToken] = abi.decode(packedCollateralParameters, (CollateralParameters));

@@ -10,20 +10,22 @@ import "contracts/interfaces/INoteAdapter.sol";
 interface IDirectLoan {
     function LOAN_TYPE() external view returns (bytes32);
 
-    function loanIdToLoan(uint32)
+    function loanIdToLoan(
+        uint32
+    )
         external
         view
         returns (
-            uint256, /* loanPrincipalAmount */
-            uint256, /* maximumRepaymentAmount */
-            uint256, /* nftCollateralId */
-            address, /* loanERC20Denomination */
-            uint32, /* loanDuration */
-            uint16, /* loanInterestRateForDurationInBasisPoints */
-            uint16, /* loanAdminFeeInBasisPoints */
-            address, /* nftCollateralWrapper */
-            uint64, /* loanStartTime */
-            address, /* nftCollateralContract */
+            uint256 /* loanPrincipalAmount */,
+            uint256 /* maximumRepaymentAmount */,
+            uint256 /* nftCollateralId */,
+            address /* loanERC20Denomination */,
+            uint32 /* loanDuration */,
+            uint16 /* loanInterestRateForDurationInBasisPoints */,
+            uint16 /* loanAdminFeeInBasisPoints */,
+            address /* nftCollateralWrapper */,
+            uint64 /* loanStartTime */,
+            address /* nftCollateralContract */,
             address /* borrower */
         );
 }
@@ -49,13 +51,7 @@ interface IDirectLoanCoordinator {
 }
 
 interface ISmartNft {
-    function loans(uint256 _tokenId)
-        external
-        view
-        returns (
-            address, /* loanCoordinator */
-            uint256 /* loanId */
-        );
+    function loans(uint256 _tokenId) external view returns (address /* loanCoordinator */, uint256 /* loanId */);
 
     function exists(uint256 _tokenId) external view returns (bool);
 }

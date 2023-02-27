@@ -24,11 +24,7 @@ contract TestERC721 is ERC721, Ownable {
      * @notice symbol Token symbol
      * @notice baseURI Token base URI
      */
-    constructor(
-        string memory name,
-        string memory symbol,
-        string memory baseURI
-    ) ERC721(name, symbol) {
+    constructor(string memory name, string memory symbol, string memory baseURI) ERC721(name, symbol) {
         _baseTokenURI = baseURI;
     }
 
