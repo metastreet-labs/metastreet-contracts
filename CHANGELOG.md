@@ -1,3 +1,6 @@
+* Vault v1.5 - 02/27/2023
+    * Add support for optional note seller approval.
+
 * XY3NoteAdapter v1.0 - 02/23/2023
     * Initial release.
 
