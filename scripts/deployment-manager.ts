@@ -350,6 +350,21 @@ async function vaultSetAdminFeeRate(vaultAddress: string, rate: BigNumber) {
   await vault.setAdminFeeRate(rate);
 }
 
+async function vaultSetNoteSellerApproval(vaultAddress: string, enabled: boolean) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
+  await vault.setNoteSellerApproval(enabled);
+}
+
+async function vaultAddNoteSeller(vaultAddress: string, seller: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
+  await vault.grantRole(await vault.NOTE_SELLER_ROLE(), seller);
+}
+
+async function vaultRemoveNoteSeller(vaultAddress: string, seller: string) {
+  const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
+  await vault.revokeRole(await vault.NOTE_SELLER_ROLE(), seller);
+}
+
 async function vaultAddCollateralLiquidator(vaultAddress: string, liquidator: string) {
   const vault = (await ethers.getContractAt("Vault", vaultAddress, signer)) as Vault;
   await vault.grantRole(await vault.COLLATERAL_LIQUIDATOR_ROLE(), liquidator);
@@ -842,6 +857,25 @@ async function main() {
     .argument("vault", "Vault address", parseAddress)
     .argument("loan_price_oracle", "Loan Price Oracle address", parseAddress)
     .action(vaultSetLoanPriceOracle);
+
+  program
+    .command("vault-set-note-seller-approval")
+    .description("Set note seller approval")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("enabled", "Note seller approval enabled", (x, _) => x === "true")
+    .action(vaultSetNoteSellerApproval);
+  program
+    .command("vault-add-note-seller")
+    .description("Add Vault note seller")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("seller", "Note seller address", parseAddress)
+    .action(vaultAddNoteSeller);
+  program
+    .command("vault-remove-note-seller")
+    .description("Remove Vault note seller")
+    .argument("vault", "Vault address", parseAddress)
+    .argument("seller", "Note seller address", parseAddress)
+    .action(vaultRemoveNoteSeller);
 
   program
     .command("vault-add-collateral-liquidator")
