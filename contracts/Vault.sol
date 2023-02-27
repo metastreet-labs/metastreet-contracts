@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
+import "@openzeppelin/contracts/utils/StorageSlot.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "prb-math/contracts/PRBMathUD60x18.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
@@ -180,6 +181,11 @@ contract Vault is
     /**************************************************************************/
 
     /**
+     * @notice Note seller role
+     */
+    bytes32 public constant NOTE_SELLER_ROLE = keccak256("NOTE_SELLER");
+
+    /**
      * @notice Collateral liquidator role
      */
     bytes32 public constant COLLATERAL_LIQUIDATOR_ROLE = keccak256("COLLATERAL_LIQUIDATOR");
@@ -291,6 +297,12 @@ contract Vault is
      * @param noteAdapter Note adapter contract
      */
     event NoteAdapterUpdated(address indexed noteToken, address noteAdapter);
+
+    /**
+     * @notice Emitted when note seller approval is updated
+     * @param enabled Note seller approval enabled
+     */
+    event NoteSellerApprovalUpdated(bool enabled);
 
     /**
      * @notice Emitted when admin fees are withdrawn
@@ -842,6 +854,15 @@ contract Vault is
         return purchasePrice;
     }
 
+    /**
+     * @dev Check if caller is a note seller. Only applies if note seller
+     * approval is enabled.
+     */
+    modifier onlyNoteSeller() {
+        if (StorageSlot.getBooleanSlot(NOTE_SELLER_ROLE).value) _checkRole(NOTE_SELLER_ROLE, _msgSender());
+        _;
+    }
+
     /**************************************************************************/
     /* User API */
     /**************************************************************************/
@@ -884,7 +905,7 @@ contract Vault is
         address noteToken,
         uint256 noteTokenId,
         uint256 minPurchasePrice
-    ) external whenNotPaused nonReentrant returns (uint256) {
+    ) external whenNotPaused nonReentrant onlyNoteSeller returns (uint256) {
         /* Purchase the note */
         uint256 purchasePrice = _sellNote(noteToken, noteTokenId, minPurchasePrice);
 
@@ -905,7 +926,7 @@ contract Vault is
         uint256 noteTokenId,
         uint256 minPurchasePrice,
         uint256[2] calldata allocation
-    ) external whenNotPaused nonReentrant returns (uint256) {
+    ) external whenNotPaused nonReentrant onlyNoteSeller returns (uint256) {
         /* Check allocations sum to one */
         if (allocation[0] + allocation[1] != ONE_UD60X18) revert ParameterOutOfBounds();
 
@@ -1280,6 +1301,18 @@ contract Vault is
             _noteTokens.remove(noteToken);
         }
         emit NoteAdapterUpdated(noteToken, noteAdapter);
+    }
+
+    /**
+     * @notice Set note seller approval
+     *
+     * Emits a {NoteSellerApprovalUpdated} event.
+     *
+     * @param enabled Note seller approval enabled
+     */
+    function setNoteSellerApproval(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        StorageSlot.getBooleanSlot(NOTE_SELLER_ROLE).value = enabled;
+        emit NoteSellerApprovalUpdated(enabled);
     }
 
     /**

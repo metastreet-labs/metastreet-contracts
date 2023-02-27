@@ -2811,6 +2811,100 @@ describe("Vault", function () {
     });
   });
 
+  describe("#setNoteSellerApproval", async function () {
+    it("restricts sellNote() to approved note seller", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(principal);
+
+      /* Enable note seller approval */
+      const setNoteSellerApprovalTx = await vault.setNoteSellerApproval(true);
+      await expectEvent(setNoteSellerApprovalTx, vault, "NoteSellerApprovalUpdated", {
+        enabled: true,
+      });
+
+      /* Try to sell note */
+      await expect(vault.connect(accountLender).sellNote(noteToken.address, loanId, principal)).to.be.revertedWith(
+        "AccessControl: account"
+      );
+
+      /* Grant role */
+      await vault.grantRole(await vault.NOTE_SELLER_ROLE(), accountLender.address);
+
+      /* Sell note */
+      await vault.connect(accountLender).sellNote(noteToken.address, loanId, principal);
+    });
+    it("restricts sellNoteAndDeposit() to approved note seller", async function () {
+      const depositAmounts: [BigNumber, BigNumber] = [ethers.utils.parseEther("10"), ethers.utils.parseEther("5")];
+      const principal = ethers.utils.parseEther("2.0");
+      const repayment = ethers.utils.parseEther("2.2");
+      const duration = 86400;
+
+      /* Deposit cash */
+      await vault.connect(accountDepositor).deposit(0, depositAmounts[0]);
+      await vault.connect(accountDepositor).deposit(1, depositAmounts[1]);
+
+      /* Create loan */
+      const loanId = await createLoan(
+        lendingPlatform,
+        nft1,
+        accountBorrower,
+        accountLender,
+        principal,
+        repayment,
+        duration
+      );
+
+      /* Setup loan price with mock loan price oracle */
+      await mockLoanPriceOracle.setPrice(principal);
+
+      /* Enable note seller approval */
+      const setNoteSellerApprovalTx = await vault.setNoteSellerApproval(true);
+      await expectEvent(setNoteSellerApprovalTx, vault, "NoteSellerApprovalUpdated", {
+        enabled: true,
+      });
+
+      /* Try to sell note */
+      await expect(
+        vault
+          .connect(accountLender)
+          .sellNoteAndDeposit(noteToken.address, loanId, principal, [FixedPoint.from("0.50"), FixedPoint.from("0.50")])
+      ).to.be.revertedWith("AccessControl: account");
+
+      /* Grant role */
+      await vault.grantRole(await vault.NOTE_SELLER_ROLE(), accountLender.address);
+
+      /* Sell note */
+      await vault
+        .connect(accountLender)
+        .sellNoteAndDeposit(noteToken.address, loanId, principal, [FixedPoint.from("0.50"), FixedPoint.from("0.50")]);
+    });
+    it("fails on invalid caller", async function () {
+      await expect(vault.connect(accountDepositor).setNoteSellerApproval(true)).to.be.revertedWith(
+        "AccessControl: account"
+      );
+    });
+  });
+
   describe("#pause/unpause", async function () {
     it("pauses and unpauses", async function () {
       expect(await vault.paused()).to.equal(false);
