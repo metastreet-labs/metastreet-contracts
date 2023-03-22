@@ -16,10 +16,16 @@ describe("NFTfiV2NoteAdapter", function () {
   const DIRECT_LOAN_FIXED_REDEPLOY = "0x8252Df1d8b29057d1Afe3062bf5a64D503152BC8";
   const NFTFI_NOTE_TOKEN_ADDRESS = "0x5660E206496808F7b5cDB8C56A696a96AE5E9b23";
   const BASIS_POINTS_DENOMINATOR = 10_000;
+  const IMMUTABLE_BUNDLE_ADDRESS = "0x9a129032F01EB4dDD764c1777c81b771C34a2fbE";
 
   /* world of women */
   const NFTFI_LOAN_ID = 24290;
   const NFTFI_NOTE_TOKEN_ID = BigNumber.from("3470274519206011530");
+
+  /* bundled world of women */
+  const WORLD_OF_WOMEN_ADDRESS = "0xe785E82358879F061BC3dcAC6f0444462D4b5330";
+  const BUNDLE_NFTFI_LOAN_ID = 29356;
+  const BUNDLE_NFTFI_NOTE_TOKEN_ID = BigNumber.from("14132581337898414703");
 
   let noteAdapter: INoteAdapter;
 
@@ -32,6 +38,16 @@ describe("NFTfiV2NoteAdapter", function () {
   let loanStartTime: BigNumber;
   let nftCollateralContract: string;
   let _borrower: string;
+
+  /* nftfiv2 bundle loan details */
+  let bundleLoanPrincipalAmount: BigNumber;
+  let bundleMaximumRepaymentAmount: BigNumber;
+  let bundleNftCollateralId: BigNumber;
+  let bundleLoanDuration: number;
+  let bundleLoanAdminFeeInBasisPoints: number;
+  let bundleLoanStartTime: BigNumber;
+  let bundleNftCollateralContract: string;
+  let _bundleBorrower: string;
 
   let snapshotId: string;
 
@@ -48,7 +64,7 @@ describe("NFTfiV2NoteAdapter", function () {
         {
           forking: {
             jsonRpcUrl: process.env.MAINNET_URL,
-            blockNumber: 16575682,
+            blockNumber: 16857768,
           },
         },
       ],
@@ -56,7 +72,7 @@ describe("NFTfiV2NoteAdapter", function () {
 
     const nFTfiV2NoteAdapter = await ethers.getContractFactory("NFTfiV2NoteAdapter");
 
-    noteAdapter = (await nFTfiV2NoteAdapter.deploy(DIRECT_LOAN_COORDINATOR)) as INoteAdapter;
+    noteAdapter = (await nFTfiV2NoteAdapter.deploy(DIRECT_LOAN_COORDINATOR, IMMUTABLE_BUNDLE_ADDRESS)) as INoteAdapter;
     await noteAdapter.deployed();
 
     const loanContract = (
@@ -77,6 +93,20 @@ describe("NFTfiV2NoteAdapter", function () {
       nftCollateralContract,
       _borrower,
     ] = await IDirectLoan__factory.connect(loanContract, ethers.provider).loanIdToLoan(NFTFI_LOAN_ID);
+
+    [
+      bundleLoanPrincipalAmount,
+      bundleMaximumRepaymentAmount,
+      bundleNftCollateralId,
+      ,
+      bundleLoanDuration,
+      ,
+      bundleLoanAdminFeeInBasisPoints,
+      ,
+      bundleLoanStartTime,
+      bundleNftCollateralContract,
+      _bundleBorrower,
+    ] = await IDirectLoan__factory.connect(loanContract, ethers.provider).loanIdToLoan(BUNDLE_NFTFI_LOAN_ID);
   });
 
   after("reset network", async () => {
@@ -150,11 +180,56 @@ describe("NFTfiV2NoteAdapter", function () {
     });
   });
 
+  describe("#getLoanInfo bundle", async () => {
+    it("returns correct loan info", async () => {
+      const [
+        loanId,
+        borrower,
+        principal,
+        repayment,
+        maturity,
+        duration,
+        currencyToken,
+        collateralToken,
+        collateralTokenId,
+      ] = await noteAdapter.getLoanInfo(BUNDLE_NFTFI_NOTE_TOKEN_ID);
+
+      /* calculate repayment amount */
+      const interest = bundleMaximumRepaymentAmount.sub(bundleLoanPrincipalAmount);
+      const adminFee = interest.mul(bundleLoanAdminFeeInBasisPoints).div(BASIS_POINTS_DENOMINATOR);
+      const repaymentAmount = bundleMaximumRepaymentAmount.sub(adminFee);
+
+      expect(loanId).to.equal(BUNDLE_NFTFI_LOAN_ID);
+      expect(borrower).to.equal(_bundleBorrower);
+      expect(principal).to.equal(bundleLoanPrincipalAmount);
+      expect(repayment).to.equal(repaymentAmount);
+      expect(maturity).to.equal(bundleLoanStartTime.toNumber() + bundleLoanDuration);
+      expect(duration).to.equal(bundleLoanDuration);
+      expect(currencyToken).to.equal(WETH_TOKEN);
+      expect(collateralToken).to.equal(bundleNftCollateralContract);
+      expect(collateralTokenId).to.equal(bundleNftCollateralId);
+    });
+  });
+
   describe("#getLoanAssets", async () => {
     it("returns correct loan assets", async () => {
       const [token, tokenId] = (await noteAdapter.getLoanAssets(NFTFI_NOTE_TOKEN_ID))[0];
       expect(token).to.equal(nftCollateralContract);
       expect(tokenId).to.equal(nftCollateralId);
+    });
+  });
+
+  describe("#getLoanAssets bundle", async () => {
+    it("returns correct loan assets for a bundle loan", async () => {
+      const assets = await noteAdapter.getLoanAssets(BUNDLE_NFTFI_NOTE_TOKEN_ID);
+      expect(assets[0][0]).to.equal(WORLD_OF_WOMEN_ADDRESS);
+      expect(assets[0][1]).to.equal(BigNumber.from("5626"));
+      expect(assets[1][0]).to.equal(WORLD_OF_WOMEN_ADDRESS);
+      expect(assets[1][1]).to.equal(BigNumber.from("1821"));
+      expect(assets[2][0]).to.equal(WORLD_OF_WOMEN_ADDRESS);
+      expect(assets[2][1]).to.equal(BigNumber.from("5976"));
+      expect(assets[3][0]).to.equal(WORLD_OF_WOMEN_ADDRESS);
+      expect(assets[3][1]).to.equal(BigNumber.from("7163"));
     });
   });
 
